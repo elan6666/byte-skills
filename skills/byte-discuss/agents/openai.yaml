@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Discuss"
+  short_description: "Clarify decisions through a natural product discussion."
+  default_prompt: "Use $byte-discuss to think through this product decision, recommend sensible defaults, and ask only material questions."

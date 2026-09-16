@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Auto"
+  short_description: "Adaptively execute, verify, and learn from mistakes."
+  default_prompt: "Use $byte-auto to complete this outcome end to end, applying prior lessons and recording confirmed reusable mistakes."

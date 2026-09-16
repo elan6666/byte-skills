@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Status"
+  short_description: "Report verified progress, blockers, and next action."
+  default_prompt: "Use $byte-status to inspect the real project evidence and summarize what is complete, uncertain, blocked, and next."

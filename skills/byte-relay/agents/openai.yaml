@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Relay"
+  short_description: "Cross-harness coordination turn: read shared state, do your stage, hand off."
+  default_prompt: "Use $byte-relay to run the next relay turn: check state.json authority, gather handoffs and session digests, execute the stage work, then write the handoff and advance the state."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Review"
+  short_description: "Review real artifacts for material issues and risks."
+  default_prompt: "Use $byte-review to inspect this work and report the most important evidence-backed findings."

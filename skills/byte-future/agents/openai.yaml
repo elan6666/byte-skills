@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Future"
+  short_description: "Park an idea without expanding active scope."
+  default_prompt: "Use $byte-future to record this idea for later without researching, planning, or implementing it now."

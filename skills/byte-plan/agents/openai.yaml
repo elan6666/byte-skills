@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Plan"
+  short_description: "Plan only to the depth that improves execution."
+  default_prompt: "Use $byte-plan to create an appropriately detailed execution plan for this request."

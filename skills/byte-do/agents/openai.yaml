@@ -1,0 +1,7 @@
+interface:
+  display_name: "Your ByteDance Do"
+  short_description: "Explicit router for mixed Byte product work."
+  default_prompt: "Use $byte-do to choose and execute the smallest useful Byte workflow, applying and recording relevant lessons."
+
+policy:
+  allow_implicit_invocation: false
