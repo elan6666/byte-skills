@@ -23,9 +23,10 @@ harness directly.
    invoked stage matches `state.stage`. Otherwise report the mismatch and exit.
    This rule exists to prevent two harnesses editing the repo at once; it is
    not advisory.
-3. **Gather context.** Read the newest files in `handoffs/`, then run
-   `scripts/session_digest.py` for each harness named in `state.roles` other
-   than yourself (see below) to see what they have been doing.
+3. **Gather context.** Read the newest files in `handoffs/`, inspect
+   `sessions.json` to identify the exact upstream conversation and code
+   snapshot, then run `scripts/session_digest.py` for each harness named in
+   `state.roles` other than yourself (see below).
 4. **Do the stage's work** following `state.next_action`, under the constraints
    in `state.frozen_paths` and the acceptance criteria in `state.acceptance`.
 5. **Write the handoff** to `handoffs/<date>-<harness>-<topic>.md` using
@@ -37,17 +38,36 @@ harness directly.
 
 ## Session digests
 
-Run from the skill directory:
+Conversation identity is durable relay state, not something to infer from a
+`latest` file. At the start of an owned turn, register the current conversation:
 
 ```
-python3 scripts/session_digest.py <codex|claude|dsh> --project <repo-path> --max-turns 8
+python3 scripts/session_registry.py register --project <repo-path> \
+  --harness <codex|claude|dsh|zcode> --session-id <native-id> \
+  --alias <short-purpose> --role <role> [--locator <openable-uri>] \
+  [--provider <provider> --model <model>]
 ```
 
-Add `--query word1 word2` to pick the session that mentions your topic most.
-Write the digest you need to share into
-`handoffs/sessions/<harness>-latest.md`. For ZCode sessions there is no local
-transcript — the script prints instructions; use the session-context tool
-instead and write its summary to the same location.
+The registry captures the harness separately from provider/model and records
+the current branch and commit. `session_registry.py list --project <repo-path>`
+is read-only; registration and status changes enforce the same owner gate as
+the relay. Read [references/coordination-schema.md](references/coordination-schema.md)
+before initializing or changing registry state.
+
+Write digests under their native session ID so one conversation never erases
+another:
+
+```
+python3 scripts/session_digest.py <codex|claude|dsh|zcode> \
+  --project <repo-path> --max-turns 8 \
+  --out-dir <repo-path>/.byte-os/coordination/handoffs/sessions
+```
+
+Add `--query word1 word2` to select a session by topic. The script writes
+`<harness>-<session-id>.md` plus a small `<harness>-latest.md` index. ZCode
+exposes local task metadata but not a portable full transcript; its digest
+records the task ID, project, provider, and model, then tells the ZCode owner
+to append a session-context summary to the session-specific file.
 
 Digests are summaries, not ground truth. When a handoff and a digest disagree,
 trust the repo (git log, files, tests) over both.
@@ -66,8 +86,8 @@ trust the repo (git log, files, tests) over both.
 ## Setup for a new project
 
 Run `$byte-relay init <repo-path>` semantics: create `coordination/`, seed
-`state.json` with roles, set `frozen_paths` from the project's existing
-`.byte-os/` rules if present, and write the first handoff describing current
-work. Rule files for each harness (AGENTS.md, CLAUDE.md, …) can be generated
-from a single source with rulesync; recommend that when a project has more
-than two participating harnesses.
+`state.json` with roles, seed `sessions.json` with the project identity, set
+`frozen_paths` from the project's existing `.byte-os/` rules if present, and
+write the first handoff describing current work. Rule files for each harness
+(AGENTS.md, CLAUDE.md, …) can be generated from a single source with rulesync;
+recommend that when a project has more than two participating harnesses.

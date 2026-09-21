@@ -113,12 +113,13 @@ the repo at `.byte-os/coordination/`:
 
 - `state.json` — a tiny state machine: current `stage`, the single `owner`
   allowed to write, `next_action`, `acceptance`, and `frozen_paths`.
+- `sessions.json` — durable conversation lineage: native session ID, harness,
+  optional openable locator, provider/model, role/stage, and Git snapshot.
 - `tasks/` — one markdown file per task.
 - `handoffs/` — append-only handoff documents written at every baton move.
-- `handoffs/sessions/` — markdown digests of each harness's own conversation,
-  produced by `skills/byte-relay/scripts/session_digest.py`. This is how one
-  harness "sees" what another has been doing: not by sharing the session, but
-  by sharing a digest of it.
+- `handoffs/sessions/` — session-ID-addressed markdown digests produced by
+  `skills/byte-relay/scripts/session_digest.py`. The `latest` files are small
+  indexes, so starting a new conversation never erases an older digest.
 
 Each harness runs the same skill with a one-line automation prompt, e.g. a
 30-minute cron: *"execute byte-relay supervise stage"*. The skill checks
@@ -127,10 +128,13 @@ gathers handoffs and digests, does its stage's work under the frozen-paths
 constraints, writes a handoff, and moves the baton atomically.
 
 Supported digest sources: Codex (`~/.codex/sessions`), Claude Code
-(`~/.claude/projects`), DSH (`~/.dsh/sessions`, zstd). ZCode has no local
-transcript; its skill instance writes its digest via the session-context tool
-instead. See `skills/byte-relay/references/coordination-schema.md` for the
-full schema and the write rules that keep concurrent harnesses safe.
+(`~/.claude/projects`), DSH (`~/.dsh/sessions`, zstd), and ZCode local task
+metadata (`~/.zcode/v2/tasks-index.sqlite` or its CLI database). ZCode's full
+conversation summary still comes from its session-context tool. Use
+`skills/byte-relay/scripts/session_registry.py` to register the exact
+conversation and code snapshot. See
+`skills/byte-relay/references/coordination-schema.md` for the full schema and
+write rules.
 
 ## License
 
