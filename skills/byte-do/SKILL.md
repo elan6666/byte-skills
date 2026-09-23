@@ -78,6 +78,12 @@ For the requested combined workflow, use
 [adaptive execution](references/long-running-work.md): one overall outcome,
 Goals for hard core work, and evolving scheduled checks for routine follow-up.
 Choose from live evidence; do not create a new Goal after every finished job.
+When a scheduled check verifies that stage A is complete, continue its already
+authorized dependent stage B in that same run when prerequisites permit. If A
+reveals a repair stage C, record C as remaining work, resolve or schedule it,
+and update the existing monitor's scope and interval. A status report alone is
+not a handoff to the next stage. Never infer authority for a new experiment,
+cost, or irreversible action from this continuity rule.
 
 ## Source And Updates
 

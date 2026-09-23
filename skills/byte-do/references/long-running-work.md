@@ -59,19 +59,40 @@ Otherwise inspect only remaining work using scheduler/exit evidence and outputs;
 a missing process or old log is not proof of success.
 
 Reconcile the active set after every meaningful change. For example, monitoring
-A/B/C becomes B/C once A is verified complete; keep A's receipt in state but
-remove it from recurring checks. Activate a dependent job only when its
-prerequisites pass and its launch is already authorized. Do not add experiments
-or expand the overall outcome. Update the existing automation prompt and, when
-needed, its interval through the automation tool; editing a note alone does not
+A/B becomes B once A is verified complete; keep A's receipt in state but remove
+it from recurring checks. In that same scheduled run, execute an already
+authorized dependent B immediately if its prerequisites and resource gates pass.
+Do not stop after announcing A's completion, wait for the next timer tick, or
+ask the user to repeat existing authorization. If B is long-running, submit it
+once, save its immutable identity, and retarget the existing monitor to B before
+yielding. If B is bounded local work, do it now and keep reconciling until the
+next genuine wait, blocker, or overall completion. Recheck live state before
+each transition so interrupted or overlapping runs cannot duplicate a job.
+
+If A reveals a new in-scope repair or validation stage C, add C to remaining
+work with its dependency, evidence, owner, and acceptance check. Perform a
+small authorized C in the current run; otherwise retarget the same monitor to
+C or return to bounded core work under the mode rules below. On C completion,
+re-evaluate B automatically. This is a dependency update within the original
+outcome, not permission to add new experiments, cost, or external effects.
+If no authorized next action can run, record the precise blocker and monitor
+only an externally changing condition; do not manufacture recurring status
+checks for a decision that only the user can make.
+
+Update the existing automation prompt and, when needed, its interval through
+the automation tool at each stage transition; editing a note alone does not
 update the scheduled task. Verify the saved update, preserving unrelated fields
 and notification preferences. A failed update remains pending for retry; stale
 or queued runs must consult current state before acting.
 
 Choose intervals from expected duration, observed progress, and failure risk,
-within user constraints. Check more closely after a repair or near a meaningful
-milestone, less often during stable waiting. Stay quiet on unchanged state;
-notify on meaningful completion, failure, or required input, not every poll.
+within user constraints. The current stage's explicit user cadence overrides a
+generic prior cadence: for example, use the requested 30-minute checks during
+capacity testing, then update to the requested two-hour cadence only after
+formal ablation training actually begins. Check more closely after a repair or
+near a meaningful milestone, less often during stable waiting. Stay quiet on
+unchanged state unless the user requested every-check reports; notify on
+meaningful completion, failure, or required input.
 
 For a small, understood bug, inspect its cause, apply an authorized reversible
 fix, run affected checks, and resume only the failed job when retry authority
