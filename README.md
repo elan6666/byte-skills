@@ -27,7 +27,9 @@ stepping on each other.
 git clone https://github.com/elan6666/byte-skills.git
 cd byte-skills
 ./install.sh                 # installs to ~/.agents/skills
-./install.sh --target ~/.claude/skills   # or any other harness skill dir
+./install.sh --all           # installs to ~/.agents/skills and ~/.codex/skills
+./install.sh --target ~/.claude/skills   # add any other harness skill dir
+./install.sh --all --check   # verify installed-copy parity
 ```
 
 Install into **every harness that will participate** — the skills are plain
@@ -116,6 +118,9 @@ the repo at `.byte-os/coordination/`:
 - `sessions.json` — durable conversation lineage: native session ID, harness,
   optional openable locator, provider/model, role/stage, and Git snapshot.
 - `tasks/` — one markdown file per task.
+- `receipts/` — machine-readable task execution, Git range, verification,
+  acceptance, artifacts, rulings, and limits.
+- `reviews/` — generated review summaries plus the exact `BASE..HEAD` diff.
 - `handoffs/` — append-only handoff documents written at every baton move.
 - `handoffs/sessions/` — session-ID-addressed markdown digests produced by
   `skills/byte-relay/scripts/session_digest.py`. The `latest` files are small
@@ -135,6 +140,30 @@ conversation summary still comes from its session-context tool. Use
 conversation and code snapshot. See
 `skills/byte-relay/references/coordination-schema.md` for the full schema and
 write rules.
+
+For material resumable work, start a receipt before changes and complete it
+with fresh verification before handoff:
+
+```bash
+python3 skills/byte-relay/scripts/task_receipt.py start \
+  --project "$PWD" --task-id feature-a --harness codex --session-id <native-id>
+
+python3 skills/byte-relay/scripts/task_receipt.py complete \
+  --project "$PWD" --task-id feature-a --harness codex --session-id <native-id> \
+  --verify-command "python3 -m unittest discover -s tests -v" \
+  --acceptance-evidence tests/ --artifact path/to/output
+
+python3 skills/byte-relay/scripts/review_package.py \
+  --project "$PWD" --task-id feature-a
+```
+
+The shared evidence contract is bundled into each consuming skill so standalone
+installs remain portable. Edit `shared/evidence-contract.md`, run
+`python3 scripts/sync_shared_references.py`, and verify with `--check`.
+
+`benchmarks/byte-behavior-cases.json` defines pressure cases for future live
+harness evaluation. Its invariants guard against over-planning, discussion-mode
+mutation, status-mode writes, authority bypass, and unsupported completion claims.
 
 ## License
 

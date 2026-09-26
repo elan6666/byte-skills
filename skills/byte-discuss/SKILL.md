@@ -34,4 +34,4 @@ decision. Suggest another Byte skill only when it would be useful.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

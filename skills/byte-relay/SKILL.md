@@ -29,6 +29,8 @@ harness directly.
    `state.roles` other than yourself (see below).
 4. **Do the stage's work** following `state.next_action`, under the constraints
    in `state.frozen_paths` and the acceptance criteria in `state.acceptance`.
+   For resumable implementation, review, or experiment work, start or update a
+   task receipt as described below.
 5. **Write the handoff** to `handoffs/<date>-<harness>-<topic>.md` using
    `references/handoff-template.md`: what was done, evidence, what changed,
    what the next harness needs to know.
@@ -72,6 +74,19 @@ to append a session-context summary to the session-specific file.
 Digests are summaries, not ground truth. When a handoff and a digest disagree,
 trust the repo (git log, files, tests) over both.
 
+## Task receipts and review packages
+
+Apply the shared [evidence contract](references/evidence-contract.md). A session
+record identifies the conversation; a task receipt records what that conversation
+actually executed and verified. Do not infer execution from registration alone.
+
+For material resumable work, use `scripts/task_receipt.py start` before changing
+the task and `scripts/task_receipt.py complete` before handing off. The receipt
+binds the native session to Git base/head, fresh verification, artifacts,
+acceptance status, rulings, and deviations. Use `scripts/review_package.py` when
+a reviewer needs the exact `base..head` range. These files supplement live Git
+and runtime checks; they do not override them.
+
 ## Hard rules
 
 - Execute only `owner == self` and stage-matched work; otherwise read and exit.
@@ -91,3 +106,7 @@ Run `$byte-relay init <repo-path>` semantics: create `coordination/`, seed
 write the first handoff describing current work. Rule files for each harness
 (AGENTS.md, CLAUDE.md, …) can be generated from a single source with rulesync;
 recommend that when a project has more than two participating harnesses.
+
+## Source And Updates
+
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

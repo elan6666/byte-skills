@@ -25,6 +25,9 @@ they add little value. Cite current web claims near the claims they support.
 Save research only when it will be reused, audited, or handed off. Use the
 project's existing convention or a concise `.byte-os/RESEARCH.md`; do not require
 both research and competitor files.
+When saving or handing off a material conclusion, apply the shared
+[evidence contract](references/evidence-contract.md): retain source, observation
+date, uncertainty, and the decision the evidence affects.
 
 If direct evidence disproves a reusable prior assumption, update
 `.byte-os/LESSONS.md` with the correction, evidence, and future verification rule.
@@ -39,4 +42,4 @@ reasoning or implementation, not routine searches and polling.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

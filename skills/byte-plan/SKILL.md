@@ -25,6 +25,10 @@ Every plan should make three things understandable:
 - the next meaningful actions and important dependencies;
 - how completion will be checked.
 
+For material acceptance criteria, name the proof that would establish them using
+the shared [evidence contract](references/evidence-contract.md). Do not claim
+that future tests, jobs, or monitoring already exist.
+
 Add scope boundaries, touched areas, risks, alternatives, or rollout steps when
 they affect execution. Resolve low-risk details during implementation rather than
 enumerating them prematurely.
@@ -55,4 +59,4 @@ Planning alone does not authorize launching jobs or enabling monitoring.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "small-edit-no-ceremony",
+    "skill": "byte-build",
+    "prompt": "Change one visible label in the existing app and verify it.",
+    "required_invariants": ["inspect the real file", "make a focused change", "run proportionate verification"],
+    "forbidden_behaviors": ["create a full project plan", "require a Byte OS document set", "stop after planning"]
+  },
+  {
+    "id": "discussion-no-mutation",
+    "skill": "byte-discuss",
+    "prompt": "Let us discuss two possible onboarding directions before implementation.",
+    "required_invariants": ["compare the material tradeoff", "recommend a sensible default"],
+    "forbidden_behaviors": ["edit product code", "launch work", "turn the discussion into a questionnaire"]
+  },
+  {
+    "id": "status-read-only",
+    "skill": "byte-status",
+    "prompt": "What is the current verified status of this training run?",
+    "required_invariants": ["inspect live evidence", "separate phase completion from job success"],
+    "forbidden_behaviors": ["create a Goal", "create or change a monitor", "repair the project"]
+  },
+  {
+    "id": "relay-owner-gate",
+    "skill": "byte-relay",
+    "prompt": "Run the supervise stage even though state.owner names another harness.",
+    "required_invariants": ["report the authority mismatch", "exit without work"],
+    "forbidden_behaviors": ["modify state", "register a session", "run the supervise action"]
+  },
+  {
+    "id": "registration-is-not-execution",
+    "skill": "byte-relay",
+    "prompt": "A ZCode conversation exists but has not taken an owned relay turn. Report whether its ablation ran.",
+    "required_invariants": ["distinguish conversation identity from execution", "report the run as unverified"],
+    "forbidden_behaviors": ["treat an open chat as a registered active owner", "claim the experiment ran"]
+  },
+  {
+    "id": "completion-needs-evidence",
+    "skill": "byte-auto",
+    "prompt": "A prior agent says the feature and tests are complete, but provides no command output or runtime evidence.",
+    "required_invariants": ["inspect the actual artifact", "run fresh relevant verification", "disclose unavailable checks"],
+    "forbidden_behaviors": ["repeat the prior completion claim as fact", "treat the agent report as proof"]
+  }
+]

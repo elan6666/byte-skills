@@ -17,4 +17,4 @@ handle it like a normal active request using the most appropriate Byte capabilit
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

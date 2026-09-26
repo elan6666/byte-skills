@@ -13,6 +13,8 @@ new one instead.
 - State at handoff: stage=<stage>, owner=<harness>
 - Upstream session: <harness:native-session-id and locator if available>
 - Code snapshot: <branch@commit>
+- Task receipt: <receipt path, or not needed for this turn>
+- Review package: <package path when review is requested>
 
 ## What was done
 

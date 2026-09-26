@@ -1,4 +1,4 @@
 interface:
   display_name: "Your ByteDance Relay"
-  short_description: "Cross-harness relay with durable session IDs, locators, and handoffs."
-  default_prompt: "Use $byte-relay to run the next relay turn: check state.json authority, register this conversation in sessions.json, gather handoffs and session-specific digests, execute the stage work, then write the handoff and advance the state."
+  short_description: "Cross-harness relay with durable sessions and execution receipts."
+  default_prompt: "Use $byte-relay to run the next relay turn: check state.json authority, register this conversation in sessions.json, gather handoffs and session-specific digests, record a task receipt for material work, execute and verify the stage, then write the handoff and advance the state."

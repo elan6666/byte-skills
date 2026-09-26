@@ -28,6 +28,10 @@ parallel ledgers.
 
 Completion means the requested change is present and relevant verification has
 passed, or any remaining verification limit is clearly disclosed.
+Use the shared [evidence contract](references/evidence-contract.md) for material
+completion claims. When a task is resumable or handed across harnesses, record
+the Git range, commands, results, artifacts, and acceptance evidence in one
+compact receipt.
 
 When user correction or direct evidence confirms a reusable mistake, create or
 update one deduplicated `.byte-os/LESSONS.md` entry with the correction, evidence,
@@ -43,4 +47,4 @@ the monitor. Preserve unaffected runs and existing compute limits.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

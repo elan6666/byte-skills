@@ -17,6 +17,11 @@ could realistically make the result wrong, harmful, confusing, or incomplete.
 - Distinguish confirmed defects from risks, preferences, and missing evidence.
 - Recommend changes that materially improve the outcome.
 
+Use the shared [evidence contract](references/evidence-contract.md). Re-check
+reviewer or agent claims against the actual artifact before accepting them.
+Classify important feedback as a confirmed defect, risk, preference, or missing
+evidence; record a short ruling only when a later owner needs the decision.
+
 Possible lenses include product fit, UX, correctness, architecture,
 maintainability, security, privacy, performance, testing, market evidence, and
 delivery readiness. Do not simulate a meeting or force every role to comment.
@@ -35,4 +40,4 @@ with evidence and a prevention rule, not blame.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

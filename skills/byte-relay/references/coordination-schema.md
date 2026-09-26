@@ -33,6 +33,8 @@
 ├── state.json
 ├── sessions.json # durable harness/session/locator and code-snapshot registry
 ├── tasks/        # one markdown file per task; front-matter: owner, stage, status
+├── receipts/     # machine-readable execution and verification receipts
+├── reviews/      # generated BASE..HEAD review packages and diff files
 └── handoffs/     # append-only交接文档; never edit an existing handoff
     └── sessions/ # <harness>-<native-session-id>.md; latest is only an index
 ```
@@ -123,3 +125,17 @@ Keep these concerns separate so relay authority stays small and auditable.
 7. **Trace the conversation and run separately.** A session record proves who
    discussed or launched work; a task or handoff must still identify the
    concrete experiment run and artifacts being supervised.
+
+## Task receipt rules
+
+- Receipt identity is the task ID; `owner_session` is the authoritative
+  `<harness>:<native_session_id>` that performed the work.
+- `start` requires the current relay owner and a registered session, then
+  snapshots the Git base commit before work begins.
+- `complete` requires the same owned session, records the current head commit,
+  and appends fresh verification. A failed command or incomplete acceptance
+  cannot produce a `complete` receipt.
+- Rulings explain material review decisions. Deviations explain departures from
+  the accepted plan or handoff. Neither replaces evidence.
+- Review packages must use the recorded `base_commit..head_commit` range, verify
+  that base is an ancestor of head, and keep the full diff in a linked file.

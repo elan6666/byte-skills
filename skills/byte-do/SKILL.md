@@ -71,6 +71,8 @@ discussion only or no file changes.
 
 Lead with the result. Mention routing, artifacts, or next commands only when they
 help the user understand or continue the work. Do not emit a fixed status template.
+For material implementation, review, runtime, experiment, or handoff claims,
+apply the shared [evidence contract](references/evidence-contract.md).
 
 ## Adaptive execution
 
@@ -87,4 +89,4 @@ cost, or irreversible action from this continuity rule.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

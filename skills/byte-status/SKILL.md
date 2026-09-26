@@ -7,6 +7,10 @@ description: "Inspect progress, blockers, and remaining work in a Byte project."
 
 Report status from live evidence, not from narrative claims alone.
 
+Apply the shared [evidence contract](references/evidence-contract.md) when
+reconciling completion, runtime, experiment, and handoff claims. A receipt is a
+useful index to evidence, but live state remains authoritative when it can drift.
+
 Inspect the relevant files, version control state, tests, processes, outputs, and
 Byte OS notes in proportion to the question. Treat stale or conflicting status
 documents as evidence to reconcile, not as the source of truth.
@@ -42,4 +46,4 @@ create goals or monitors; authorized continuation follows
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

@@ -45,6 +45,11 @@ Finish when the requested deliverable exists, relevant verification has passed o
 its limits are disclosed, and no high-priority in-scope issue remains that can be
 safely resolved.
 
+Match completion claims to fresh proof using the shared
+[evidence contract](references/evidence-contract.md). For resumable or
+cross-harness work, link one compact task receipt instead of repeating logs in
+the state document.
+
 Pause only when progress requires user input, credentials, payment, unavailable
 external state, a consequential product decision, or authority for a destructive
 or irreversible action. Report the exact blocker and the smallest next action.
@@ -79,4 +84,4 @@ disable monitoring before returning to a Goal. Keep one concise state document.
 
 ## Source And Updates
 
-Canonical repository: [elan6666/your-bytedance-skills](https://github.com/elan6666/your-bytedance-skills). Use its current `main` branch when checking for or installing updates.
+Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.
