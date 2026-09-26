@@ -39,6 +39,37 @@ Research is optional unless current external facts affect the result. A written
 plan is optional unless it reduces coordination or execution risk. Product specs,
 OKRs, role analyses, harnesses, and review documents are optional tools, not gates.
 
+## Delegate waiting deliberately
+
+Choose the lightest authorized supervision path by expected duration and
+independence, not just by model price:
+
+- For a bounded check that should finish in this turn (for example, a test or
+  short diagnostic), a cheaper subagent may inspect it while the main agent
+  does independent work or waits for its result. Use subagents only when the
+  user or environment permits delegation and the requested model is available.
+  Do not repeatedly poll it from the expensive main model.
+- For unattended training, ablations, or other jobs that may outlive this turn,
+  use an explicitly authorized independent supervisor task or scheduled
+  monitor. Record the run identity and evidence first, then let the main task
+  end its turn. A subagent waiting inside the main turn is not a durable
+  replacement for a later wakeup.
+- Prefer a process or scheduler completion/failure event when a supported
+  watcher can deliver it. Use a low-frequency heartbeat to detect a stale or
+  missing watcher; terminal text and agent-idle status alone never prove a
+  scientific run succeeded.
+- Before scheduling a long check, validate the exact project directory, run
+  identity, target conversation, model/tool availability, and notification
+  route. If a script can determine "still running" without model judgment,
+  let that script do the cheap check and wake an agent only for a meaningful
+  failure, completion, or required decision. Coalesce repeated unchanged
+  events instead of starting a fresh model turn for every tick.
+
+For cross-session or cross-harness ownership, follow `$byte-relay`; a subagent
+doing a bounded read or check does not acquire its own relay baton. Never
+create a Goal, new task, automation, or paid job solely because this skill was
+invoked; the user or environment must authorize that operation.
+
 ## Completion
 
 Finish when the requested deliverable exists, relevant verification has passed or

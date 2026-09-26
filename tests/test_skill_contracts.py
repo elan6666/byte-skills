@@ -57,6 +57,10 @@ class SkillContractTests(unittest.TestCase):
                 "registration-is-not-execution",
                 "completion-needs-evidence",
                 "codex-thread-durable-before-direct",
+                "short-luna-helper-keeps-baton",
+                "long-training-notification-is-not-ack",
+                "event-wakeup-needs-bridge",
+                "script-only-stable-monitor",
             }.issubset(ids)
         )
         for case in cases:
@@ -80,6 +84,32 @@ class SkillContractTests(unittest.TestCase):
             "wait_threads",
         ):
             self.assertIn(operation, protocol)
+
+    def test_delegation_route_is_standalone_and_preserves_authority(self):
+        relay = ROOT / "skills" / "byte-relay"
+        route = relay / "references" / "delegation-routing.md"
+        self.assertTrue(route.is_file())
+        self.assertIn(
+            "references/delegation-routing.md",
+            (relay / "SKILL.md").read_text(encoding="utf-8"),
+        )
+        route_text = route.read_text(encoding="utf-8")
+        for invariant in (
+            "state.owner_session",
+            "Handoff persisted",
+            "Notification accepted",
+            "Supervisor acknowledged",
+            "Run settled",
+            "event-to-task",
+            "Preflight",
+            "process owner",
+        ):
+            self.assertIn(invariant, route_text)
+        auto_text = (ROOT / "skills" / "byte-auto" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("## Delegate waiting deliberately", auto_text)
+        self.assertIn("$byte-relay", auto_text)
 
 
 if __name__ == "__main__":

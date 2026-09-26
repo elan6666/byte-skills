@@ -19,6 +19,10 @@ When available, use Codex's native task operations deliberately:
 - `wait_threads`: obtain bounded progress snapshots for a dispatched task; do
   not turn the main task into a permanent polling loop.
 
+For same-task helpers, do **not** use this cross-task baton protocol. Follow
+[delegation routing](delegation-routing.md): a subagent keeps the main task's
+ownership and is suitable only for bounded work within its active turn.
+
 If native task operations are unavailable, keep the repository handoff valid and
 tell the user which exact supervisor task must be opened or resumed manually.
 
@@ -39,21 +43,29 @@ tell the user which exact supervisor task must be opened or resumed manually.
 ## Main task to supervisor
 
 1. Finish and verify the bounded core implementation. Launch a long job only
-   when already authorized.
+   when already authorized. A same-task helper must not own a job whose
+   lifetime needs to exceed the helper turn unless process persistence was
+   independently verified.
 2. Record the exact job/run identity, config, process or scheduler ID, log path,
    outputs, Git snapshot, allowed repairs, stop conditions, and escalation
    conditions in the task receipt and handoff.
 3. Create or select the supervisor task and retain its returned `threadId` and
    `hostId`. Do not treat creation as execution or supervision. A Codex target
    without a known host ID must not receive the baton.
+   Confirm the target's project checkout, available model/tooling, and report
+   route before enabling any recurring check.
 4. Write the append-only handoff. Then run `scripts/relay_state.py handoff` to
    move `owner_session` to the supervisor and set `stage=supervise`.
 5. Only after the state write succeeds, use the Codex task messaging capability
    to send the supervisor a concise prompt containing the project path, state
    path, its exact session ref, handoff path, run identity, and `next_action`.
-6. End the main task's active work. Do not keep it alive merely to poll the
-   supervisor. A failed direct notification does not erase the durable handoff;
-   report or retry the notification without duplicating the job.
+6. Record whether notification was accepted by the transport, unverified, or
+   failed. This is not an acknowledgement from the supervisor. If the call
+   times out or fails ambiguously, inspect the exact target and handoff before
+   any retry; never send a duplicate launch instruction blindly.
+7. End the main task's active work. Do not keep it alive merely to poll the
+   supervisor. A failed direct notification does not erase the durable handoff
+   or justify relaunching the job.
 
 Example state transfer after the handoff file exists:
 
@@ -72,8 +84,13 @@ python3 scripts/relay_state.py handoff --project <repo> \
 
 1. Register the supervisor conversation only after `owner_session` names it,
    then confirm the stage, handoff, receipt, live job identity, and Git snapshot.
-2. Monitor with the available bounded wait or scheduled heartbeat mechanism.
-   Stay quiet while state is unchanged; do not keep the main task polling.
+2. Acknowledge the handoff only after confirming the exact `owner_session`,
+   host/checkout, run ID, and live job identity. Monitor with an authorized
+   process/scheduler event bridge where available, otherwise use the available
+   bounded wait or scheduled heartbeat mechanism. A sparse heartbeat may check
+   watcher liveness. Stay quiet while state is unchanged; do not keep the main
+   task polling. Never claim event-triggered wakeup without a configured and
+   tested event-to-task bridge.
 3. If the job succeeds, verify terminal outputs and acceptance, update the
    receipt/handoff, transfer the baton back to the main or review task, and send
    that task a completion message.
@@ -88,6 +105,8 @@ python3 scripts/relay_state.py handoff --project <repo> \
 Before messaging another task, persist the corresponding handoff and state
 transition. Use task reads for context and task waits for dispatched progress,
 but treat their summaries as narrative evidence, not repository or runtime truth.
+An agent becoming idle or finishing a turn is not proof that training succeeded;
+check the scheduler/process result and expected artifacts separately.
 
 ## Direct-message payload
 

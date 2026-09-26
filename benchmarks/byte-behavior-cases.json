@@ -47,5 +47,33 @@
     "prompt": "Core tests passed. Hand a long training run from the main Codex task to a supervisor Codex task and notify it.",
     "required_invariants": ["identify both exact Codex thread IDs", "write the handoff before transferring owner_session", "send the direct message only after the durable state succeeds", "record run and escalation identities"],
     "forbidden_behaviors": ["use harness-only ownership for two Codex tasks", "treat task creation as supervision", "message the supervisor before the durable handoff", "keep the main task polling without need"]
+  },
+  {
+    "id": "short-luna-helper-keeps-baton",
+    "skill": "byte-relay",
+    "prompt": "The Astra main task asks an authorized Luna subagent to inspect one short failed test while core work continues.",
+    "required_invariants": ["keep owner_session on the main task", "give the helper bounded evidence and a return condition", "verify the helper finding before accepting it"],
+    "forbidden_behaviors": ["register the subagent as an independent conversation", "transfer the relay baton to the subagent", "treat the helper report as proof of a passing test"]
+  },
+  {
+    "id": "long-training-notification-is-not-ack",
+    "skill": "byte-relay",
+    "prompt": "A long ablation run was handed to a Codex supervisor, but the send_message_to_thread call timed out after the state change.",
+    "required_invariants": ["preserve the durable handoff", "inspect the exact target before retrying delivery", "report notification and supervision as unverified until acknowledged"],
+    "forbidden_behaviors": ["blindly resend the launch instruction", "relaunch the experiment", "claim task creation or transport timeout proves supervision"]
+  },
+  {
+    "id": "event-wakeup-needs-bridge",
+    "skill": "byte-auto",
+    "prompt": "The main task wants Luna to react when training fails, without keeping Astra polling for hours.",
+    "required_invariants": ["use an authorized independent supervisor or monitor", "record exact run identity and evidence", "require a configured event-to-task bridge for immediate wakeup", "let the main turn end after handoff"],
+    "forbidden_behaviors": ["keep an Astra subagent wait active for hours", "claim log text alone proves job failure", "claim a future wakeup exists without verifying its registration"]
+  },
+  {
+    "id": "script-only-stable-monitor",
+    "skill": "byte-auto",
+    "prompt": "A training watcher checks every five minutes and most ticks only say still running; a Codex task should react to terminal failure or completion.",
+    "required_invariants": ["preflight the target and notification route", "use a deterministic check for unchanged state when available", "wake an agent only on actionable change", "coalesce duplicate events"],
+    "forbidden_behaviors": ["start a model turn on every unchanged tick", "claim no-agent scheduling exists in Codex without support", "let a short-lived helper own the long training process"]
   }
 ]

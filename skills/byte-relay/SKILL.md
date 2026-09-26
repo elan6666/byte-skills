@@ -87,6 +87,13 @@ message it after the durable handoff, and then stop active polling. The supervis
 may apply only recorded bounded repairs; otherwise it returns evidence and the
 baton to the main task before messaging it.
 
+First choose the supervision lane using
+[delegation routing](references/delegation-routing.md). A same-task subagent is
+bounded help inside one active turn, not a new registered conversation or a
+second relay owner. An independent Codex task or other harness needs an exact
+session identity and the durable baton before it acts. Neither lane turns a
+terminal status or an agent's final message into proof of run success.
+
 ## Task receipts and review packages
 
 Apply the shared [evidence contract](references/evidence-contract.md). A session
