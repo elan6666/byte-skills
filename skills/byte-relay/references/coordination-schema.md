@@ -6,13 +6,30 @@
 {
   "stage": "build | review | supervise | fix",
   "owner": "codex | claude | dsh | zcode",
+  "owner_session": "codex:<native-thread-id>",
   "roles": { "codex": "builder", "zcode": "supervisor", "claude": "reviewer" },
+  "participants": {
+    "codex:<main-thread-id>": { "harness": "codex", "role": "builder", "host_id": "local" },
+    "codex:<supervisor-thread-id>": {
+      "harness": "codex",
+      "role": "supervisor",
+      "host_id": "local",
+      "reports_to": "codex:<main-thread-id>"
+    }
+  },
   "next_action": "single concrete instruction for the current owner",
   "acceptance": "observable criteria that close this stage",
   "frozen_paths": ["glob patterns no role may modify"],
   "updated_at": "ISO-8601 with timezone",
   "history": [
-    { "ts": "ISO-8601", "from": "codex", "to": "zcode", "note": "why the baton moved" }
+    {
+      "ts": "ISO-8601",
+      "from": "codex",
+      "to": "codex",
+      "from_session": "codex:<main-thread-id>",
+      "to_session": "codex:<supervisor-thread-id>",
+      "note": "why the baton moved"
+    }
   ]
 }
 ```
@@ -21,6 +38,11 @@
 
 - `stage` and `owner` move together: a handoff that changes work type should
   change the stage in the same write.
+- `owner_session` is optional for backward-compatible one-session projects. It
+  is mandatory once two sessions from the same harness participate and is then
+  the exact authority key.
+- `participants` records session-scoped roles and optional Codex `host_id` and
+  `reports_to`; harness-wide `roles` remains a compatibility/default map.
 - `next_action` is one instruction, not a list. Long plans belong in
   `handoffs/` linked from the note.
 - `history` is append-only. New entries go last; past entries are never edited.
@@ -55,7 +77,9 @@ Keep these concerns separate so relay authority stays small and auditable.
       "native_session_id": "01a0-example",
       "alias": "design-build",
       "locator": "codex://threads/01a0-example",
+      "host_id": "local",
       "role": "builder",
+      "reports_to": null,
       "stage": "build",
       "provider": "openai",
       "model": "gpt-5",
@@ -100,7 +124,8 @@ Keep these concerns separate so relay authority stays small and auditable.
   must also record its own run ID, config, log path, and scheduler/process ID
   in the task or handoff.
 - Only the current `state.owner` may register or mutate its session record.
-  Any harness may list the registry.
+  When `state.owner_session` exists, the exact session must also match. Any
+  harness or session may list the registry read-only.
 - Update `sessions.json` atomically through `sessions.json.tmp` and rename it
   over the destination. Preserve `created_at` when updating an existing key.
 - Session digests are durable by identity. `<harness>-latest.md` is a
@@ -111,9 +136,10 @@ Keep these concerns separate so relay authority stays small and auditable.
 1. **Atomic writes only.** Write to `state.json.tmp` in the same directory,
    then `rename(2)` over `state.json`. Never write in place.
 2. **Owner-only writes.** Only the harness named in `owner` may modify
-   `state.json`. Everyone else has read-only access to coordination state.
-3. **Authority gate.** A harness executes work only when `owner == self` and
-   the invoked stage matches `stage`. On mismatch: report and exit.
+   `state.json`. When `owner_session` exists, only that exact session may write;
+   every other session, including another Codex task, is read-only.
+3. **Authority gate.** Work requires matching harness, exact session when set,
+   and stage. On mismatch: report and exit.
 4. **Frozen paths.** No role may modify files matching `frozen_paths`, for any
    reason, including "the task seems to require it". Frozen means frozen.
 5. **No silent retries.** A failed `next_action` is reported in a handoff with
@@ -125,6 +151,9 @@ Keep these concerns separate so relay authority stays small and auditable.
 7. **Trace the conversation and run separately.** A session record proves who
    discussed or launched work; a task or handoff must still identify the
    concrete experiment run and artifacts being supervised.
+8. **Durable before direct.** Write the handoff and atomically transfer the
+   state before sending a Codex cross-task message. Messages notify or wake the
+   new owner; they do not transfer authority.
 
 ## Task receipt rules
 

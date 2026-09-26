@@ -40,5 +40,12 @@
     "prompt": "A prior agent says the feature and tests are complete, but provides no command output or runtime evidence.",
     "required_invariants": ["inspect the actual artifact", "run fresh relevant verification", "disclose unavailable checks"],
     "forbidden_behaviors": ["repeat the prior completion claim as fact", "treat the agent report as proof"]
+  },
+  {
+    "id": "codex-thread-durable-before-direct",
+    "skill": "byte-relay",
+    "prompt": "Core tests passed. Hand a long training run from the main Codex task to a supervisor Codex task and notify it.",
+    "required_invariants": ["identify both exact Codex thread IDs", "write the handoff before transferring owner_session", "send the direct message only after the durable state succeeds", "record run and escalation identities"],
+    "forbidden_behaviors": ["use harness-only ownership for two Codex tasks", "treat task creation as supervision", "message the supervisor before the durable handoff", "keep the main task polling without need"]
   }
 ]

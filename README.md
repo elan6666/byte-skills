@@ -92,6 +92,22 @@ run completes, the baton moves to a reviewer harness that reads the artifacts
 and writes a summary. This replaces one bespoke cron per harness with a
 single relay skill.
 
+### Codex main task + supervisor task
+
+A main Codex task can implement and test the core code, launch an authorized
+performance/training/ablation run, then hand the exact session-scoped baton to a
+second Codex task in the same local project checkout. `state.owner_session`
+distinguishes `codex:<main-thread-id>` from `codex:<supervisor-thread-id>` even
+though both use the same harness. The main task writes the handoff and uses
+`relay_state.py` before sending a direct task message, then stops polling. The
+supervisor watches the run, applies only pre-authorized bounded repairs, and
+hands evidence back to the main task when work completes or needs deeper repair.
+
+Direct Codex task messages are a wake-up and guidance channel, not the source of
+truth. The state, receipt, run identity, logs, and append-only handoff remain the
+recoverable record. See
+`skills/byte-relay/references/codex-thread-relay.md` for the complete protocol.
+
 ### Research and writing relays
 
 No code required: `stage: "research"` — one harness gathers sources and
@@ -114,7 +130,8 @@ Several harnesses, one repository, one baton. All coordination state lives in
 the repo at `.byte-os/coordination/`:
 
 - `state.json` — a tiny state machine: current `stage`, the single `owner`
-  allowed to write, `next_action`, `acceptance`, and `frozen_paths`.
+  and optional exact `owner_session` allowed to write, `next_action`,
+  `acceptance`, participants, and `frozen_paths`.
 - `sessions.json` — durable conversation lineage: native session ID, harness,
   optional openable locator, provider/model, role/stage, and Git snapshot.
 - `tasks/` — one markdown file per task.

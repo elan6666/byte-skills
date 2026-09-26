@@ -10,11 +10,14 @@ new one instead.
 - Date: <ISO-8601>
 - From: <harness> (<stage> stage)
 - To: <harness>
+- From session: <harness:native-session-id>
+- To session: <harness:native-session-id>
 - State at handoff: stage=<stage>, owner=<harness>
 - Upstream session: <harness:native-session-id and locator if available>
 - Code snapshot: <branch@commit>
 - Task receipt: <receipt path, or not needed for this turn>
 - Review package: <package path when review is requested>
+- Direct notification: <not sent, or confirmed destination thread ID>
 
 ## What was done
 

@@ -1,0 +1,104 @@
+# Codex task-to-task relay
+
+Use this mode when two or more Codex tasks share one project: for example, a
+main task implements core code and tests, then a supervisor task watches a long
+performance or ablation run and returns anomalies or completion evidence.
+
+Codex cross-task messages are the live notification channel. Repository state is
+the durable authority. A message can wake or guide a task, but it never grants
+ownership by itself.
+
+When available, use Codex's native task operations deliberately:
+
+- `create_thread`: create a supervisor only when the user explicitly requests
+  a new supervision task; target the same saved project with local checkout.
+- `send_message_to_thread`: dispatch or update the new owner only after the
+  durable handoff succeeds.
+- `read_thread`: inspect concise task context when needed, never as proof that a
+  job or code change succeeded.
+- `wait_threads`: obtain bounded progress snapshots for a dispatched task; do
+  not turn the main task into a permanent polling loop.
+
+If native task operations are unavailable, keep the repository handoff valid and
+tell the user which exact supervisor task must be opened or resumed manually.
+
+## Identity and checkout
+
+- Identify every participant as `codex:<thread-id>` and record its `host_id`
+  when available.
+- Set both `state.owner: codex` and `state.owner_session: codex:<thread-id>`.
+  Once multiple Codex tasks participate, never fall back to harness-only
+  ownership.
+- Create a supervisor task only when the user explicitly asks for a new task or
+  supervision task. Otherwise reuse an exact registered task selected by ID.
+- A supervisor watching the same process, scheduler, logs, and coordination
+  files must run in the same saved project checkout (`local` environment), not
+  an isolated worktree. Use a worktree only when the relay explicitly separates
+  code ownership and provides a shared external state channel.
+
+## Main task to supervisor
+
+1. Finish and verify the bounded core implementation. Launch a long job only
+   when already authorized.
+2. Record the exact job/run identity, config, process or scheduler ID, log path,
+   outputs, Git snapshot, allowed repairs, stop conditions, and escalation
+   conditions in the task receipt and handoff.
+3. Create or select the supervisor task and retain its returned `threadId` and
+   `hostId`. Do not treat creation as execution or supervision. A Codex target
+   without a known host ID must not receive the baton.
+4. Write the append-only handoff. Then run `scripts/relay_state.py handoff` to
+   move `owner_session` to the supervisor and set `stage=supervise`.
+5. Only after the state write succeeds, use the Codex task messaging capability
+   to send the supervisor a concise prompt containing the project path, state
+   path, its exact session ref, handoff path, run identity, and `next_action`.
+6. End the main task's active work. Do not keep it alive merely to poll the
+   supervisor. A failed direct notification does not erase the durable handoff;
+   report or retry the notification without duplicating the job.
+
+Example state transfer after the handoff file exists:
+
+```bash
+python3 scripts/relay_state.py handoff --project <repo> \
+  --from-harness codex --from-session-id <main-thread-id> --from-stage build \
+  --to-session codex:<supervisor-thread-id> --to-stage supervise \
+  --to-role supervisor --to-host-id <host-id> \
+  --reports-to codex:<main-thread-id> \
+  --next-action "monitor run-42; apply only the recorded bounded repairs" \
+  --handoff .byte-os/coordination/handoffs/<file>.md \
+  --note "core implementation and tests complete; long run launched"
+```
+
+## Supervisor behavior
+
+1. Register the supervisor conversation only after `owner_session` names it,
+   then confirm the stage, handoff, receipt, live job identity, and Git snapshot.
+2. Monitor with the available bounded wait or scheduled heartbeat mechanism.
+   Stay quiet while state is unchanged; do not keep the main task polling.
+3. If the job succeeds, verify terminal outputs and acceptance, update the
+   receipt/handoff, transfer the baton back to the main or review task, and send
+   that task a completion message.
+4. If a known, explicitly allowed, bounded repair is sufficient, preserve the
+   run and unrelated work, apply the repair, verify it, and continue supervision.
+   Never repeat an unchanged failed repair.
+5. For uncertain diagnosis, architecture or scientific changes, new cost,
+   destructive action, frozen-path changes, or exhausted retry budget: write
+   evidence, transfer ownership back to the main task, then message it. The main
+   task decides the repair.
+
+Before messaging another task, persist the corresponding handoff and state
+transition. Use task reads for context and task waits for dispatched progress,
+but treat their summaries as narrative evidence, not repository or runtime truth.
+
+## Direct-message payload
+
+Keep cross-task prompts cohesive and self-contained:
+
+- project and checkout path;
+- `codex:<thread-id>` identity and expected `owner_session`;
+- stage, next action, acceptance, allowed repairs, and escalation boundary;
+- handoff and receipt paths;
+- run/config/log/process identities;
+- which exact task should receive completion or failure reports.
+
+Do not paste large transcripts or diffs into messages. Link the durable digest,
+receipt, review package, or artifact instead.

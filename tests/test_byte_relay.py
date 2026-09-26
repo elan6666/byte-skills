@@ -13,6 +13,7 @@ REGISTRY = ROOT / "skills" / "byte-relay" / "scripts" / "session_registry.py"
 DIGEST = ROOT / "skills" / "byte-relay" / "scripts" / "session_digest.py"
 RECEIPT = ROOT / "skills" / "byte-relay" / "scripts" / "task_receipt.py"
 REVIEW_PACKAGE = ROOT / "skills" / "byte-relay" / "scripts" / "review_package.py"
+RELAY_STATE = ROOT / "skills" / "byte-relay" / "scripts" / "relay_state.py"
 
 
 def run(command, **kwargs):
@@ -100,6 +101,237 @@ class SessionRegistryTests(unittest.TestCase):
         self.assertFalse(
             (self.project / ".byte-os" / "coordination" / "sessions.json").exists()
         )
+
+    def test_exact_codex_session_owns_registration(self):
+        state_path = self.project / ".byte-os" / "coordination" / "state.json"
+        state = json.loads(state_path.read_text())
+        state["owner_session"] = "codex:supervisor-1"
+        state["participants"] = {
+            "codex:main-1": {"harness": "codex", "role": "builder"},
+            "codex:supervisor-1": {
+                "harness": "codex",
+                "role": "supervisor",
+                "host_id": "local",
+                "reports_to": "codex:main-1",
+            },
+        }
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        denied = run(
+            [
+                sys.executable,
+                str(REGISTRY),
+                "register",
+                "--project",
+                str(self.project),
+                "--harness",
+                "codex",
+                "--session-id",
+                "main-1",
+                "--alias",
+                "main",
+            ]
+        )
+        self.assertEqual(denied.returncode, 1)
+        self.assertIn("session authority mismatch", denied.stderr)
+        allowed = run(
+            [
+                sys.executable,
+                str(REGISTRY),
+                "register",
+                "--project",
+                str(self.project),
+                "--harness",
+                "codex",
+                "--session-id",
+                "supervisor-1",
+                "--alias",
+                "training-supervisor",
+            ]
+        )
+        self.assertEqual(allowed.returncode, 0, allowed.stderr)
+        registry = json.loads(
+            (self.project / ".byte-os" / "coordination" / "sessions.json").read_text()
+        )
+        record = registry["sessions"]["codex:supervisor-1"]
+        self.assertEqual(record["role"], "supervisor")
+        self.assertEqual(record["host_id"], "local")
+        self.assertEqual(record["reports_to"], "codex:main-1")
+
+
+class RelayStateTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.project = (Path(self.temp.name) / "project").resolve()
+        handoffs = self.project / ".byte-os" / "coordination" / "handoffs"
+        handoffs.mkdir(parents=True)
+        self.handoff = handoffs / "main-to-supervisor.md"
+        self.handoff.write_text("# Handoff\n", encoding="utf-8")
+        self.state_path = self.project / ".byte-os" / "coordination" / "state.json"
+        self.state_path.write_text(
+            json.dumps(
+                {
+                    "stage": "build",
+                    "owner": "codex",
+                    "owner_session": "codex:main-1",
+                    "roles": {"codex": "builder"},
+                    "participants": {
+                        "codex:main-1": {"harness": "codex", "role": "builder"}
+                    },
+                    "next_action": "finish core implementation",
+                    "acceptance": "training reaches terminal state",
+                    "history": [],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    def tearDown(self):
+        self.temp.cleanup()
+
+    def test_handoff_moves_baton_to_exact_supervisor_thread(self):
+        result = run(
+            [
+                sys.executable,
+                str(RELAY_STATE),
+                "handoff",
+                "--project",
+                str(self.project),
+                "--from-harness",
+                "codex",
+                "--from-session-id",
+                "main-1",
+                "--from-stage",
+                "build",
+                "--from-role",
+                "builder",
+                "--to-session",
+                "codex:supervisor-1",
+                "--to-stage",
+                "supervise",
+                "--to-role",
+                "supervisor",
+                "--to-host-id",
+                "local",
+                "--reports-to",
+                "codex:main-1",
+                "--next-action",
+                "monitor run-42 and repair only bounded failures",
+                "--handoff",
+                str(self.handoff),
+                "--note",
+                "core tests passed; training is waiting",
+            ]
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        state = json.loads(self.state_path.read_text())
+        self.assertEqual(state["owner"], "codex")
+        self.assertEqual(state["owner_session"], "codex:supervisor-1")
+        self.assertEqual(state["stage"], "supervise")
+        self.assertEqual(
+            state["participants"]["codex:supervisor-1"]["reports_to"],
+            "codex:main-1",
+        )
+        self.assertEqual(state["participants"]["codex:supervisor-1"]["host_id"], "local")
+        self.assertEqual(state["history"][-1]["from_session"], "codex:main-1")
+        self.assertEqual(state["history"][-1]["to_session"], "codex:supervisor-1")
+
+        denied = run(
+            [
+                sys.executable,
+                str(RELAY_STATE),
+                "handoff",
+                "--project",
+                str(self.project),
+                "--from-harness",
+                "codex",
+                "--from-session-id",
+                "main-1",
+                "--to-session",
+                "codex:supervisor-2",
+                "--to-stage",
+                "supervise",
+                "--next-action",
+                "monitor",
+                "--handoff",
+                str(self.handoff),
+                "--note",
+                "invalid second handoff",
+            ]
+        )
+        self.assertEqual(denied.returncode, 1)
+        self.assertIn("session authority mismatch", denied.stderr)
+
+    def test_codex_target_requires_host_id(self):
+        result = run(
+            [
+                sys.executable,
+                str(RELAY_STATE),
+                "handoff",
+                "--project",
+                str(self.project),
+                "--from-harness",
+                "codex",
+                "--from-session-id",
+                "main-1",
+                "--to-session",
+                "codex:supervisor-1",
+                "--to-stage",
+                "supervise",
+                "--next-action",
+                "monitor",
+                "--handoff",
+                str(self.handoff),
+                "--note",
+                "missing host",
+            ]
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("Codex target requires", result.stderr)
+        state = json.loads(self.state_path.read_text())
+        self.assertEqual(state["owner_session"], "codex:main-1")
+
+    def test_legacy_state_uses_registered_active_session(self):
+        state = json.loads(self.state_path.read_text())
+        state.pop("owner_session")
+        self.state_path.write_text(json.dumps(state), encoding="utf-8")
+        registry_path = self.project / ".byte-os" / "coordination" / "sessions.json"
+        registry_path.write_text(
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "sessions": {},
+                    "active_by_harness": {"codex": "codex:other-main"},
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = run(
+            [
+                sys.executable,
+                str(RELAY_STATE),
+                "handoff",
+                "--project",
+                str(self.project),
+                "--from-harness",
+                "codex",
+                "--from-session-id",
+                "main-1",
+                "--to-session",
+                "codex:supervisor-1",
+                "--to-stage",
+                "supervise",
+                "--to-host-id",
+                "local",
+                "--next-action",
+                "monitor",
+                "--handoff",
+                str(self.handoff),
+                "--note",
+                "wrong active session",
+            ]
+        )
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("legacy session authority mismatch", result.stderr)
 
 
 class SessionDigestTests(unittest.TestCase):
@@ -327,6 +559,15 @@ class TaskReceiptTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn("authority mismatch", result.stderr)
+
+    def test_receipt_rejects_other_codex_thread(self):
+        state_path = self.project / ".byte-os" / "coordination" / "state.json"
+        state = json.loads(state_path.read_text())
+        state["owner_session"] = "codex:supervisor-1"
+        state_path.write_text(json.dumps(state), encoding="utf-8")
+        result = self.start_receipt("wrong-thread")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("session authority mismatch", result.stderr)
 
     def test_failed_verification_cannot_complete_receipt(self):
         started = self.start_receipt("task-failed")

@@ -56,12 +56,30 @@ class SkillContractTests(unittest.TestCase):
                 "relay-owner-gate",
                 "registration-is-not-execution",
                 "completion-needs-evidence",
+                "codex-thread-durable-before-direct",
             }.issubset(ids)
         )
         for case in cases:
             self.assertTrue(case["prompt"])
             self.assertTrue(case["required_invariants"])
             self.assertTrue(case["forbidden_behaviors"])
+
+    def test_relay_links_codex_task_protocol(self):
+        relay = ROOT / "skills" / "byte-relay"
+        self.assertIn(
+            "references/codex-thread-relay.md",
+            (relay / "SKILL.md").read_text(encoding="utf-8"),
+        )
+        protocol = (relay / "references" / "codex-thread-relay.md").read_text(
+            encoding="utf-8"
+        )
+        for operation in (
+            "create_thread",
+            "send_message_to_thread",
+            "read_thread",
+            "wait_threads",
+        ):
+            self.assertIn(operation, protocol)
 
 
 if __name__ == "__main__":

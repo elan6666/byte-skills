@@ -22,6 +22,17 @@ def project_root(value):
     return Path(value).expanduser().resolve()
 
 
+def validate_session_ref(value):
+    if value is None:
+        return None
+    harness, separator, native_id = value.partition(":")
+    if separator != ":" or harness not in HARNESS_CHOICES or not native_id:
+        raise RuntimeError(
+            "session reference must be <codex|claude|dsh|zcode>:<native-session-id>"
+        )
+    return value
+
+
 def coordination_dir(project):
     return project / ".byte-os" / "coordination"
 
@@ -78,11 +89,18 @@ def load_state(project):
     return load_json(coordination_dir(project) / "state.json")
 
 
-def require_owner(state, harness, requested_stage=None):
+def require_owner(state, harness, session_id=None, requested_stage=None):
     owner = state.get("owner")
     if owner != harness:
         raise RuntimeError(
             f"authority mismatch: state.owner={owner!r}, requested harness={harness!r}"
+        )
+    owner_session = state.get("owner_session")
+    requested_session = f"{harness}:{session_id}" if session_id else None
+    if owner_session is not None and owner_session != requested_session:
+        raise RuntimeError(
+            f"session authority mismatch: state.owner_session={owner_session!r}, "
+            f"requested session={requested_session!r}"
         )
     stage = state.get("stage")
     if requested_stage is not None and requested_stage != stage:
@@ -127,17 +145,21 @@ def default_locator(harness, session_id):
 def register(args):
     project = project_root(args.project)
     state = load_state(project)
-    stage = require_owner(state, args.harness, args.stage)
+    stage = require_owner(state, args.harness, args.session_id, args.stage)
     registry = load_registry(project, allow_missing=True)
     key = f"{args.harness}:{args.session_id}"
     existing = registry["sessions"].get(key, {})
     timestamp = now_iso()
+    participant = state.get("participants", {}).get(key, {})
+    reports_to = validate_session_ref(args.reports_to or participant.get("reports_to"))
     record = {
         "harness": args.harness,
         "native_session_id": args.session_id,
         "alias": args.alias,
         "locator": args.locator or default_locator(args.harness, args.session_id),
-        "role": args.role or state.get("roles", {}).get(args.harness),
+        "host_id": args.host_id or participant.get("host_id"),
+        "role": args.role or participant.get("role") or state.get("roles", {}).get(args.harness),
+        "reports_to": reports_to,
         "stage": stage,
         "provider": args.provider,
         "model": args.model,
@@ -160,7 +182,7 @@ def register(args):
 def set_status(args):
     project = project_root(args.project)
     state = load_state(project)
-    require_owner(state, args.harness)
+    require_owner(state, args.harness, args.session_id)
     registry = load_registry(project)
     key = f"{args.harness}:{args.session_id}"
     if key not in registry["sessions"]:
@@ -183,7 +205,7 @@ def list_sessions(args):
     if args.json:
         print(json.dumps(registry, ensure_ascii=False, indent=2))
         return
-    print("KEY\tSTATUS\tSTAGE\tALIAS\tMODEL\tLOCATOR")
+    print("KEY\tSTATUS\tSTAGE\tROLE\tREPORTS_TO\tHOST\tALIAS\tMODEL\tLOCATOR")
     records = sorted(
         registry["sessions"].items(),
         key=lambda item: item[1].get("updated_at", ""),
@@ -197,6 +219,9 @@ def list_sessions(args):
                     key,
                     record.get("status"),
                     record.get("stage"),
+                    record.get("role"),
+                    record.get("reports_to"),
+                    record.get("host_id"),
                     record.get("alias"),
                     record.get("model"),
                     record.get("locator"),
@@ -215,8 +240,10 @@ def build_parser():
     register_parser.add_argument("--session-id", required=True)
     register_parser.add_argument("--alias", required=True)
     register_parser.add_argument("--role")
+    register_parser.add_argument("--reports-to")
     register_parser.add_argument("--stage")
     register_parser.add_argument("--locator")
+    register_parser.add_argument("--host-id")
     register_parser.add_argument("--provider")
     register_parser.add_argument("--model")
     register_parser.add_argument("--status", choices=STATUS_CHOICES, default="active")

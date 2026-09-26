@@ -1,6 +1,6 @@
 ---
 name: byte-relay
-description: Coordinate work across AI coding harnesses (Codex, Claude Code, DSH, ZCode) through shared state files in the repo. Use when the user invokes $byte-relay, asks to run a relay stage (e.g. supervise), or wants to hand off work to or pick up work from another harness.
+description: Coordinate work across AI coding harnesses or Codex tasks through durable state, exact session ownership, handoffs, and supervision. Use when the user invokes $byte-relay, asks to run a relay stage, or wants one conversation to hand work to another.
 ---
 
 # Byte Relay
@@ -9,9 +9,10 @@ Act as the coordination relay between harnesses that share one repository. Your
 job in a single invocation is one relay turn: read the shared state, do your
 stage's work, write the handoff, advance the state, and stop.
 
-All shared state lives in `.byte-os/coordination/` inside the project repo. The
-repo is the only channel between harnesses — never try to contact another
-harness directly.
+All durable state lives in `.byte-os/coordination/` inside the project repo.
+When Codex task communication tools are available, use them as a live
+notification channel only after the matching repository handoff and state change.
+The repo remains the authority after messages, restarts, or context compaction.
 
 ## The relay turn
 
@@ -19,14 +20,15 @@ harness directly.
    user asked to initialize, create it from the schema in
    `references/coordination-schema.md` and stop. Otherwise report who owns the
    state and exit without doing work.
-2. **Check authority.** Proceed only when `state.owner` is this harness and the
-   invoked stage matches `state.stage`. Otherwise report the mismatch and exit.
+2. **Check authority.** Proceed only when `state.owner` is this harness, the
+   invoked stage matches `state.stage`, and `state.owner_session` matches this
+   exact conversation when that field is present. Otherwise report the mismatch and exit.
    This rule exists to prevent two harnesses editing the repo at once; it is
    not advisory.
 3. **Gather context.** Read the newest files in `handoffs/`, inspect
    `sessions.json` to identify the exact upstream conversation and code
-   snapshot, then run `scripts/session_digest.py` for each harness named in
-   `state.roles` other than yourself (see below).
+   snapshot, then run `scripts/session_digest.py --session-id <native-id>` for
+   relevant participant sessions other than yourself (see below).
 4. **Do the stage's work** following `state.next_action`, under the constraints
    in `state.frozen_paths` and the acceptance criteria in `state.acceptance`.
    For resumable implementation, review, or experiment work, start or update a
@@ -34,9 +36,9 @@ harness directly.
 5. **Write the handoff** to `handoffs/<date>-<harness>-<topic>.md` using
    `references/handoff-template.md`: what was done, evidence, what changed,
    what the next harness needs to know.
-6. **Advance the state** with one atomic write: write `state.json.tmp`, then
-   rename it over `state.json`. Append one entry to `history`; never rewrite
-   past entries. Set `owner` to the harness named for the next step.
+6. **Advance the state** with `scripts/relay_state.py handoff`, which verifies
+   the current harness/session, requires the handoff file, writes atomically,
+   appends history, and sets both `owner` and `owner_session` for the next step.
 
 ## Session digests
 
@@ -47,7 +49,8 @@ Conversation identity is durable relay state, not something to infer from a
 python3 scripts/session_registry.py register --project <repo-path> \
   --harness <codex|claude|dsh|zcode> --session-id <native-id> \
   --alias <short-purpose> --role <role> [--locator <openable-uri>] \
-  [--provider <provider> --model <model>]
+  [--provider <provider> --model <model>] [--host-id <codex-host>] \
+  [--reports-to <harness:native-session-id>]
 ```
 
 The registry captures the harness separately from provider/model and records
@@ -74,6 +77,16 @@ to append a session-context summary to the session-specific file.
 Digests are summaries, not ground truth. When a handoff and a digest disagree,
 trust the repo (git log, files, tests) over both.
 
+## Codex task-to-task supervision
+
+For a main Codex task that finishes core implementation and then delegates long
+performance tests, training, or ablations to a supervisor Codex task, follow
+[Codex task-to-task relay](references/codex-thread-relay.md). The main task may
+create or reuse a supervisor task, transfer the exact session-scoped baton,
+message it after the durable handoff, and then stop active polling. The supervisor
+may apply only recorded bounded repairs; otherwise it returns evidence and the
+baton to the main task before messaging it.
+
 ## Task receipts and review packages
 
 Apply the shared [evidence contract](references/evidence-contract.md). A session
@@ -89,12 +102,13 @@ and runtime checks; they do not override them.
 
 ## Hard rules
 
-- Execute only `owner == self` and stage-matched work; otherwise read and exit.
+- Execute only harness-, session-, and stage-matched work; otherwise read and exit.
 - Never modify paths in `frozen_paths`.
-- On failure: do not retry automatically. Write the failure, evidence, and your
-  diagnosis into the handoff, then hand ownership back to the previous owner.
-- One owner at a time. `state.json` is the arbiter; if it says you are not the
-  owner, you are not.
+- A supervisor may perform an explicitly recorded bounded repair. Do not repeat
+  an unchanged failed repair or infer authority for broader changes; write the
+  evidence and hand ownership back to the main session.
+- One owner session at a time. When `owner_session` exists, matching `owner`
+  without matching the exact session is read-only.
 - Keep handoffs short and evidence-linked; the digest covers conversation
   history, so the handoff only needs decisions and deltas.
 

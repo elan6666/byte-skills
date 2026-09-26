@@ -106,6 +106,13 @@ def require_owned_session(project, harness, session_id, requested_stage=None):
             f"authority mismatch: state.owner={state.get('owner')!r}, "
             f"requested harness={harness!r}"
         )
+    owner_session = state.get("owner_session")
+    requested_session = f"{harness}:{session_id}"
+    if owner_session is not None and owner_session != requested_session:
+        raise RuntimeError(
+            f"session authority mismatch: state.owner_session={owner_session!r}, "
+            f"requested session={requested_session!r}"
+        )
     stage = state.get("stage")
     if requested_stage is not None and requested_stage != stage:
         raise RuntimeError(
