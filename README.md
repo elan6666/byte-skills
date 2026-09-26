@@ -19,6 +19,7 @@ stepping on each other.
 | `byte-status` | Progress, blockers, and next action from live evidence |
 | `byte-future` | Park and retrieve future ideas |
 | `byte-auto` | Autonomous completion of a bounded outcome |
+| `byte-design-supervise` | Codex main-chat design and launch with independent long-run supervision |
 | **`byte-relay`** | **Cross-harness coordination: shared state machine, handoffs, session digests** |
 
 ## Install
@@ -107,6 +108,13 @@ Direct Codex task messages are a wake-up and guidance channel, not the source of
 truth. The state, receipt, run identity, logs, and append-only handoff remain the
 recoverable record. See
 `skills/byte-relay/references/codex-thread-relay.md` for the complete protocol.
+For the no-Goal design/build/launch pattern with an event hook and 30-minute
+fallback check in the same supervisor chat, use
+`skills/byte-design-supervise/SKILL.md`. The event hook can record and attempt
+delivery without model polling, but an idle Codex desktop task needs a
+separately verified notification adapter; a durable inbox alone does not wake
+it. The bundled `skills/byte-relay/scripts/run_event.py` helper records terminal events and delivery
+receipts, and the periodic check reconciles missed events.
 
 ### Research and writing relays
 

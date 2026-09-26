@@ -78,7 +78,10 @@ apply the shared [evidence contract](references/evidence-contract.md).
 
 For the requested combined workflow, use
 [adaptive execution](references/long-running-work.md): one overall outcome,
-Goals for hard core work, and evolving scheduled checks for routine follow-up.
+ordinary core-work turns by default, and evolving scheduled checks for
+authorized routine follow-up. Use a Goal only when explicitly requested. For
+a Codex main chat plus separate long-run supervisor, use the independently
+callable [$byte-design-supervise](../byte-design-supervise/SKILL.md) skill.
 Choose from live evidence; do not create a new Goal after every finished job.
 When a scheduled check verifies that stage A is complete, continue its already
 authorized dependent stage B in that same run when prerequisites permit. If A

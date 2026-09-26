@@ -94,6 +94,13 @@ second relay owner. An independent Codex task or other harness needs an exact
 session identity and the durable baton before it acts. Neither lane turns a
 terminal status or an agent's final message into proof of run success.
 
+For the recurring main-design / independently supervised long-run pattern,
+use the independently callable
+[$byte-design-supervise](../byte-design-supervise/SKILL.md) skill. It keeps the main chat's launch gate separate from the
+supervisor's event and periodic wakeups; relay remains the authority mechanism.
+The [event bridge](references/codex-event-bridge.md) and
+[run-event helper](scripts/run_event.py) live here with the relay protocol.
+
 ## Task receipts and review packages
 
 Apply the shared [evidence contract](references/evidence-contract.md). A session

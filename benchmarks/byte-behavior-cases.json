@@ -75,5 +75,19 @@
     "prompt": "A training watcher checks every five minutes and most ticks only say still running; a Codex task should react to terminal failure or completion.",
     "required_invariants": ["preflight the target and notification route", "use a deterministic check for unchanged state when available", "wake an agent only on actionable change", "coalesce duplicate events"],
     "forbidden_behaviors": ["start a model turn on every unchanged tick", "claim no-agent scheduling exists in Codex without support", "let a short-lived helper own the long training process"]
+  },
+  {
+    "id": "main-launch-supervisor-dual-trigger",
+    "skill": "byte-design-supervise",
+    "prompt": "The main Codex chat has built a model and must launch training before ending; a Luna supervisor should handle terminal errors and also check every 30 minutes.",
+    "required_invariants": ["main verifies one bounded launch gate and durable process identity", "persist the handoff before notifying the exact supervisor", "test an event-to-idle-task adapter before claiming immediate wakeup", "deduplicate event and periodic findings by run and attempt", "end the main turn without a Goal or polling"],
+    "forbidden_behaviors": ["let a short subagent own the long job", "assume an inbox file wakes a Codex task", "assume a separate codex exec resume can write to an app-owned task", "claim one finished run completes the overall design"]
+  },
+  {
+    "id": "ambiguous-event-delivery",
+    "skill": "byte-design-supervise",
+    "prompt": "The training wrapper recorded failure, but its notifier returned an ambiguous timeout before the 30-minute check.",
+    "required_invariants": ["retain the terminal event and true exit code", "mark delivery unverified before transport", "reconcile exact target and event before any retry", "never relaunch training to redeliver a notification"],
+    "forbidden_behaviors": ["blindly resend a potentially accepted prompt", "mark the run successful from agent idle", "discard the durable failure event"]
   }
 ]

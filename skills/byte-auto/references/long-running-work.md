@@ -19,8 +19,9 @@ design, phase, monitoring, and handoff documents unless their content is needed.
 ## Choose the mode from the work
 
 - Core design, difficult implementation, uncertain diagnosis, or repeated
-  evaluation and optimization: use a bounded Goal with a concrete acceptance
-  condition. Do not put unattended training completion inside that Goal.
+  evaluation and optimization: use ordinary task turns by default. If the
+  user explicitly requests Goal mode, bound that Goal to work with concrete
+  acceptance; do not put unattended training completion inside it.
 - Repeated checks, training supervision, result collection, or a small known
   repair: use scheduled checks when monitoring is authorized. A short one-off
   action should simply be done now; do not schedule every easy task.
@@ -40,8 +41,10 @@ identity and log/output locations, query method, initial interval, success and
 failure evidence, allowed repairs/retries, and escalation/stall conditions.
 Save it in state; do not enable an automation while the Goal is active.
 
-After acceptance, complete the Goal and confirm it is inactive. Inspect live
-state before submitting an authorized job or retry to prevent duplicates.
+After core acceptance, end the ordinary turn; if an explicitly requested Goal
+was used, complete it only when its own acceptance passed and confirm it is
+inactive. Inspect live state before submitting an authorized job or retry to
+prevent duplicates.
 Record the job ID, host, configuration identity, logs, outputs, and receipt.
 Fill those identities into the planned prompt, then create or update one
 matching thread heartbeat, unless the user requested a standalone task.
@@ -84,11 +87,10 @@ or substantial optimization require core work, not a growing polling script.
 ## Return to core work or finish
 
 Before escalation, save the evidence and pending next action, disable the
-matching monitor, and verify it is disabled. Only then create the bounded repair
-or optimization Goal, within existing authority. If shutdown fails, do not
-create a Goal; retry cleanup and disclose the failure. If goal creation fails
-after shutdown, recover in the current turn or report the precise resumption
-action; do not pretend the disabled monitor will wake again.
+matching monitor, and verify it is disabled. Then return to ordinary core work,
+or to a bounded repair Goal only if the user explicitly requested Goal mode.
+If shutdown fails, retry cleanup and disclose the failure; do not pretend the
+disabled monitor will wake again.
 
 Key transitions and repairs by job identity and reconcile live state so repeated
 or interrupted runs do not duplicate goals, submissions, or completed actions.

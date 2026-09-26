@@ -69,6 +69,9 @@ For cross-session or cross-harness ownership, follow `$byte-relay`; a subagent
 doing a bounded read or check does not acquire its own relay baton. Never
 create a Goal, new task, automation, or paid job solely because this skill was
 invoked; the user or environment must authorize that operation.
+For the Codex-only pattern where the main chat launches and an independent chat
+supervises with event plus periodic checks, use the independently callable
+[$byte-design-supervise](../byte-design-supervise/SKILL.md) skill.
 
 ## Completion
 
@@ -108,10 +111,11 @@ still unfinished.
 ## Adaptive execution
 
 Define one overall outcome and acceptance criteria first. For the requested
-Goal-plus-monitor workflow, follow [adaptive execution](references/long-running-work.md):
-use Goals for difficult core work and scheduled checks for routine supervision
-and bounded repairs. Continuously update the remaining work and saved monitor;
-disable monitoring before returning to a Goal. Keep one concise state document.
+adaptive long-running workflow, follow
+[adaptive execution](references/long-running-work.md): ordinary task turns are
+the default; use Goals only when explicitly requested. Scheduled checks can
+supervise authorized long jobs. Keep remaining work and monitor identity in
+one concise state document.
 
 ## Source And Updates
 

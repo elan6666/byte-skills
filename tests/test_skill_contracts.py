@@ -61,6 +61,8 @@ class SkillContractTests(unittest.TestCase):
                 "long-training-notification-is-not-ack",
                 "event-wakeup-needs-bridge",
                 "script-only-stable-monitor",
+                "main-launch-supervisor-dual-trigger",
+                "ambiguous-event-delivery",
             }.issubset(ids)
         )
         for case in cases:
@@ -110,6 +112,26 @@ class SkillContractTests(unittest.TestCase):
         )
         self.assertIn("## Delegate waiting deliberately", auto_text)
         self.assertIn("$byte-relay", auto_text)
+
+    def test_design_supervision_is_independently_callable_byte_skill(self):
+        skill = ROOT / "skills" / "byte-design-supervise"
+        entry = (skill / "SKILL.md").read_text(encoding="utf-8")
+        workflow = (skill / "references" / "workflow.md").read_text(encoding="utf-8")
+        ui = (skill / "agents" / "openai.yaml").read_text(encoding="utf-8")
+        self.assertIn("name: byte-design-supervise", entry)
+        self.assertIn("references/workflow.md", entry)
+        self.assertIn("../byte-relay/SKILL.md", entry)
+        self.assertIn("$byte-design-supervise", ui)
+        self.assertIn('display_name: "Your ByteDance Design & Supervise"', ui)
+        self.assertIn("../../byte-relay/SKILL.md", workflow)
+        self.assertIn("../../byte-relay/references/codex-event-bridge.md", workflow)
+        self.assertIn("../../byte-relay/scripts/run_event.py", workflow)
+        self.assertIn("30 minutes", workflow)
+        self.assertIn("ordinary chats, not a Goal", workflow)
+        self.assertIn(
+            "../byte-design-supervise/SKILL.md",
+            (ROOT / "skills" / "byte-auto" / "SKILL.md").read_text(encoding="utf-8"),
+        )
 
 
 if __name__ == "__main__":

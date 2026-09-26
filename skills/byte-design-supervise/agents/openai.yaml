@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Design & Supervise"
+  short_description: "Design, launch, and supervise long Codex jobs"
+  default_prompt: "Use $byte-design-supervise to design and launch a long-running job, then hand monitoring to a separate Codex chat."
