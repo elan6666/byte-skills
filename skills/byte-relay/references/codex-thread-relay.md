@@ -67,6 +67,11 @@ tell the user which exact supervisor task must be opened or resumed manually.
    supervisor. A failed direct notification does not erase the durable handoff
    or justify relaunching the job.
 
+If this handoff uses a recurring monitor, verify its active status, exact
+supervisor target, current run identity, interval, and stop rule before calling
+the periodic lane armed. Reuse a paused monitor only after updating it for the
+new run; never leave a project-wide heartbeat querying between handoffs.
+
 Example state transfer after the handoff file exists:
 
 ```bash
@@ -101,6 +106,10 @@ python3 scripts/relay_state.py handoff --project <repo> \
    destructive action, frozen-path changes, or exhausted retry budget: write
    evidence, transfer ownership back to the main task, then message it. The main
    task decides the repair.
+6. After a terminal handback, pause or delete this run's recurring monitor and
+   verify it is inactive. A later run may reactivate it only with a new exact
+   handoff and current run details. If a stale tick arrives when this task no
+   longer owns a run, do not query the server; disable that stale monitor.
 
 Before messaging another task, persist the corresponding handoff and state
 transition. Use task reads for context and task waits for dispatched progress,

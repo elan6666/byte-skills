@@ -71,6 +71,12 @@ update the scheduled task. Verify the saved update, preserving unrelated fields
 and notification preferences. A failed update remains pending for retry; stale
 or queued runs must consult current state before acting.
 
+For the independent Codex supervisor lane in `$byte-design-supervise`, a
+handback ends that run's monitoring lease: pause or delete and verify the
+heartbeat even if the broader project has later stages. Reactivate it only
+after a new exact run handoff and prompt update. Do not leave an active timer
+querying the supervisor between jobs.
+
 Choose intervals from expected duration, observed progress, and failure risk,
 within user constraints. Check more closely after a repair or near a meaningful
 milestone, less often during stable waiting. Stay quiet on unchanged state;

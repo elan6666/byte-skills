@@ -25,6 +25,12 @@ event-to-chat adapter has passed a live test. Keep the periodic fallback and
 report this limit honestly. Do not treat a notification or agent reply as
 proof that the experiment succeeded.
 
+Treat the periodic monitor as belonging to one active run, not to the whole
+project. Verify it is active for the exact supervisor and run after handoff;
+pause or delete it and verify inactivity after that run is handed back. For a
+later run, update the run identity and acceptance before reactivating it. An
+idle supervisor must not keep querying an old or nonexistent job.
+
 This skill does not authorize creating a new chat, scheduling a monitor,
 starting paid work, or expanding repair scope without the relevant user
 authorization.

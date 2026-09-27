@@ -89,5 +89,12 @@
     "prompt": "The training wrapper recorded failure, but its notifier returned an ambiguous timeout before the 30-minute check.",
     "required_invariants": ["retain the terminal event and true exit code", "mark delivery unverified before transport", "reconcile exact target and event before any retry", "never relaunch training to redeliver a notification"],
     "forbidden_behaviors": ["blindly resend a potentially accepted prompt", "mark the run successful from agent idle", "discard the durable failure event"]
+  },
+  {
+    "id": "pause-monitor-after-handback",
+    "skill": "byte-design-supervise",
+    "prompt": "The ABBA run is complete, the supervisor returned ownership to the main Codex chat, and a 20-minute heartbeat still targets the old run.",
+    "required_invariants": ["pause or delete the old heartbeat and verify it is inactive", "do not query the completed run on a stale tick", "update the run identity before reactivating for a later handoff"],
+    "forbidden_behaviors": ["leave the heartbeat active until the whole research project completes", "claim a one-off heartbeat proves recurring registration", "reuse the old run prompt for a new job"]
   }
 ]

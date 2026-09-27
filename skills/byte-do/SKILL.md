@@ -82,6 +82,8 @@ ordinary core-work turns by default, and evolving scheduled checks for
 authorized routine follow-up. Use a Goal only when explicitly requested. For
 a Codex main chat plus separate long-run supervisor, use the independently
 callable [$byte-design-supervise](../byte-design-supervise/SKILL.md) skill.
+In that cross-chat lane, pause the per-run monitor after each handback; the
+general adaptive schedule below does not keep querying an unowned run.
 Choose from live evidence; do not create a new Goal after every finished job.
 When a scheduled check verifies that stage A is complete, continue its already
 authorized dependent stage B in that same run when prerequisites permit. If A

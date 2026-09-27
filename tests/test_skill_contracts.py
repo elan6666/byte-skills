@@ -63,6 +63,7 @@ class SkillContractTests(unittest.TestCase):
                 "script-only-stable-monitor",
                 "main-launch-supervisor-dual-trigger",
                 "ambiguous-event-delivery",
+                "pause-monitor-after-handback",
             }.issubset(ids)
         )
         for case in cases:
@@ -126,8 +127,10 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn("../../byte-relay/SKILL.md", workflow)
         self.assertIn("../../byte-relay/references/codex-event-bridge.md", workflow)
         self.assertIn("../../byte-relay/scripts/run_event.py", workflow)
-        self.assertIn("30 minutes", workflow)
+        self.assertIn("authorized interval", workflow)
         self.assertIn("ordinary chats, not a Goal", workflow)
+        self.assertIn("pause or delete the matching periodic monitor", workflow)
+        self.assertIn("updated monitor prompt", workflow)
         self.assertIn(
             "../byte-design-supervise/SKILL.md",
             (ROOT / "skills" / "byte-auto" / "SKILL.md").read_text(encoding="utf-8"),
