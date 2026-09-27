@@ -82,10 +82,16 @@ ordinary core-work turns by default, and evolving scheduled checks for
 authorized routine follow-up. Use a Goal only when explicitly requested. For
 a Codex main chat plus separate long-run supervisor, use the independently
 callable [$byte-design-supervise](../byte-design-supervise/SKILL.md) skill.
+Prefer an authorized same-task subagent for a bounded wait expected within
+about one hour and the current turn; use cross-chat supervision for longer or
+unattended work, not merely because a test needs waiting. A duration estimate
+does not authorize creating a new task or monitor.
 In that cross-chat lane, pause the per-run monitor after each handback; the
 general adaptive schedule below does not keep querying an unowned run. Do not
 call the handoff armed until the exact supervisor acknowledges and the saved
-future wake path is verified active.
+future wake path is verified active. Do not call a return automatic until the
+main task actually acknowledges the handed-back run and starts owned work;
+a cross-task message or empty reply is not that proof.
 Choose from live evidence; do not create a new Goal after every finished job.
 When a scheduled check verifies that stage A is complete, continue its already
 authorized dependent stage B in that same run when prerequisites permit. If A

@@ -22,6 +22,8 @@ new one instead.
   saved ACTIVE/PAUSED verification, and stop rule; or unarmed>
 - Event wake path, if any: <tested idle-target adapter evidence, or event-file
   only with polling latency>
+- Return wake path, if any: <tested exact main-chat target and activation rule,
+  or manual resumption required; terminal handback starts pending acknowledgement>
 - Model provenance: <exact runtime model and native evidence pointer, or
   unverified; requested model is not proof>
 

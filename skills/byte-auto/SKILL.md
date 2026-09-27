@@ -41,19 +41,25 @@ OKRs, role analyses, harnesses, and review documents are optional tools, not gat
 
 ## Delegate waiting deliberately
 
-Choose the lightest authorized supervision path by expected duration and
-independence, not just by model price:
+Choose the lightest authorized supervision path by expected duration, whether
+the main turn must end, and independence—not just by model price:
 
-- For a bounded check that should finish in this turn (for example, a test or
-  short diagnostic), a cheaper subagent may inspect it while the main agent
+- For a bounded check expected to finish within about one hour and this active
+  turn (for example, a test or short diagnostic), prefer a cheaper subagent
+  when delegation is authorized. It may inspect the run while the main agent
   does independent work or waits for its result. Use subagents only when the
   user or environment permits delegation and the requested model is available.
-  Do not repeatedly poll it from the expensive main model.
-- For unattended training, ablations, or other jobs that may outlive this turn,
+  Do not repeatedly poll it from the expensive main model. A trivial quick
+  check can still be done directly without creating an agent.
+- For unattended training, ablations, or other jobs expected to take at least
+  about one hour or outlive this turn,
   use an explicitly authorized independent supervisor task or scheduled
-  monitor. Record the run identity and evidence first, then let the main task
-  end its turn. A subagent waiting inside the main turn is not a durable
-  replacement for a later wakeup.
+  monitor only after verifying a return wake path to the main task as well as
+  the supervisor wake path. Record the run identity and evidence first, then
+  let the main task end its turn. A subagent waiting inside the main turn is
+  not a durable replacement for a later wakeup. If a short check unexpectedly
+  becomes long, persist the run and reassess the route; do not silently turn
+  the helper into a supervisor.
 - Prefer a process or scheduler completion/failure event when a supported
   watcher can deliver it. Use a low-frequency heartbeat to detect a stale or
   missing watcher; terminal text and agent-idle status alone never prove a
@@ -63,6 +69,8 @@ independence, not just by model price:
   route. Verify recurring registration and supervisor acknowledgement before
   ending the main turn; if either is missing, report supervision as unarmed.
   Pause the per-run monitor on handback, not only at overall project completion.
+  Verify that the main task actually begins the returned work; message delivery
+  or an empty task reply is not a continuation acknowledgement.
   If a script can determine "still running" without model judgment,
   let that script do the cheap check and wake an agent only for a meaningful
   failure, completion, or required decision. Coalesce repeated unchanged

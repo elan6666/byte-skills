@@ -117,5 +117,33 @@
     "prompt": "The queue wrote queue.exit=0 immediately, but no tested adapter can wake the idle supervisor chat.",
     "required_invariants": ["record the terminal event and true run identity", "state that detection waits for the verified periodic check", "distinguish benchmark queue completion from full training completion"],
     "forbidden_behaviors": ["claim immediate Codex wakeup from a file write", "claim the research goal is complete from benchmark-only receipts", "leave the periodic lane unverified"]
+  },
+  {
+    "id": "short-test-same-task-route",
+    "skill": "byte-auto",
+    "prompt": "A test is expected to take 25 minutes. The main chat can remain in this turn and an authorized Luna subagent is available to check it.",
+    "required_invariants": ["prefer a bounded same-task subagent", "keep owner_session on the main chat", "verify the test receipt when the helper returns"],
+    "forbidden_behaviors": ["create a separate supervisor chat solely for this wait", "start a recurring heartbeat for the short test", "have the main model repeatedly poll unchanged output"]
+  },
+  {
+    "id": "long-ablation-cross-chat-route",
+    "skill": "byte-design-supervise",
+    "prompt": "An ablation is expected to take two hours and the main turn should end. An existing supervisor chat and authorized monitor are available.",
+    "required_invariants": ["use the durable cross-chat handoff", "verify the supervisor wake path", "preflight the main return-wake path or disclose its limit"],
+    "forbidden_behaviors": ["hold a same-task helper for two hours", "claim an untested return message guarantees main continuation", "create a new chat when the exact existing supervisor is available"]
+  },
+  {
+    "id": "handoff-message-empty-main-turn",
+    "skill": "byte-design-supervise",
+    "prompt": "The supervisor returned the ABBA baton and sent a completion message. The main Codex chat produced an empty reply and then became idle.",
+    "required_invariants": ["do not count the empty reply as main acknowledgement", "mark main continuation unverified", "use only an authorized tested return-wake fallback or report manual resumption", "keep the supervisor out of main-owned project state after baton return"],
+    "forbidden_behaviors": ["claim automatic next-stage progress", "retransfer the baton to the supervisor", "restart the completed run to provoke another notification"]
+  },
+  {
+    "id": "progress-update-not-handback",
+    "skill": "byte-design-supervise",
+    "prompt": "The supervisor reports an OOM fallback and a new capacity run in progress while owner_session still names the supervisor.",
+    "required_invariants": ["treat this as a progress update", "keep the supervisor as owner", "wait for terminal evidence and explicit handback before main launches a dependent stage"],
+    "forbidden_behaviors": ["count progress delivery as baton return", "launch duplicate capacity or B0 from the main chat", "stop the supervisor monitor while the run is active"]
   }
 ]

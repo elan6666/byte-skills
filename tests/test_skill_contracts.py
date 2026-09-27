@@ -67,6 +67,10 @@ class SkillContractTests(unittest.TestCase):
                 "handoff-without-armed-heartbeat",
                 "runtime-model-disagrees-with-registry",
                 "terminal-file-without-idle-wake-adapter",
+                "short-test-same-task-route",
+                "long-ablation-cross-chat-route",
+                "handoff-message-empty-main-turn",
+                "progress-update-not-handback",
             }.issubset(ids)
         )
         for case in cases:
@@ -106,6 +110,7 @@ class SkillContractTests(unittest.TestCase):
             "Notification accepted",
             "Supervisor acknowledged",
             "Run settled",
+            "Main resumed",
             "event-to-task",
             "Preflight",
             "process owner",
@@ -116,6 +121,8 @@ class SkillContractTests(unittest.TestCase):
         )
         self.assertIn("## Delegate waiting deliberately", auto_text)
         self.assertIn("$byte-relay", auto_text)
+        self.assertIn("within about one hour", auto_text)
+        self.assertIn("return wake path", auto_text)
 
     def test_design_supervision_is_independently_callable_byte_skill(self):
         skill = ROOT / "skills" / "byte-design-supervise"
@@ -137,6 +144,9 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn("updated monitor prompt", compact_workflow)
         self.assertIn("supervision lane as **unarmed**", compact_workflow)
         self.assertIn("Transport acceptance is not acknowledgement", compact_workflow)
+        self.assertIn("main_continuation=unverified", compact_workflow)
+        self.assertIn("main_continuation=pending", compact_workflow)
+        self.assertIn("progress-only message", compact_workflow)
         self.assertIn(
             "../byte-design-supervise/SKILL.md",
             (ROOT / "skills" / "byte-auto" / "SKILL.md").read_text(encoding="utf-8"),

@@ -10,12 +10,31 @@ available and authorized) may run a short test but never takes the relay baton.
 An independent supervisor chat owns long-run observation and only the bounded
 repairs recorded in the handoff.
 
+Choose the lane before launch. A short test or wait expected to settle within
+about one hour and the current turn normally stays with an authorized same-task
+subagent; the main chat keeps the baton and verifies the result. A trivial
+check needs no agent. A run expected to last at least about one hour, require
+unattended checks, or outlive the main turn uses this cross-chat lane. Claim
+automatic end-to-end continuation only if both supervisor wakeup and main
+return-wakeup have been verified. Duration is a routing estimate, not an
+authorization to create chats or schedules. If a short run overruns, preserve
+its process and receipt, then reassess before changing
+ownership; do not assume the helper or the main turn persists indefinitely.
+
 ## Main chat: launch gate
 
 1. Define the overall deliverable, remaining stages, per-run acceptance, and
    stop conditions in the project's existing workflow state. Use
    [byte-relay](../../byte-relay/SKILL.md) for exact session registration, owner
-   gates, receipts, and append-only handoffs.
+   gates, receipts, and append-only handoffs. Preflight the return route too:
+   how will an idle main chat be woken after handback, and how will actual
+   acknowledgement be observed? If this cannot be tested, disclose before
+   handoff that autonomous continuation is unverified. A supported option,
+   only when separately authorized and tested, is a run-scoped return heartbeat
+   targeting the exact main chat: keep it inactive during training, activate
+   it on terminal handback, and have the main chat pause/delete it after an
+   owned acknowledgement. Its saved prompt must check the baton and exact run
+   before doing work. Do not create a permanent main-chat polling loop.
 2. Build and verify the core code. Run one bounded launch preflight: confirm the
    real command/config can start, its process or scheduler job persists, logs
    advance, and the run has an exact ID. A one-step preflight is not a scientific
@@ -46,14 +65,18 @@ repairs recorded in the handoff.
    saved note, or sent prompt is not recurring registration. For an immediate
    event path, record the tested adapter and exact idle-target proof; a local
    `queue.exit` file alone does not arm it.
-6. Only after acknowledgement and a verified wake path may the main chat claim
-   unattended supervision and end its turn. If the monitor cannot be armed,
-   preserve the launched run and durable handoff, report the supervision lane
+6. Only after supervisor acknowledgement and verified supervisor wake may the
+   main chat claim unattended supervision and end its turn. Autonomous
+   end-to-end continuation additionally requires a verified return-wake path;
+   if absent, say explicitly that user/manual resumption may be required.
+   If the monitor cannot be armed, preserve the launched run and durable
+   handoff, report the supervision lane
    as **unarmed**, and coordinate a bounded repair or handback. Do not relaunch
    the job or leave the expensive main chat silently polling for hours.
 
-The handoff distinguishes four facts: job launched, baton transferred,
-supervisor acknowledged, and future wake path armed. None implies another.
+The handoff distinguishes job launch, baton transfer, supervisor acknowledgement,
+supervisor future wake, return-wake readiness, and later main continuation.
+None implies another.
 
 ## Supervisor: dual trigger
 
@@ -81,21 +104,34 @@ On waking, verify state ownership, run identity, process/scheduler exit,
 artifacts, and acceptance. For a permitted small repair, preserve evidence,
 repair once within budget, and continue supervising the new attempt. For an
 uncertain fix, architecture/scientific decision, new cost, or final result,
-write the receipt and handoff, return the baton to the main chat, then pause
-or delete the matching periodic monitor and verify its inactive status. Send
-the main chat a concise message containing the evidence, baton status, and
-monitor status; if pause fails, mark cleanup incomplete and escalate rather
-than claiming handback complete. If a stale heartbeat fires without an owned
-run, do not query the server or relaunch work; stop the stale monitor. Neither
+write the receipt and append-only handoff with one concrete next authorized
+action and `main_continuation=pending`, return the baton to the main chat,
+then pause or delete the matching periodic monitor and verify its inactive
+status. Send the main chat a concise, actionable continuation prompt containing the evidence,
+baton status, monitor status, and exact next action. One bounded `wait_threads`
+or `read_thread` check must observe the main chat actually beginning the owned
+work and acknowledging the handback identity. A transport success, empty reply,
+or idle status is not an acknowledgement. If the main chat does not act, mark
+`main_continuation=unverified`, use only a pre-authorized tested return-wake
+fallback, or report the need for manual resumption; do not retransfer ownership,
+restart the run, or claim automatic continuation. After baton return, the
+supervisor reports this status but does not edit main-owned project state.
+If pause fails, mark cleanup incomplete and escalate rather than claiming
+handback complete. If a stale heartbeat fires without an owned run, do not
+query the server or relaunch work; stop the stale monitor. Neither
 an agent reply nor a missing PID proves run success.
 
 ## Finish the workflow
 
 When the main chat receives a handback, it checks the live evidence and either
 designs the next authorized stage, returns a bounded follow-up to supervision,
-or closes the overall acceptance. Do not stop merely because one training run
-ended. Each handed-back run has its monitor paused or deleted; a later run
-requires a new exact handoff, updated monitor prompt, and verified reactivation.
+or closes the overall acceptance. It records a main-owned acknowledgement of
+the exact handback/run and disables any run-scoped return heartbeat before
+continuing. Do not stop merely because one training run ended. A progress-only
+message while the supervisor still owns the run is not
+a handback and must not prompt the main chat to launch duplicate work. Each
+handed-back run has its monitor paused or deleted; a later run requires a new
+exact handoff, updated monitor prompt, and verified reactivation.
 Once **all** design/workflow acceptance items pass, remove any remaining
 monitor, record final evidence, and leave both chats idle. Do not mark an
 unfinished Goal complete to simulate waiting.

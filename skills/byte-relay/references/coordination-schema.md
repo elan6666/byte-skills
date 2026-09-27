@@ -131,6 +131,10 @@ Keep these concerns separate so relay authority stays small and auditable.
   exact target, run/attempt, and stop rule. A new supervisor-owned receipt
   records verified activation after transfer; otherwise it says explicitly
   that future wakeup is unarmed. Do not rewrite an append-only handoff.
+  For a terminal cross-chat return, include the exact main target, one next
+  authorized action, return-wake capability, and `main_continuation=pending`.
+  The main owner records its own acknowledgement after actually resuming;
+  message delivery or an empty target turn cannot supply that evidence.
 - Only the current `state.owner` may register or mutate its session record.
   When `state.owner_session` exists, the exact session must also match. Any
   harness or session may list the registry read-only.

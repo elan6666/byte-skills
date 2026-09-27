@@ -35,6 +35,9 @@ receipt.
 The separate behavior cases cover the observed operational gaps: a one-off
 heartbeat without registered recurrence, a terminal file without an idle-task
 wake adapter, an ACTIVE monitor after handback, and a model label that disagrees
-with native runtime metadata. These cases test required decisions, not the
+with native runtime metadata. They now also cover a short same-task wait, a
+two-hour cross-chat run, an empty main reply after handback, and a progress
+message while the supervisor still owns the run. These cases test required decisions, not the
 Codex scheduler itself. Actual monitor activation and pause still need live
-app-tool verification for every handed-off run.
+app-tool verification for every handed-off run. Main-task re-entry after a
+supervisor message is not proven by these cases and must be checked live.

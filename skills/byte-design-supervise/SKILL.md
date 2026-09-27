@@ -1,6 +1,6 @@
 ---
 name: byte-design-supervise
-description: Coordinate a Codex main chat that designs, builds, and launches a long-running job with a separate supervisor chat. Use for training, ablations, or benchmarks that must continue after the main chat stops; not for a short in-turn test.
+description: Coordinate a Codex main chat and separate supervisor chat for training or ablations expected to last about an hour or outlive the main turn. Short bounded waits belong to the same-task subagent route.
 ---
 
 # Byte Design and Supervise
@@ -14,8 +14,9 @@ mode unless the user requests a Goal.
 For the launch gate, durable handoff, event-plus-periodic supervision, and
 handback rules, follow the [workflow](references/workflow.md). Use
 [$byte-relay](../byte-relay/SKILL.md) for exact session identity, owner gates,
-receipts, and handoffs. A short bounded test may use an authorized same-task
-subagent, but that subagent does not become the long-run supervisor.
+receipts, and handoffs. Prefer an authorized same-task subagent for a bounded
+wait expected under about one hour; it keeps the main chat's ownership. Use
+this cross-chat route when the job is longer or the main turn must end.
 
 The main chat must verify that the real job started and has a durable run ID
 before transferring ownership. It ends its turn instead of polling only after
@@ -26,6 +27,11 @@ immediately, but an idle Codex desktop chat is not guaranteed to wake until an
 event-to-chat adapter has passed a live test. Keep the periodic fallback and
 report this limit honestly. Do not treat a notification or agent reply as
 proof that the experiment succeeded.
+Before the main chat ends, also establish a supported return-wake route. On
+handback, verify that the main chat actually starts an owned continuation;
+message delivery, an empty reply, or `idle` status is not that acknowledgement.
+If no return-wake route is verified, state that autonomous end-to-end progress
+is unverified and that manual resumption may be needed.
 
 Treat the periodic monitor as belonging to one active run, not to the whole
 project. Verify it is active for the exact supervisor and run after handoff;

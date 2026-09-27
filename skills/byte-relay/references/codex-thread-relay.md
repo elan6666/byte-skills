@@ -5,8 +5,8 @@ main task implements core code and tests, then a supervisor task watches a long
 performance or ablation run and returns anomalies or completion evidence.
 
 Codex cross-task messages are the live notification channel. Repository state is
-the durable authority. A message can wake or guide a task, but it never grants
-ownership by itself.
+the durable authority. A delivered message may not produce a substantive target
+turn; it neither proves wakeup nor grants ownership by itself.
 
 When available, use Codex's native task operations deliberately:
 
@@ -21,7 +21,8 @@ When available, use Codex's native task operations deliberately:
 
 For same-task helpers, do **not** use this cross-task baton protocol. Follow
 [delegation routing](delegation-routing.md): a subagent keeps the main task's
-ownership and is suitable only for bounded work within its active turn.
+ownership and is preferred for bounded work expected within about one hour
+and its active turn. Cross-task supervision is for longer or unattended runs.
 
 If native task operations are unavailable, keep the repository handoff valid and
 tell the user which exact supervisor task must be opened or resumed manually.
@@ -55,7 +56,9 @@ tell the user which exact supervisor task must be opened or resumed manually.
    Confirm the target's project checkout, available model/tooling, and report
    route before enabling any recurring check. A requested cheap model is not
    proof of the target's actual model; record native runtime evidence or mark
-   model provenance unverified.
+   model provenance unverified. Preflight how a terminal handback will wake the
+   idle main task and how its actual continuation will be verified. If this
+   return route is untested, do not promise automatic end-to-end progress.
 4. Write the append-only handoff. Then run `scripts/relay_state.py handoff` to
    move `owner_session` to the supervisor and set `stage=supervise`.
 5. Only after the state write succeeds, use the Codex task messaging capability
@@ -115,11 +118,22 @@ python3 scripts/relay_state.py handoff --project <repo> \
    evidence, transfer ownership back to the main task, then message it. The main
    task decides the repair.
 6. After a terminal handback, pause or delete this run's recurring monitor and
-   verify it is inactive, then message the main task with result and cleanup
-   status. If cleanup fails, report that explicitly and do not claim the whole
-   handback complete. A later run may reactivate only with a new exact handoff
-   and current run details. If a stale tick arrives when this task no longer
-   owns a run, do not query the server; disable that stale monitor.
+   verify it is inactive, then message the main task with result, cleanup
+   status, handoff identity, and one concrete next authorized action. A
+   progress-only update while this supervisor still owns the run is not a
+   handback. Check one bounded `wait_threads` or `read_thread` snapshot for a
+   substantive main turn acknowledging that handoff and starting its next
+   action; transport success, an empty reply, or target `idle` does not count.
+   If absent, mark main continuation unverified and use only an authorized,
+   tested return-wake fallback or report that manual resumption is needed.
+   A run-scoped, pre-authorized main-target heartbeat may be activated only
+   after handback if the app supports and has passed a live target test; the
+   main task must disable it on acknowledgement. Do not reclaim ownership,
+   write main-owned project state, launch the next experiment, or endlessly poll.
+   If cleanup fails, report it and do not claim the whole handback complete.
+   A later run may reactivate only with a new exact handoff and current run
+   details. If a stale tick arrives when this task no longer owns a run, do
+   not query the server; disable that stale monitor.
 
 Before messaging another task, persist the corresponding handoff and state
 transition. Use task reads for context and task waits for dispatched progress,
@@ -136,6 +150,8 @@ Keep cross-task prompts cohesive and self-contained:
 - stage, next action, acceptance, allowed repairs, and escalation boundary;
 - handoff and receipt paths;
 - run/config/log/process identities;
+- whether this is a progress update or an actual baton return, plus the one
+  next action the main task should begin;
 - which exact task should receive completion or failure reports.
 
 Do not paste large transcripts or diffs into messages. Link the durable digest,

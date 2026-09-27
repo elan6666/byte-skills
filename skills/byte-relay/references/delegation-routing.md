@@ -5,8 +5,8 @@ The job and the agent supervising it have separate lifecycles.
 
 | Situation | Route | Authority and completion |
 | --- | --- | --- |
-| Short, bounded check expected to finish in this turn | Authorized same-task subagent, optionally using a cheaper available model | Main session keeps the relay baton. Use a bounded wait or continue independent work; verify its result against files/runtime before accepting it. |
-| Long job that can run after this turn ends | Exact independent supervisor session, or an authorized scheduled monitor when no separate session is needed | Persist run identity and handoff, transfer the baton for cross-session work, notify the target, and let the main turn end. |
+| Bounded check expected within about one hour and this turn | Authorized same-task subagent, optionally using a cheaper available model | Main session keeps the relay baton. Use a bounded wait or continue independent work; verify its result against files/runtime before accepting it. A trivial check may be done directly. |
+| Job expected to take at least about one hour or outlive this turn | Exact independent supervisor session, or an authorized scheduled monitor when no separate session is needed | Persist run identity and handoff, transfer the baton for cross-session work, verify both wake routes, then let the main turn end. If return wake is unverified, disclose possible manual resumption. |
 | No reliable live transport or target acknowledgement | Durable handoff plus explicit unverified-notification status | Do not infer that a created task, sent prompt, or open terminal is active supervision. Reconcile before retrying delivery or launching a job. |
 
 ## Same-task subagent
@@ -27,6 +27,9 @@ The job and the agent supervising it have separate lifecycles.
 - Waiting on a helper is not continuous main-agent reasoning, but repeated
   wakeups, tool calls, and synthesis still consume model work. Do not use a
   same-turn helper as an hours-long unattended monitor.
+- If a short job overruns the estimate, preserve its run ID and process owner,
+  then choose whether to finish in-turn or make an authorized durable handoff.
+  Do not silently convert a helper into an independent supervisor.
 
 ## Independent supervisor
 
@@ -52,6 +55,11 @@ matters; if unavailable, mark it unverified. Verify a recurring monitor's saved
 ACTIVE status, exact target, run identity, and stop rule before the main task
 ends. On handback, verify PAUSED or deleted; an active timer with no owned run
 is a defect, even if its ticks are currently quiet.
+Preflight a return route to the main task before promising autonomous completion.
+After handback, check one bounded target snapshot for an owned, substantive
+main continuation. A delivered message, empty reply, or `idle` state does not
+prove it. If no tested return wake is available, report that manual resumption
+may be needed; do not keep the expensive main task polling for the entire run.
 
 Distinguish these states when reporting:
 
@@ -62,6 +70,9 @@ Distinguish these states when reporting:
    confirmed the run/handoff identity. An unrelated pane occupant cannot count.
 4. **Run settled**: process or scheduler exit plus artifact checks establish
    success or failure. Agent `idle`/`done` is not this state.
+5. **Main resumed**: after a terminal handback and baton return, the exact main
+   task acknowledged the run identity and began the next authorized action.
+   Supervisor notification is not this state.
 
 If notification times out or errors, inspect the exact target and current
 handoff before retrying. Never blindly resend a prompt that could launch or
