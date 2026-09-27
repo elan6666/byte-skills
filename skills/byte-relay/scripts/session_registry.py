@@ -149,6 +149,8 @@ def register(args):
     registry = load_registry(project, allow_missing=True)
     key = f"{args.harness}:{args.session_id}"
     existing = registry["sessions"].get(key, {})
+    if args.model_evidence and not args.model:
+        raise RuntimeError("--model-evidence requires --model")
     timestamp = now_iso()
     participant = state.get("participants", {}).get(key, {})
     reports_to = validate_session_ref(args.reports_to or participant.get("reports_to"))
@@ -161,8 +163,12 @@ def register(args):
         "role": args.role or participant.get("role") or state.get("roles", {}).get(args.harness),
         "reports_to": reports_to,
         "stage": stage,
-        "provider": args.provider,
-        "model": args.model,
+        "provider": args.provider if args.provider is not None else existing.get("provider"),
+        "model": args.model if args.model is not None else existing.get("model"),
+        "model_evidence": (
+            args.model_evidence if args.model is not None
+            else existing.get("model_evidence")
+        ),
         **git_snapshot(project),
         "status": args.status,
         "created_at": existing.get("created_at", timestamp),
@@ -246,6 +252,10 @@ def build_parser():
     register_parser.add_argument("--host-id")
     register_parser.add_argument("--provider")
     register_parser.add_argument("--model")
+    register_parser.add_argument(
+        "--model-evidence",
+        help="native runtime/model-selection evidence for the exact session; omit if unverified",
+    )
     register_parser.add_argument("--status", choices=STATUS_CHOICES, default="active")
     register_parser.set_defaults(func=register)
 

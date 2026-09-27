@@ -49,12 +49,16 @@ Conversation identity is durable relay state, not something to infer from a
 python3 scripts/session_registry.py register --project <repo-path> \
   --harness <codex|claude|dsh|zcode> --session-id <native-id> \
   --alias <short-purpose> --role <role> [--locator <openable-uri>] \
-  [--provider <provider> --model <model>] [--host-id <codex-host>] \
+  [--provider <provider> --model <exact-model> \
+   --model-evidence <native-runtime-reference>] [--host-id <codex-host>] \
   [--reports-to <harness:native-session-id>]
 ```
 
 The registry captures the harness separately from provider/model and records
-the current branch and commit. `session_registry.py list --project <repo-path>`
+the current branch and commit. Supply `--model-evidence` only after checking
+the exact session's native model metadata; a requested model or generic family
+is not proof. An unverified model claim remains marked by null evidence.
+`session_registry.py list --project <repo-path>`
 is read-only; registration and status changes enforce the same owner gate as
 the relay. Read [references/coordination-schema.md](references/coordination-schema.md)
 before initializing or changing registry state.

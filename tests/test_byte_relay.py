@@ -65,6 +65,8 @@ class SessionRegistryTests(unittest.TestCase):
                 "openai",
                 "--model",
                 "gpt-test",
+                "--model-evidence",
+                "runtime:session-1:turn-1",
             ]
         )
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -75,10 +77,49 @@ class SessionRegistryTests(unittest.TestCase):
         self.assertEqual(record["harness"], "codex")
         self.assertEqual(record["locator"], "codex://threads/session-1")
         self.assertEqual(record["model"], "gpt-test")
+        self.assertEqual(record["model_evidence"], "runtime:session-1:turn-1")
         self.assertEqual(record["role"], "builder")
         self.assertTrue(record["commit"])
         self.assertEqual(registry["active_by_harness"]["codex"], "codex:session-1")
         self.assertFalse((registry_path := self.project / ".byte-os" / "coordination" / "sessions.json.tmp").exists(), registry_path)
+
+    def test_model_claim_without_evidence_is_explicitly_unverified(self):
+        first = run([
+            sys.executable, str(REGISTRY), "register", "--project", str(self.project),
+            "--harness", "codex", "--session-id", "session-1", "--alias", "supervisor",
+            "--model", "gpt-6",
+        ])
+        self.assertEqual(first.returncode, 0, first.stderr)
+        path = self.project / ".byte-os" / "coordination" / "sessions.json"
+        record = json.loads(path.read_text())["sessions"]["codex:session-1"]
+        self.assertIsNone(record["model_evidence"])
+
+        corrected = run([
+            sys.executable, str(REGISTRY), "register", "--project", str(self.project),
+            "--harness", "codex", "--session-id", "session-1", "--alias", "supervisor",
+            "--model", "gpt-6-luna", "--model-evidence", "runtime:session-1:turn-2",
+        ])
+        self.assertEqual(corrected.returncode, 0, corrected.stderr)
+        record = json.loads(path.read_text())["sessions"]["codex:session-1"]
+        self.assertEqual(record["model"], "gpt-6-luna")
+        self.assertEqual(record["model_evidence"], "runtime:session-1:turn-2")
+
+        refreshed = run([
+            sys.executable, str(REGISTRY), "register", "--project", str(self.project),
+            "--harness", "codex", "--session-id", "session-1", "--alias", "supervisor",
+        ])
+        self.assertEqual(refreshed.returncode, 0, refreshed.stderr)
+        record = json.loads(path.read_text())["sessions"]["codex:session-1"]
+        self.assertEqual(record["model"], "gpt-6-luna")
+        self.assertEqual(record["model_evidence"], "runtime:session-1:turn-2")
+
+        invalid = run([
+            sys.executable, str(REGISTRY), "register", "--project", str(self.project),
+            "--harness", "codex", "--session-id", "session-1", "--alias", "supervisor",
+            "--model-evidence", "runtime:session-1:turn-2",
+        ])
+        self.assertEqual(invalid.returncode, 1)
+        self.assertIn("requires --model", invalid.stderr)
 
     def test_non_owner_cannot_register(self):
         result = run(

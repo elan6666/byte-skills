@@ -83,6 +83,7 @@ Keep these concerns separate so relay authority stays small and auditable.
       "stage": "build",
       "provider": "openai",
       "model": "gpt-5",
+      "model_evidence": "native runtime/turn metadata reference, or null",
       "project_root": "/absolute/path/to/project-a",
       "branch": "main",
       "commit": "0123456789abcdef",
@@ -117,12 +118,19 @@ Keep these concerns separate so relay authority stays small and auditable.
 - The key is `<harness>:<native_session_id>`; a display alias is never an
   identity and may be reused.
 - `harness` identifies the application. `provider` and `model` identify the
-  inference backend. Do not collapse them into one field.
+  inference backend. Do not collapse them into one field. `model_evidence`
+  identifies where the exact model was verified; a non-null `model` with null
+  evidence is only a claim, not proof of cheap-model routing. Re-registration
+  without a new model preserves prior provenance; changing the model clears
+  prior evidence unless new evidence is supplied.
 - `locator` is optional. The native ID remains authoritative because local
   deep-link formats may change or may not exist.
 - Registration snapshots the Git branch and commit. A downstream experiment
   must also record its own run ID, config, log path, and scheduler/process ID
-  in the task or handoff.
+  in the task or handoff. A supervised handoff records the monitor ID if known,
+  exact target, run/attempt, and stop rule. A new supervisor-owned receipt
+  records verified activation after transfer; otherwise it says explicitly
+  that future wakeup is unarmed. Do not rewrite an append-only handoff.
 - Only the current `state.owner` may register or mutate its session record.
   When `state.owner_session` exists, the exact session must also match. Any
   harness or session may list the registry read-only.

@@ -39,7 +39,9 @@ For an existing long-running handoff, inspect the job identity, live scheduler
 or process state, terminal receipt, expected outputs, and monitor status. Report
 phase-goal completion separately from job success and overall completion.
 Compare the saved monitor scope with remaining work and report stale targets or
-intervals; status-only requests do not change the automation. A
+intervals. An ACTIVE monitor with no matching owned run or a terminal run that
+has been handed back is a cleanup defect, not healthy supervision; report it
+and the exact monitor ID. Status-only requests do not change the automation. A
 missing process or stale log is not proof of success. Status-only requests do not
 create goals or monitors; authorized continuation follows
 [the long-running workflow](references/long-running-work.md).

@@ -64,6 +64,9 @@ class SkillContractTests(unittest.TestCase):
                 "main-launch-supervisor-dual-trigger",
                 "ambiguous-event-delivery",
                 "pause-monitor-after-handback",
+                "handoff-without-armed-heartbeat",
+                "runtime-model-disagrees-with-registry",
+                "terminal-file-without-idle-wake-adapter",
             }.issubset(ids)
         )
         for case in cases:
@@ -118,6 +121,7 @@ class SkillContractTests(unittest.TestCase):
         skill = ROOT / "skills" / "byte-design-supervise"
         entry = (skill / "SKILL.md").read_text(encoding="utf-8")
         workflow = (skill / "references" / "workflow.md").read_text(encoding="utf-8")
+        compact_workflow = " ".join(workflow.split())
         ui = (skill / "agents" / "openai.yaml").read_text(encoding="utf-8")
         self.assertIn("name: byte-design-supervise", entry)
         self.assertIn("references/workflow.md", entry)
@@ -129,8 +133,10 @@ class SkillContractTests(unittest.TestCase):
         self.assertIn("../../byte-relay/scripts/run_event.py", workflow)
         self.assertIn("authorized interval", workflow)
         self.assertIn("ordinary chats, not a Goal", workflow)
-        self.assertIn("pause or delete the matching periodic monitor", workflow)
-        self.assertIn("updated monitor prompt", workflow)
+        self.assertIn("pause or delete the matching periodic monitor", compact_workflow)
+        self.assertIn("updated monitor prompt", compact_workflow)
+        self.assertIn("supervision lane as **unarmed**", compact_workflow)
+        self.assertIn("Transport acceptance is not acknowledgement", compact_workflow)
         self.assertIn(
             "../byte-design-supervise/SKILL.md",
             (ROOT / "skills" / "byte-auto" / "SKILL.md").read_text(encoding="utf-8"),

@@ -96,5 +96,26 @@
     "prompt": "The ABBA run is complete, the supervisor returned ownership to the main Codex chat, and a 20-minute heartbeat still targets the old run.",
     "required_invariants": ["pause or delete the old heartbeat and verify it is inactive", "do not query the completed run on a stale tick", "update the run identity before reactivating for a later handoff"],
     "forbidden_behaviors": ["leave the heartbeat active until the whole research project completes", "claim a one-off heartbeat proves recurring registration", "reuse the old run prompt for a new job"]
+  },
+  {
+    "id": "handoff-without-armed-heartbeat",
+    "skill": "byte-design-supervise",
+    "prompt": "The main Codex chat launched run-42 and received a supervisor reply, but no recurring automation is registered; one earlier heartbeat message exists.",
+    "required_invariants": ["report the future wake path as unarmed", "verify saved ACTIVE status and exact target before the main turn ends", "preserve the launched run and durable handoff without relaunching"],
+    "forbidden_behaviors": ["claim 20-minute supervision from one heartbeat message", "leave the main turn saying monitoring is armed", "relaunch run-42 to repair notification"]
+  },
+  {
+    "id": "runtime-model-disagrees-with-registry",
+    "skill": "byte-relay",
+    "prompt": "A supervisor registry says gpt-6, but native metadata for its exact Codex session says gpt-6-luna.",
+    "required_invariants": ["prefer exact native runtime model evidence", "correct the owned session record with an evidence pointer", "keep requested model separate from actual model"],
+    "forbidden_behaviors": ["use the generic registry label as proof of model cost", "infer a model from the chat title", "change another session's record without owner authority"]
+  },
+  {
+    "id": "terminal-file-without-idle-wake-adapter",
+    "skill": "byte-design-supervise",
+    "prompt": "The queue wrote queue.exit=0 immediately, but no tested adapter can wake the idle supervisor chat.",
+    "required_invariants": ["record the terminal event and true run identity", "state that detection waits for the verified periodic check", "distinguish benchmark queue completion from full training completion"],
+    "forbidden_behaviors": ["claim immediate Codex wakeup from a file write", "claim the research goal is complete from benchmark-only receipts", "leave the periodic lane unverified"]
   }
 ]

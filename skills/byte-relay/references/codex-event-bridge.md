@@ -16,7 +16,7 @@ tool result in the active turn.
   desktop task**. A return code from an adapter means only transport
   acceptance; the supervisor must acknowledge the run ID in a new turn.
 - Write delivery status before sending. An ambiguous timeout must stay
-  `unverified`, not be blindly retried; the 30-minute check reconciles the
+  `unverified`, not be blindly retried; the authorized periodic check reconciles the
   exact target, event, and state. Never relaunch training from a delivery
   retry. Coalesce duplicate event and timer findings.
 - The supervisor must verify `state.owner_session`, host/checkout, run ID,
@@ -48,8 +48,8 @@ python3 scripts/run_event.py check --root <run-state-dir> \
 ```
 
 `check` is a single deterministic pass, **not** a timer. Register the actual
-30-minute schedule separately and verify its target, saved prompt/command,
-and shutdown rule. If no notifier is configured, the terminal event remains
+schedule separately and verify its active status, target, saved prompt/command,
+and pause-on-handback rule. If no notifier is configured, the terminal event remains
 `pending_no_notifier`; the periodic check can inspect it later. If delivery
 was attempted but ambiguous, it stays `unverified` and requires target/state
 reconciliation before any explicit retry.
@@ -65,6 +65,6 @@ Agents API session input endpoint refers to API-managed sessions and must not
 be assumed to accept Codex desktop thread IDs.
 
 Until an adapter passes a stopped-main, idle-supervisor live test, the honest
-fallback is durable event recording plus a supervisor heartbeat (typically
-30 minutes). That fallback has up to one interval of detection latency and
+fallback is durable event recording plus a supervisor heartbeat at the
+authorized interval. That fallback has up to one interval of detection latency and
 does not satisfy an "immediately" requirement.

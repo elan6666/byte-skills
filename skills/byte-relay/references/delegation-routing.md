@@ -47,6 +47,11 @@ monitor. A broken route or missing credential should block dispatch without
 spending a model turn or launching a duplicate run. For many independent
 completion events, group/coalesce reports when one synthesis is sufficient;
 each separate wakeup can incur another turn.
+Verify the target's actual model from native runtime metadata when cost routing
+matters; if unavailable, mark it unverified. Verify a recurring monitor's saved
+ACTIVE status, exact target, run identity, and stop rule before the main task
+ends. On handback, verify PAUSED or deleted; an active timer with no owned run
+is a defect, even if its ticks are currently quiet.
 
 Distinguish these states when reporting:
 

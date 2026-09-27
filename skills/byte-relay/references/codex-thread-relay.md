@@ -53,7 +53,9 @@ tell the user which exact supervisor task must be opened or resumed manually.
    `hostId`. Do not treat creation as execution or supervision. A Codex target
    without a known host ID must not receive the baton.
    Confirm the target's project checkout, available model/tooling, and report
-   route before enabling any recurring check.
+   route before enabling any recurring check. A requested cheap model is not
+   proof of the target's actual model; record native runtime evidence or mark
+   model provenance unverified.
 4. Write the append-only handoff. Then run `scripts/relay_state.py handoff` to
    move `owner_session` to the supervisor and set `stage=supervise`.
 5. Only after the state write succeeds, use the Codex task messaging capability
@@ -63,14 +65,19 @@ tell the user which exact supervisor task must be opened or resumed manually.
    failed. This is not an acknowledgement from the supervisor. If the call
    times out or fails ambiguously, inspect the exact target and handoff before
    any retry; never send a duplicate launch instruction blindly.
-7. End the main task's active work. Do not keep it alive merely to poll the
-   supervisor. A failed direct notification does not erase the durable handoff
-   or justify relaunching the job.
+7. End the main task's active work only after the exact supervisor acknowledges
+   and at least one future wake path is verified active for this run. Otherwise
+   report the lane as unarmed and reconcile or hand back without relaunching.
+   Do not keep the main task alive merely to poll the supervisor.
 
-If this handoff uses a recurring monitor, verify its active status, exact
-supervisor target, current run identity, interval, and stop rule before calling
-the periodic lane armed. Reuse a paused monitor only after updating it for the
-new run; never leave a project-wide heartbeat querying between handoffs.
+If this handoff uses a recurring monitor, verify its saved active status, exact
+supervisor target, current run identity, interval, and stop rule through the
+automation tool before calling the periodic lane armed. Record its ID in the
+append-only handoff if known before transfer; otherwise have the supervisor
+record it in a new owned receipt. A single heartbeat message is not proof of
+future registration. Reuse
+a paused monitor only after updating it for the new run; never leave a
+project-wide heartbeat querying between handoffs.
 
 Example state transfer after the handoff file exists:
 
@@ -89,6 +96,8 @@ python3 scripts/relay_state.py handoff --project <repo> \
 
 1. Register the supervisor conversation only after `owner_session` names it,
    then confirm the stage, handoff, receipt, live job identity, and Git snapshot.
+   Record the exact model with a native runtime evidence pointer when available;
+   a generic model family or the requested model is not a verified identity.
 2. Acknowledge the handoff only after confirming the exact `owner_session`,
    host/checkout, run ID, and live job identity. Monitor with an authorized
    process/scheduler event bridge where available, otherwise use the available
@@ -97,8 +106,7 @@ python3 scripts/relay_state.py handoff --project <repo> \
    task polling. Never claim event-triggered wakeup without a configured and
    tested event-to-task bridge.
 3. If the job succeeds, verify terminal outputs and acceptance, update the
-   receipt/handoff, transfer the baton back to the main or review task, and send
-   that task a completion message.
+   receipt/handoff, and transfer the baton back to the main or review task.
 4. If a known, explicitly allowed, bounded repair is sufficient, preserve the
    run and unrelated work, apply the repair, verify it, and continue supervision.
    Never repeat an unchanged failed repair.
@@ -107,9 +115,11 @@ python3 scripts/relay_state.py handoff --project <repo> \
    evidence, transfer ownership back to the main task, then message it. The main
    task decides the repair.
 6. After a terminal handback, pause or delete this run's recurring monitor and
-   verify it is inactive. A later run may reactivate it only with a new exact
-   handoff and current run details. If a stale tick arrives when this task no
-   longer owns a run, do not query the server; disable that stale monitor.
+   verify it is inactive, then message the main task with result and cleanup
+   status. If cleanup fails, report that explicitly and do not claim the whole
+   handback complete. A later run may reactivate only with a new exact handoff
+   and current run details. If a stale tick arrives when this task no longer
+   owns a run, do not query the server; disable that stale monitor.
 
 Before messaging another task, persist the corresponding handoff and state
 transition. Use task reads for context and task waits for dispatched progress,

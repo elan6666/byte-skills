@@ -60,7 +60,10 @@ independence, not just by model price:
   scientific run succeeded.
 - Before scheduling a long check, validate the exact project directory, run
   identity, target conversation, model/tool availability, and notification
-  route. If a script can determine "still running" without model judgment,
+  route. Verify recurring registration and supervisor acknowledgement before
+  ending the main turn; if either is missing, report supervision as unarmed.
+  Pause the per-run monitor on handback, not only at overall project completion.
+  If a script can determine "still running" without model judgment,
   let that script do the cheap check and wake an agent only for a meaningful
   failure, completion, or required decision. Coalesce repeated unchanged
   events instead of starting a fresh model turn for every tick.

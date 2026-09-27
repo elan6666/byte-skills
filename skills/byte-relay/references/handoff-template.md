@@ -18,6 +18,12 @@ new one instead.
 - Task receipt: <receipt path, or not needed for this turn>
 - Review package: <package path when review is requested>
 - Direct notification: <not sent, or confirmed destination thread ID>
+- Supervision lease, if any: <monitor ID, exact target, run ID/attempt, interval,
+  saved ACTIVE/PAUSED verification, and stop rule; or unarmed>
+- Event wake path, if any: <tested idle-target adapter evidence, or event-file
+  only with polling latency>
+- Model provenance: <exact runtime model and native evidence pointer, or
+  unverified; requested model is not proof>
 
 ## What was done
 

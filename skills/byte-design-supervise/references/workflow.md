@@ -26,21 +26,39 @@ repairs recorded in the handoff.
    If the launch fails before ownership transfer, the main chat diagnoses it;
    do not assign an unlaunched run to the supervisor. If it settles during the
    handoff window, record that actual terminal state instead of relaunching.
-4. Persist handoff and atomically move `state.owner_session` to the supervisor,
+4. If an authorized periodic fallback is planned, prepare its saved prompt for
+   this exact run; a paused monitor may be staged before transfer. Put a known
+   monitor ID in the append-only handoff. Persist the handoff and atomically
+   move `state.owner_session` to the supervisor,
    then notify that exact existing Codex chat. Create a new chat only when the
-   user explicitly requests one. Obtain one bounded acknowledgement of
-   run identity and checkout. The main chat ends its turn and does not poll
-   training. A notification accepted by transport is not acknowledgement.
-5. If a periodic fallback was authorized, create or reactivate it for this
-   handoff only. Verify its saved status is active, its target is the exact
-   supervisor chat, and its prompt names the current run, acceptance, and
-   stop rule. A heartbeat message alone is not proof a recurring schedule
-   exists. Do not claim the monitoring lane is armed until this check passes.
+   user explicitly requests one. Obtain one bounded acknowledgement of the
+   run ID, attempt, checkout, and allowed repair scope. Transport acceptance
+   is not acknowledgement. Register the owned supervisor session with its
+   actual model from native runtime evidence when available; otherwise leave
+   model provenance unverified rather than guessing from a requested model.
+5. Arm one authorized future wake path for this run before the main chat
+   ends. For a periodic fallback, create or reactivate it using the automation
+   tool and re-read the saved task: `ACTIVE`, exact supervisor thread, interval,
+   current run/attempt, acceptance, and pause-on-handback rule. Record the
+   activation evidence in a new supervisor-owned receipt; do not edit the
+   already-written handoff. If the ID was not known at handoff time, pass it to
+   the supervisor for that receipt. A one-off heartbeat message,
+   saved note, or sent prompt is not recurring registration. For an immediate
+   event path, record the tested adapter and exact idle-target proof; a local
+   `queue.exit` file alone does not arm it.
+6. Only after acknowledgement and a verified wake path may the main chat claim
+   unattended supervision and end its turn. If the monitor cannot be armed,
+   preserve the launched run and durable handoff, report the supervision lane
+   as **unarmed**, and coordinate a bounded repair or handback. Do not relaunch
+   the job or leave the expensive main chat silently polling for hours.
+
+The handoff distinguishes four facts: job launched, baton transferred,
+supervisor acknowledged, and future wake path armed. None implies another.
 
 ## Supervisor: dual trigger
 
-The same supervisor receives (a) a terminal/failure event from the run wrapper
-or scheduler and (b) a periodic check at the authorized interval. Both
+The same supervisor may receive (a) a terminal/failure event from the run
+wrapper or scheduler and (b) a periodic check at the authorized interval. Both
 inspect the same durable run identity and deduplicate by run ID + attempt +
 event type. Keep stable periodic checks quiet. The event path should record
 the result without an LLM; the notification adapter wakes the exact supervisor
@@ -63,10 +81,11 @@ On waking, verify state ownership, run identity, process/scheduler exit,
 artifacts, and acceptance. For a permitted small repair, preserve evidence,
 repair once within budget, and continue supervising the new attempt. For an
 uncertain fix, architecture/scientific decision, new cost, or final result,
-write the receipt and handoff, return the baton to the main chat, then send
-that chat a concise message. Once the state no longer names this supervisor as
-owner, pause or delete the matching periodic monitor and verify its inactive
-status before ending this turn. If a stale heartbeat fires without an owned
+write the receipt and handoff, return the baton to the main chat, then pause
+or delete the matching periodic monitor and verify its inactive status. Send
+the main chat a concise message containing the evidence, baton status, and
+monitor status; if pause fails, mark cleanup incomplete and escalate rather
+than claiming handback complete. If a stale heartbeat fires without an owned
 run, do not query the server or relaunch work; stop the stale monitor. Neither
 an agent reply nor a missing PID proves run success.
 
