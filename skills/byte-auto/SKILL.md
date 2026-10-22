@@ -20,6 +20,26 @@ At the start, identify:
 Infer ordinary implementation details. Ask only when a missing choice is both
 material and unsafe to infer.
 
+## Preserve the overall outcome
+
+For an explicitly authorized iterative task, retain the overall outcome across
+turns, questions, compaction, phase receipts, and supervisor handbacks. A status
+question or request to investigate another candidate normally steers that work;
+it does not revoke execution authority. Honor explicit pause, cancellation, or
+"discussion only" limits for their stated scope. Never infer a global pause from
+a request to park one candidate. Resolve scope from the user's instructions,
+not a stale state entry written by an earlier agent.
+
+Persist one `overall_outcome` record in existing state: stable ID/objective,
+authority and limits, acceptance criteria and evidence, current iteration,
+execution mode, next action, and exact active handoff when present. Keep phase
+acceptance separate. Do not lower acceptance, redefine the objective to
+"produce a report", or mark a scientific problem solved to end the turn.
+For open research, formulate observable evidence of improvement and remaining
+uncertainty; a desired result is not guaranteed to be attainable. Failed
+hypotheses call for diagnosis/redesign within scope, not fabricated success or
+unbounded retries of the same approach.
+
 ## Adaptive Loop
 
 Repeat as useful:
@@ -29,7 +49,12 @@ Repeat as useful:
 3. Research, plan, implement, or review only as needed.
 4. Verify in proportion to risk.
 5. Repair important failures and reassess completion.
-6. Record a reusable lesson when evidence confirms a meaningful mistake or the
+6. If overall acceptance is unmet, start the next authorized substantive action
+   in this turn. A proposal, report, upload, or recorded `next_action` alone is
+   not execution. Within an authorized research loop, choose the next bounded
+   experiment from evidence; do not require fresh permission merely because
+   the hypothesis changed. Preserve data, budget, resource, and version limits.
+7. Record a reusable lesson when evidence confirms a meaningful mistake or the
    user corrects a requirement misunderstanding.
 
 Do not use a fixed iteration count. A small task may need one pass; a difficult
@@ -86,16 +111,30 @@ supervises with event plus periodic checks, use the independently callable
 
 ## Completion
 
-Finish when the requested deliverable exists, relevant verification has passed or
-its limits are disclosed, and no high-priority in-scope issue remains that can be
-safely resolved.
+Before yielding an unfinished iterative task, run the
+[continuation check](scripts/continuation_check.py) against the existing state.
+Its exit code 2 means continue substantive work; exit 1 means reconcile invalid
+or insufficient evidence. Exit 0 permits only the stated disposition: verified
+completion, authorized waiting, explicit user pause, or a concrete external
+blocker. Follow the [state contract](references/long-running-work.md).
+The check enforces evidence consistency when called; it cannot intercept the
+host's final-response action or prove a real scheduler works by itself. Do not
+claim a universal runtime interlock. Missing tooling is a verification limit,
+not a reason to abandon otherwise safe work.
+
+
+Finish only when the overall deliverable and its acceptance are verified.
+A disclosed verification limit is still outstanding work, not evidence of success.
+End a turn for supervised waiting or a genuine blocker without ending the overall
+task, and report that distinction. Do not ask the user to say "continue" when
+existing authority and the next safe action are sufficient.
 
 Match completion claims to fresh proof using the shared
 [evidence contract](references/evidence-contract.md). For resumable or
 cross-harness work, link one compact task receipt instead of repeating logs in
 the state document.
 
-Pause only when progress requires user input, credentials, payment, unavailable
+Pause on an explicit user pause, or when progress requires user input, credentials, payment, unavailable
 external state, a consequential product decision, or authority for a destructive
 or irreversible action. Report the exact blocker and the smallest next action.
 

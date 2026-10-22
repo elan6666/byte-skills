@@ -44,8 +44,10 @@ Save plans only when they need to survive the current turn, coordinate multiple
 tracks, or support resumption. Reuse the project's existing planning convention;
 otherwise prefer `.byte-os/PLAN.md` over many mandatory plan files.
 
-Planning is complete when another capable agent could begin safely without the
-plan pretending to eliminate all judgment.
+A planning-only deliverable is complete when another capable agent could begin
+safely without the plan pretending to eliminate all judgment. When planning is
+inside an authorized execution loop, begin that next action yourself; a complete
+plan does not complete the overall outcome.
 
 ## Minimal design and adaptive execution
 

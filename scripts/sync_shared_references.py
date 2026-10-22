@@ -21,9 +21,20 @@ CONSUMERS = (
 )
 
 
-def destinations():
+LONG_CONSUMERS = (
+    "byte-auto", "byte-build", "byte-do", "byte-plan", "byte-research",
+    "byte-status", "byte-relay", "byte-design-supervise",
+)
+
+
+def copies():
     for skill in CONSUMERS:
-        yield ROOT / "skills" / skill / "references" / CANONICAL.name
+        yield CANONICAL, ROOT / "skills" / skill / "references" / CANONICAL.name
+    source = ROOT / "skills" / "byte-auto"
+    for skill in LONG_CONSUMERS:
+        if skill != "byte-auto":
+            for relative in ("references/long-running-work.md", "scripts/continuation_check.py"):
+                yield source / relative, ROOT / "skills" / skill / relative
 
 
 def main():
@@ -34,22 +45,22 @@ def main():
         help="report drift without modifying bundled copies",
     )
     args = parser.parse_args()
-    expected = CANONICAL.read_bytes()
     drift = []
-    for destination in destinations():
+    for source, destination in copies():
+        expected = source.read_bytes()
         if destination.exists() and destination.read_bytes() == expected:
             continue
         drift.append(destination)
         if not args.check:
             destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(CANONICAL, destination)
+            shutil.copyfile(source, destination)
             print(f"synced {destination.relative_to(ROOT)}")
     if args.check and drift:
         for destination in drift:
             print(f"out of sync: {destination.relative_to(ROOT)}", file=sys.stderr)
         return 1
     if args.check:
-        print(f"shared references synchronized: {len(CONSUMERS)} consumers")
+        print("shared references and continuation helpers synchronized")
     return 0
 
 

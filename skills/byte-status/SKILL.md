@@ -27,8 +27,11 @@ Summarize:
 - the highest-value next action.
 
 Use counts or percentages only when the underlying units are meaningful. Mention
-parked or future ideas separately from active scope. Do not mutate the project
-unless the user also asks to continue or repair it.
+parked or future ideas separately from active scope. A standalone status-only
+request grants no mutation authority. During an already authorized autonomous
+loop, answer the status question briefly and resume the next owned action;
+additional "continue" wording is unnecessary. An explicit status-only or pause
+instruction overrides that default.
 
 Interpret legacy Byte OS artifacts as ordinary evidence; their recorded stage
 does not override explicit intent or live behavior.
@@ -41,9 +44,10 @@ phase-goal completion separately from job success and overall completion.
 Compare the saved monitor scope with remaining work and report stale targets or
 intervals. An ACTIVE monitor with no matching owned run or a terminal run that
 has been handed back is a cleanup defect, not healthy supervision; report it
-and the exact monitor ID. Status-only requests do not change the automation. A
-missing process or stale log is not proof of success. Status-only requests do not
-create goals or monitors; authorized continuation follows
+and the exact monitor ID. A standalone status request does not authorize automation changes. Existing
+continuation authority may require cleaning up a terminal run's monitor and
+performing its next dependency. A missing process or stale log is not proof of
+success. Status alone does not create Goal or monitor authority; continuation follows
 [the long-running workflow](references/long-running-work.md).
 
 ## Source And Updates

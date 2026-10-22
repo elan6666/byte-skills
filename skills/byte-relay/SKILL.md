@@ -6,8 +6,11 @@ description: Coordinate work across AI coding harnesses or Codex tasks through d
 # Byte Relay
 
 Act as the coordination relay between harnesses that share one repository. Your
-job in a single invocation is one relay turn: read the shared state, do your
-stage's work, write the handoff, advance the state, and stop.
+job in a relay invocation is to perform the owned work and safely transfer any
+remaining run. Preserve the overall outcome across transfers. Yield after a
+verified handoff only when waiting is required; if the main owner receives a
+terminal handback, verify it and begin the next authorized action in the same
+turn. A relay-stage receipt does not close the overall task.
 
 All durable state lives in `.byte-os/coordination/` inside the project repo.
 When Codex task communication tools are available, use them as a live

@@ -45,6 +45,16 @@ This skill does not authorize creating a new chat, scheduling a monitor,
 starting paid work, or expanding repair scope without the relevant user
 authorization.
 
+## Outcome continuity
+
+Keep the overall outcome separate from stage or run acceptance. During an
+already authorized iterative task, status questions and candidate discussions
+do not silently revoke execution authority. Reconcile the latest explicit user
+scope, complete the requested substep, then start the next authorized action.
+A report or platform update is a dependency, not a stopping point. Follow the
+[shared continuation contract](references/long-running-work.md); ordinary turns
+remain the default, and Goals require explicit user request.
+
 ## Source and updates
 
 Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills).

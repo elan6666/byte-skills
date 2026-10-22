@@ -100,6 +100,16 @@ and update the existing monitor's scope and interval. A status report alone is
 not a handoff to the next stage. Never infer authority for a new experiment,
 cost, or irreversible action from this continuity rule.
 
+## Outcome continuity
+
+Keep the overall outcome separate from stage or run acceptance. During an
+already authorized iterative task, status questions and candidate discussions
+do not silently revoke execution authority. Reconcile the latest explicit user
+scope, complete the requested substep, then start the next authorized action.
+A report or platform update is a dependency, not a stopping point. Follow the
+[shared continuation contract](references/long-running-work.md); ordinary turns
+remain the default, and Goals require explicit user request.
+
 ## Source And Updates
 
 Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

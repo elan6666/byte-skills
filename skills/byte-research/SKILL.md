@@ -33,6 +33,11 @@ If direct evidence disproves a reusable prior assumption, update
 `.byte-os/LESSONS.md` with the correction, evidence, and future verification rule.
 Do not treat ordinary changes in external facts as mistakes.
 
+When research is a dependency of an authorized implementation or experiment loop,
+turn its findings into a bounded decision and begin the next action. Publishing
+a literature memo does not complete that overall task. Avoid both indefinite
+research without a decision and premature experiments without sufficient evidence.
+
 ## Long-running work
 
 For requested scheduled evidence collection or compute, follow

@@ -26,8 +26,10 @@ Use persistent logs only for long-running, risky, or resumable work. When state 
 useful, record concise facts and verification rather than maintaining several
 parallel ledgers.
 
-Completion means the requested change is present and relevant verification has
-passed, or any remaining verification limit is clearly disclosed.
+Stage completion means the requested change is present and relevant verification
+has passed. Disclose outstanding verification as incomplete. Within an authorized
+iterative task, implementation acceptance is not overall acceptance: proceed to
+the next test, launch, analysis, or repair when its prerequisites pass.
 Use the shared [evidence contract](references/evidence-contract.md) for material
 completion claims. When a task is resumable or handed across harnesses, record
 the Git range, commands, results, artifacts, and acceptance evidence in one
@@ -40,9 +42,9 @@ and prevention rule. Exclude routine debugging, trivial slips, and sensitive dat
 ## Adaptive execution
 
 For an authorized Goal-plus-monitor workflow, use
-[adaptive execution](references/long-running-work.md). Core implementation and
-hard diagnosis use bounded Goals; routine checks and small understood repairs
-can run during monitoring. Escalate repeated or uncertain failures after disabling
+[adaptive execution](references/long-running-work.md). Core implementation and hard diagnosis use ordinary turns unless the user
+explicitly requests a bounded Goal. Routine checks and small understood repairs
+can run during authorized monitoring. Escalate repeated or uncertain failures after disabling
 the monitor. Preserve unaffected runs and existing compute limits.
 
 ## Source And Updates

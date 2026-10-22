@@ -107,3 +107,23 @@ python3 -m unittest discover -s tests -v
 ## 许可
 
 [MIT](LICENSE)。项目受团队式工作方式启发，与字节跳动无隶属关系；文中产品与公司名称归各自权利人所有。
+
+## 持续推进与退出检查 / Outcome continuity
+
+Byte distinguishes the overall outcome from a completed stage. In an authorized
+iterative workflow, a status question, finished run or uploaded report does not
+end the task. The main chat verifies each handback and executes the next action;
+the supervisor checks only its exact active run. Waiting requires fresh ACK,
+monitor and return-wake evidence. Explicit user pauses and resource limits win.
+
+长期循环保留一个整体目标和验收清单。文献、预检、训练、报告是阶段成果；
+未满足整体验收时继续下一项已授权工作。退出检查会拒绝缺失证据的完成或等待，
+但不是对模型或桌面应用的强制拦截器，不能保证未知科学问题必然有解。
+
+```bash
+python3 skills/byte-auto/scripts/continuation_check.py --state /path/to/state.json
+```
+
+Use `--help` for the record schema. Exit 0 permits the reported disposition;
+2 requires continued active work; 1 requires evidence/state reconciliation.
+[Shared contract](skills/byte-auto/references/long-running-work.md).

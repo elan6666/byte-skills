@@ -156,3 +156,14 @@ Keep cross-task prompts cohesive and self-contained:
 
 Do not paste large transcripts or diffs into messages. Link the durable digest,
 receipt, review package, or artifact instead.
+
+## Overall-outcome continuation
+
+Run completion and overall acceptance are separate. On main-owned terminal
+return, verify outputs and start the next already-authorized analysis, repair
+or bounded experiment in the same turn. A report upload or a reply saying
+"next action recorded" is not substantive continuation. Preserve the overall
+outcome and the user's iterative scope across compaction and status questions.
+Follow the bundled [continuation contract](long-running-work.md); keep one
+outcome record and use its exit check before yielding. It does not supersede
+host permissions or validate an untested wake adapter.

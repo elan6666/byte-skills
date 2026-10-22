@@ -1,106 +1,129 @@
-# One overall outcome, adaptive execution
+# Overall outcome and continuation contract
 
-## Overall outcome and authority
+## Authority survives phase changes
 
-First agree or infer from the request one overall deliverable and observable
-acceptance criteria. Keep it in ordinary project state, not an always-active
-Goal spanning both work and waiting. Use Goal tools and scheduled monitoring
-only when explicitly requested and supported; a request for this combined
-workflow authorizes its in-scope transitions without repeated confirmation.
-A skill invocation alone does not override environment authorization rules.
-Planning-only, discussion-only, and status-only requests do not launch work.
+An explicitly authorized research or engineering loop has one overall outcome.
+Preserve it through user questions, compaction, status reports, phase completion,
+and supervisor returns. Standalone discussion/status requests grant no new
+execution authority; inside an active loop, they ordinarily steer existing work.
+An explicit pause, stop, discussion-only scope, spending limit or cancellation
+always wins. Parking one candidate does not pause unrelated authorized work.
+Never weaken a scientific criterion merely to call the task complete.
 
-Keep one short existing state document, or `.byte-os/STATE.md`: overall outcome
-and acceptance, active work with evidence, current mode/monitor ID, and next
-step. Link to logs/configs rather than copying them. Retain concise completion
-receipts while removing completed items from active work. Do not create separate
-design, phase, monitoring, and handoff documents unless their content is needed.
+An authorized iterative research scope may include new hypotheses and bounded
+experiments addressing the same problem, within its data/compute/budget limits.
+That does not authorize new datasets, accounts, paid compute, publication,
+resource-gate changes or unrelated experiments. Resolve routine methodology
+choices from evidence; ask only for material authority or information gaps.
 
-## Choose the mode from the work
+## One state record, two levels of acceptance
 
-- Core design, difficult implementation, uncertain diagnosis, or repeated
-  evaluation and optimization: use ordinary task turns by default. If the
-  user explicitly requests Goal mode, bound that Goal to work with concrete
-  acceptance; do not put unattended training completion inside it.
-- Repeated checks, training supervision, result collection, or a small known
-  repair: use scheduled checks when monitoring is authorized. A short one-off
-  action should simply be done now; do not schedule every easy task.
-- Reassess after meaningful evidence. Difficulty determines the next mode;
-  job termination alone does not require another Goal.
+Use the existing state mechanism rather than creating competing ledgers. For
+structured JSON, place the compact record under `overall_outcome`. Preserve:
 
-For the same workflow, an active Goal and enabled monitor must not overlap.
-Preserve unrelated experiments and automations. Inspect existing goals before
-creating one; only complete a Goal when its acceptance is truly met. Never use
-complete or blocked to simulate pause, and never invent token budgets. An
-unfinished broad Goal cannot be silently replaced to enter monitoring mode.
+- stable outcome ID and objective, main owner and user authority reference;
+- observable acceptance criteria with status and evidence;
+- current iteration, findings, unresolved issues and next substantive action;
+- active/waiting mode, or explicit paused/externally blocked status;
+- exact run, attempt, supervisor, monitor and return-wake evidence when waiting.
 
-## Prepare and hand off
+Phase receipts establish only their own scope: a published skill, literature
+report, passed preflight, finished training, or uploaded analysis is not proof
+that a broader scientific problem is solved. A completed stage must leave an
+unmet criterion paired with its next executable action. An empty queue is not
+completion. Preserve historical failures and compare against a fixed baseline;
+keep model fit, diagnostic quality and downstream validation separate.
 
-During core work, design the next monitoring plan: remaining jobs/dependencies,
-identity and log/output locations, query method, initial interval, success and
-failure evidence, allowed repairs/retries, and escalation/stall conditions.
-Save it in state; do not enable an automation while the Goal is active.
+For research, predeclare what observations would support improvement, what
+would falsify the hypothesis, and which validation remains. A numerical target
+alone is not success. A round count is a review checkpoint unless explicitly
+set as a budget. Reassess failed approaches; do not retry unchanged hypotheses
+indefinitely or promise a scientific result irrespective of evidence.
 
-After core acceptance, end the ordinary turn; if an explicitly requested Goal
-was used, complete it only when its own acceptance passed and confirm it is
-inactive. Inspect live state before submitting an authorized job or retry to
-prevent duplicates.
-Record the job ID, host, configuration identity, logs, outputs, and receipt.
-Fill those identities into the planned prompt, then create or update one
-matching thread heartbeat, unless the user requested a standalone task.
-Verify registration and save the monitor ID before yielding. If registration
-fails, preserve the running job and report or repair the handoff without
-relaunching it. Never claim future checks exist without tool confirmation.
+## Active work
 
-## Adapt each scheduled run
+On each owned turn, read the compact outcome and fresh evidence. Select and
+execute the next action within authority. For research this normally cycles
+through diagnosis, focused primary-source research, hypothesis/design,
+implementation, tests, bounded experiment, matched analysis and redesign.
+Skip phases already supported by evidence. Do not rerun completed work just to
+fill the cycle. Status answers and reports are followed by substantive action
+when safe work remains; merely writing `next_action` is not continuation.
 
-The saved prompt must identify the overall outcome, state location, remaining
-work, authority/compute limits, check/repair rules, and stopping conditions.
-Each run first reads state and live goal/monitor status. If a Goal is active,
-disable this workflow's monitor and verify that change before returning.
-Otherwise inspect only remaining work using scheduler/exit evidence and outputs;
-a missing process or old log is not proof of success.
+Ordinary task turns are the default. Goal tools require explicit user request;
+when used, bind a Goal to concrete active-work acceptance rather than waiting
+for background training. Follow host constraints on Goal/monitor coexistence.
+Do not complete unfinished Goals to switch modes, and never invent budgets.
 
-Reconcile the active set after every meaningful change. For example, monitoring
-A/B/C becomes B/C once A is verified complete; keep A's receipt in state but
-remove it from recurring checks. Activate a dependent job only when its
-prerequisites pass and its launch is already authorized. Do not add experiments
-or expand the overall outcome. Update the existing automation prompt and, when
-needed, its interval through the automation tool; editing a note alone does not
-update the scheduled task. Verify the saved update, preserving unrelated fields
-and notification preferences. A failed update remains pending for retry; stale
-or queued runs must consult current state before acting.
+## Enter a verified wait
 
-For the independent Codex supervisor lane in `$byte-design-supervise`, a
-handback ends that run's monitoring lease: pause or delete and verify the
-heartbeat even if the broader project has later stages. Reactivate it only
-after a new exact run handoff and prompt update. Do not leave an active timer
-querying the supervisor between jobs.
+Do independent useful work before yielding. For authorized long jobs, use the
+existing exact main/supervisor pair. Main owns scientific decisions, source,
+launch and independent acceptance; supervisor observes only its exact run and
+performs explicitly bounded repairs. Do not invent a new chat or monitor merely
+because a skill is invoked.
 
-Choose intervals from expected duration, observed progress, and failure risk,
-within user constraints. Check more closely after a repair or near a meaningful
-milestone, less often during stable waiting. Stay quiet on unchanged state;
-notify on meaningful completion, failure, or required input, not every poll.
+Before yielding, independently verify actual launch/process identity, immutable
+source/config/run/attempt, supervisor acknowledgement, active future checks at
+the authorized interval, and the route that wakes the main owner on terminal
+handback. Save fresh, identity-bound receipts. Registration, message delivery,
+an idle chat and an output filename alone prove none of these boundaries.
+If an event bridge is not verified against an idle target, use the authorized
+scheduled fallback and disclose the actual delivery latency. A local event file
+is not a scheduler. Repair an unarmed lane without launching duplicate jobs.
 
-For a small, understood bug, inspect its cause, apply an authorized reversible
-fix, run affected checks, and resume only the failed job when retry authority
-and compute budget permit. Preserve checkpoints, prior evidence, and unaffected
-runs; do not mutate code in use by other experiments. Record the repair and
-refresh job identity/monitor scope. Do not retry an unchanged failing approach
-indefinitely: repeated failures, uncertain fixes, architecture/protocol changes,
-or substantial optimization require core work, not a growing polling script.
+The main chat can end a turn in this verified waiting state while the overall
+outcome stays active. Do not promise unattended continuation when its wake route
+is missing. Respect shared resources and preserve other users' processes.
 
-## Return to core work or finish
+## Terminal return means action
 
-Before escalation, save the evidence and pending next action, disable the
-matching monitor, and verify it is disabled. Then return to ordinary core work,
-or to a bounded repair Goal only if the user explicitly requested Goal mode.
-If shutdown fails, retry cleanup and disclose the failure; do not pretend the
-disabled monitor will wake again.
+A terminal report is a trigger, not an instruction to acknowledge and stop.
+Main verifies the receipt, source/run identity and relevant output itself;
+records substantive continuation (for example an analysis command or repair);
+then executes the next authorized dependency in that same turn. Incomplete
+results stay incomplete. A failed experiment may be scientifically informative,
+but does not automatically meet the overall outcome.
 
-Key transitions and repairs by job identity and reconcile live state so repeated
-or interrupted runs do not duplicate goals, submissions, or completed actions.
-After core acceptance, refresh the monitoring plan and repeat the handoff.
-If all work meets overall acceptance, disable and verify the matching monitor,
-record final evidence, and finish without manufacturing another Goal. An empty
-active set alone is not completion when final validation or analysis remains.
+Supervisor pauses the per-run monitor on handback and verifies inactivity;
+main pauses the return fallback after acknowledging and beginning owned work.
+Progress messages are not ownership transfers. Deduplicate run/attempt/event
+IDs. After terminal return, an idle supervisor must not keep polling the old
+queue. Before the next job, refresh the existing monitor identity/scope and
+interval, obtain ACK, and verify activation. Stable checks stay quiet.
+
+A pending handback may use only an authorized tested return-wake fallback.
+Delivery is not substantive ACK. Do not reclaim ownership or launch the next
+experiment from the supervisor to conceal a failed main continuation.
+
+## Exit check
+
+For explicitly autonomous, resumable loops, use
+`python3 <skill>/scripts/continuation_check.py --state <existing-state.json>`
+before finalizing or yielding. Keep its input in the existing outcome record.
+Consult `--help` for the executable schema. Exit 2 means active work remains:
+continue the next action. Exit 1 means invalid/incomplete evidence: reconcile it.
+Exit 0 permits only the returned reason:
+
+- complete: every overall acceptance item has verified evidence;
+- waiting: exact active run and fresh supervision/return-wake receipts;
+- paused: explicit user pause reference;
+- blocked: specific external impediment and a concrete resumption trigger.
+
+A plan/report/checkpoint, completed phase, expired wait or silence from the user
+is never itself permission to finish. Exhausted host limits are disclosed with
+preserved state; do not fabricate success or override runtime constraints.
+The helper validates local evidence consistency; it cannot independently prove
+live scheduling, scientific correctness, or intercept a host's final response.
+The agent remains responsible for fresh tool verification and judgment.
+
+## Actual completion or external blockage
+
+Stop only on verified overall acceptance, explicit user pause, or a real
+external blocker after independent safe work is exhausted. Report the smallest
+unavailable input/authority, what was tried and the resumption trigger. Do not
+label uncertainty, hard reasoning, a draft plan, or a new hypothesis as an
+external blocker. Repeated negative evidence should refine the question or
+identify an actual constraint, not generate endless identically failing runs.
+On completion, remove obsolete monitors, retain receipts and explain the result
+and its evidence limits. A stage-complete message must not imply overall success.
