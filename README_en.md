@@ -1,12 +1,40 @@
-# Byte Skills
+<p align="center">
+  <img src="assets/byte-skills-banner.svg" alt="Byte Skills: choose the capabilities a task needs" width="100%" />
+</p>
 
-**Give your AI coding assistant a flexible path from an idea to a verified result.**
+<h1 align="center">Byte Skills</h1>
 
-[中文](README.md) · English
+<p align="center"><strong>A workflow that fits the task, from an idea to a verified result.</strong><br />Compose discussion, research, implementation, review, and long-running handoffs.</p>
 
-Byte Skills is a composable family of `byte-*` skills for discussion, research, planning, building, review, and long-running job handoffs. Small tasks stay simple. Larger tasks combine the capabilities they need, without a fixed pipeline, role-play, or a required set of project documents.
+<p align="center">
+  <a href="#choose-a-skill"><img src="https://img.shields.io/badge/skills-12-8b5cf6?style=flat-square" alt="12 composable skills" /></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 and Bash scripts" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT license" /></a>
+  <a href="README.md"><img src="https://img.shields.io/badge/文档-简体中文-2563eb?style=flat-square" alt="简体中文文档" /></a>
+</p>
 
-![Byte Skills overview: an adaptive entry point connects understanding, planning, execution, and coordination](assets/overview.svg)
+<p align="center">
+  <a href="README.md">简体中文</a> · <strong>English</strong><br />
+  <a href="#overview">Overview</a> · <a href="#quick-start">Quick start</a> · <a href="#choose-a-skill">Skills</a> · <a href="#short-waits-and-long-jobs">Supervision</a> · <a href="#outcome-continuity">Outcome continuity</a>
+</p>
+
+---
+
+**Organize around the outcome. Let evidence guide the next step.** Byte Skills is a composable family of `byte-*` skills read and executed by your coding assistant. Small tasks stay simple; larger tasks combine research, planning, implementation, and verification as needed.
+
+Your client keeps its models and tools. Skills guide the procedure, and local helper scripts record handoffs and evidence. Messaging, subagents, and automation depend on the client's capabilities and user authorization.
+
+| Capability | What it gives you |
+| --- | --- |
+| **Compose what is useful** | Start mixed requests with `byte-do`, or invoke a focused skill directly. There is no required fixed pipeline. |
+| **Preserve the overall outcome** | `byte-auto` distinguishes a completed stage from an accepted overall result and advances authorized next steps. |
+| **Evidence before claims** | Assess progress using actual code, tests, runtime receipts, and sources. |
+| **Recoverable collaboration** | Relay records exact session identity, ownership, handoffs, and artifact evidence. |
+| **Explicit authority boundaries** | Long-running checks, cross-chat actions, paid resources, and destructive operations each retain their authorization requirements. |
+
+## Overview
+
+<img src="assets/overview.svg" alt="byte-do composes understanding, planning, execution and coordination capabilities, with evidence guiding the next action" width="100%" />
 
 ## Quick start
 
@@ -27,7 +55,7 @@ $byte-research Compare these three approaches with sources
 $byte-auto Finish this feature until its key acceptance criteria pass
 ```
 
-`byte-do` is an explicit entry point for mixed requests. Use a focused skill directly when the task is clear.
+`byte-do` is an explicit entry point for mixed requests. Use a focused skill directly when the task is clear. The examples use Codex-style invocation; your client determines the actual trigger syntax.
 
 Other installation options:
 
@@ -93,6 +121,22 @@ $byte-relay Initialize handoff state for this project
 
 Relay includes local session-digest readers for Codex, Claude Code, DSH, and ZCode. Digest access does not imply live messaging support. A full ZCode conversation summary still needs its native tools. See the [coordination schema](skills/byte-relay/references/coordination-schema.md) for details.
 
+## Outcome continuity
+
+An authorized long-running or iterative task keeps one overall outcome and acceptance checklist. Research, preflight, training, and reports are stages. The main conversation verifies each handback, then executes the next authorized action. A supervisor checks only its exact active run and disables that run's monitor after handback.
+
+Explicit user pauses, scope boundaries, and resource limits always take precedence. Ordinary tasks use ordinary conversation state; Goal mode requires an explicit request. Standalone status questions or discussions do not grant new execution authority.
+
+A local exit check uses the existing state to distinguish completion, verified supervised waiting, an explicit pause, and a concrete external blocker:
+
+```bash
+python3 skills/byte-auto/scripts/continuation_check.py --state /path/to/state.json
+```
+
+Use `--help` for the record schema. Exit `0` permits the disposition returned by the check, `2` requires continued substantive work, and `1` requires state/evidence reconciliation. See the [long-running work contract](skills/byte-auto/references/long-running-work.md).
+
+The helper checks consistency of local records. It cannot intercept a client's final response or independently prove live scheduling, wakeups, or scientific correctness. It does not guarantee a solution to an open research problem.
+
 ## Maintenance and verification
 
 ```bash
@@ -107,23 +151,3 @@ To change the shared evidence contract, edit `shared/evidence-contract.md` and r
 ## License
 
 [MIT](LICENSE). Inspired by team-based workflows; not affiliated with ByteDance. Product and company names belong to their respective owners.
-
-## 持续推进与退出检查 / Outcome continuity
-
-Byte distinguishes the overall outcome from a completed stage. In an authorized
-iterative workflow, a status question, finished run or uploaded report does not
-end the task. The main chat verifies each handback and executes the next action;
-the supervisor checks only its exact active run. Waiting requires fresh ACK,
-monitor and return-wake evidence. Explicit user pauses and resource limits win.
-
-长期循环保留一个整体目标和验收清单。文献、预检、训练、报告是阶段成果；
-未满足整体验收时继续下一项已授权工作。退出检查会拒绝缺失证据的完成或等待，
-但不是对模型或桌面应用的强制拦截器，不能保证未知科学问题必然有解。
-
-```bash
-python3 skills/byte-auto/scripts/continuation_check.py --state /path/to/state.json
-```
-
-Use `--help` for the record schema. Exit 0 permits the reported disposition;
-2 requires continued active work; 1 requires evidence/state reconciliation.
-[Shared contract](skills/byte-auto/references/long-running-work.md).

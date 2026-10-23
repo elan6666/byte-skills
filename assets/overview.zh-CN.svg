@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">Byte Skills 技能总览</title>
+  <desc id="desc">自适应入口按任务选择理解、规划、执行和协作能力，由证据决定下一步。</desc>
+  <defs>
+    <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#101d35"/><stop offset="1" stop-color="#182c46"/></linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 8 5 0 9" fill="none" stroke="#7696b8" stroke-width="1.5"/></marker>
+    <style>text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,'PingFang SC','Microsoft YaHei',sans-serif}.label{font-size:14px;letter-spacing:2px;font-weight:700}.skill{font-size:18px;font-weight:600;fill:#edf3fc}.note{font-size:15px;fill:#a9bbd1}</style>
+  </defs>
+  <rect width="1200" height="700" rx="24" fill="url(#bg)"/>
+  <text x="54" y="65" fill="#62ddd0" class="label">BYTE SKILLS</text>
+  <text x="54" y="118" fill="#fff" font-size="37" font-weight="700">围绕一个目标，组合需要的能力。</text>
+  <text x="54" y="151" class="note">根据任务、当前证据和下一步行动，选择合适的工作方式。</text>
+  <rect x="371" y="191" width="458" height="88" rx="16" fill="#213d57" stroke="#62ddd0" stroke-width="1.5"/>
+  <text x="600" y="225" fill="#77ecde" text-anchor="middle" font-size="23" font-weight="700">byte-do</text>
+  <text x="600" y="254" text-anchor="middle" class="note">综合请求的自适应入口</text>
+  <path d="M600 279 V302 M179 302 H1021 M179 302 V326 M459 302 V326 M739 302 V326 M1019 302 V326" fill="none" stroke="#53708e" stroke-width="1.5"/>
+  <g>
+    <rect x="54" y="326" width="252" height="222" rx="16" fill="#1a2c45" stroke="#34516c"/>
+    <rect x="54" y="326" width="5" height="222" rx="2" fill="#62ddd0"/>
+    <text x="78" y="361" class="label" fill="#62ddd0">理解与查证</text>
+    <text x="78" y="402" class="skill">byte-discuss</text>
+    <text x="78" y="443" class="skill">byte-brainstorm</text>
+    <text x="78" y="484" class="skill">byte-research</text>
+    <text x="78" y="523" class="note">澄清需求、探索方向、查证事实</text>
+  </g>
+  <g>
+    <rect x="334" y="326" width="252" height="222" rx="16" fill="#1a2c45" stroke="#34516c"/>
+    <rect x="334" y="326" width="5" height="222" rx="2" fill="#95a7ff"/>
+    <text x="358" y="361" class="label" fill="#a5b3ff">规划与保存</text>
+    <text x="358" y="402" class="skill">byte-plan</text>
+    <text x="358" y="443" class="skill">byte-future</text>
+    <text x="358" y="523" class="note">确定范围与下一步</text>
+  </g>
+  <g>
+    <rect x="614" y="326" width="252" height="222" rx="16" fill="#1a2c45" stroke="#34516c"/>
+    <rect x="614" y="326" width="5" height="222" rx="2" fill="#f1bc75"/>
+    <text x="638" y="361" class="label" fill="#f1bc75">实现与核验</text>
+    <text x="638" y="402" class="skill">byte-build</text>
+    <text x="638" y="443" class="skill">byte-review</text>
+    <text x="638" y="484" class="skill">byte-auto</text>
+    <text x="638" y="523" class="note">实现改动、验证结果、推进目标</text>
+  </g>
+  <g>
+    <rect x="894" y="326" width="252" height="222" rx="16" fill="#1a2c45" stroke="#34516c"/>
+    <rect x="894" y="326" width="5" height="222" rx="2" fill="#f29db3"/>
+    <text x="918" y="361" class="label" fill="#f29db3">状态与协作</text>
+    <text x="918" y="402" class="skill">byte-status</text>
+    <text x="918" y="443" class="skill">byte-relay</text>
+    <text x="918" y="484" class="skill" style="font-size:17px">byte-design-supervise</text>
+    <text x="918" y="523" class="note">核实状态、交接与监督</text>
+  </g>
+  <rect x="54" y="584" width="1092" height="70" rx="14" fill="#12243a" stroke="#34516c"/>
+  <text x="83" y="626" fill="#edf3fc" font-size="18" font-weight="600">真实证据</text>
+  <path d="M179 619 H231" stroke="#7696b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="257" y="626" fill="#edf3fc" font-size="18" font-weight="600">选择下一步行动</text>
+  <path d="M490 619 H542" stroke="#7696b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="568" y="626" fill="#edf3fc" font-size="18" font-weight="600">核验实际结果</text>
+  <path d="M746 619 H798" stroke="#7696b8" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="825" y="626" fill="#77ecde" font-size="18" font-weight="600">继续推进或完成</text>
+</svg>

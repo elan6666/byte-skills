@@ -1,12 +1,44 @@
-# Byte Skills
+<p align="center">
+  <img src="assets/byte-skills-banner.svg" alt="Byte Skills：围绕目标，组合所需能力" width="100%" />
+</p>
 
-**让 AI 编码助手按目标选择工作方式，从想法推进到经过验证的结果。**
+<h1 align="center">Byte Skills</h1>
 
-中文 · [English](README_en.md)
+<p align="center"><strong>让 AI 编码助手按任务选择工作方式，从想法推进到经过验证的结果。</strong><br />讨论、研究、构建、评审与长任务交接，按实际需要组合。</p>
 
-Byte Skills 是一组可组合的 `byte-*` 技能，覆盖讨论、研究、规划、构建、评审，以及长任务交接。简单任务直接完成，复杂任务按实际需要组合能力；不要求固定流水线、角色扮演或完整项目文档。
+<p align="center">
+  <a href="#skills"><img src="https://img.shields.io/badge/skills-12-8b5cf6?style=flat-square" alt="12 个可组合技能" /></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 和 Bash 脚本" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT 许可" /></a>
+  <a href="README_en.md"><img src="https://img.shields.io/badge/docs-English-2563eb?style=flat-square" alt="English documentation" /></a>
+</p>
 
-![Byte Skills 总览：自适应入口连接理解、规划、执行和协作能力](assets/overview.svg)
+<p align="center">
+  <strong>简体中文</strong> · <a href="README_en.md">English</a><br />
+  <a href="#overview">技能总览</a> · <a href="#quick-start">快速安装</a> · <a href="#skills">选择技能</a> · <a href="#supervision">长任务协作</a> · <a href="#continuity">持续推进</a>
+</p>
+
+---
+
+**围绕目标组织工作，让证据决定下一步。** Byte Skills 是一组可组合的 `byte-*` 技能，由你正在使用的编码助手读取执行。简单任务直接完成；复杂任务按需要选择研究、规划、实现和核验能力。
+
+客户端继续提供原来的模型和工具。Skills 指导工作方式，配套本地脚本记录交接和证据；跨会话消息、子代理与自动化依赖客户端能力及用户授权。
+
+| 能力 | 对用户的作用 |
+| --- | --- |
+| **按需组合** | 综合请求从 `byte-do` 开始，明确改动直接使用对应技能；不强制固定流水线。 |
+| **以结果为目标** | `byte-auto` 区分阶段完成与整体目标达标，继续推进已授权的后续工作。 |
+| **证据优先** | 根据实际代码、测试、运行收据与来源判断进展，避免只凭文字状态报喜。 |
+| **可恢复协作** | Relay 保存准确会话身份、当前所有者、交接与产物证据。 |
+| **明确授权边界** | 长运行检查、跨会话操作、付费资源及破坏性动作各自遵守实际授权。 |
+
+<a id="overview"></a>
+
+## 技能总览
+
+<img src="assets/overview.zh-CN.svg" alt="byte-do 按需组合理解、规划、执行和协作四类技能，由真实证据决定下一步" width="100%" />
+
+<a id="quick-start"></a>
 
 ## 快速开始
 
@@ -27,7 +59,7 @@ $byte-research 比较这三个方案，给出有来源的建议
 $byte-auto 完成这个功能，直到关键验收条件通过
 ```
 
-`byte-do` 是显式的综合入口。任务很明确时，可以直接调用对应技能。
+`byte-do` 是显式的综合入口。任务很明确时，可以直接调用对应技能。以上是 Codex 风格的调用示例；实际触发语法由客户端决定。
 
 其他安装方式：
 
@@ -38,6 +70,8 @@ $byte-auto 完成这个功能，直到关键验收条件通过
 ```
 
 安装器会替换目标目录中同名的 Byte 技能；请先保存自行修改的版本。支持程度取决于客户端的技能格式和工具能力，跨会话通信与自动化需要相应的运行环境。只有读取 DSH 压缩会话时才需要额外安装 `zstd`。
+
+<a id="skills"></a>
 
 ## 选择技能
 
@@ -56,9 +90,11 @@ $byte-auto 完成这个功能，直到关键验收条件通过
 | [byte-design-supervise](skills/byte-design-supervise/SKILL.md) | Codex 主会话设计与启动，独立会话监督长任务 |
 | [byte-relay](skills/byte-relay/SKILL.md) | 跨会话或客户端的身份、所有权与交接记录 |
 
+<a id="supervision"></a>
+
 ## 短等待与长任务
 
-![监督模式选择：短等待使用同会话子代理，长任务通过可验证的交接进入监督会话](assets/supervision.svg)
+![监督模式选择：短等待使用同会话子代理，长任务通过可验证的交接进入监督会话](assets/supervision.zh-CN.svg)
 
 | 情况 | 推荐方式 |
 | --- | --- |
@@ -93,6 +129,24 @@ $byte-relay 初始化这个项目的交接状态
 
 Relay 包含 Codex、Claude Code、DSH 和 ZCode 的本地会话摘要读取支持；摘要不等于实时消息能力。ZCode 的完整会话摘要仍需由其原生工具补充。实现细节见[协调状态说明](skills/byte-relay/references/coordination-schema.md)。
 
+<a id="continuity"></a>
+
+## 持续推进，而不丢失整体目标
+
+对于已经授权的长期或迭代任务，保存一个整体目标与验收清单。研究、预检、训练和报告分别是阶段成果；主会话核验交回结果后，继续下一项已授权工作。监督者只检查自己负责的准确运行，交回后停用本次监控。
+
+明确的用户暂停、范围与资源限制始终优先。普通任务默认使用普通会话状态；只有用户要求时才使用 Goal。单独询问状态或讨论方向，不会凭空产生执行权限。
+
+配套退出检查根据已有状态，区分实际完成、已验证的监督等待、用户暂停和具体外部阻塞：
+
+```bash
+python3 skills/byte-auto/scripts/continuation_check.py --state /path/to/state.json
+```
+
+用 `--help` 查看记录结构。退出码 `0` 允许检查结果所对应的退出方式，`2` 表示仍需继续实质工作，`1` 表示状态或证据需要对账。详见 [持续工作约定](skills/byte-auto/references/long-running-work.md)。
+
+这个脚本核对本地记录的一致性，不能拦截客户端结束回复，也不能单独证明调度、唤醒或科学结论正确。未知研究问题不能保证必然有解。
+
 ## 维护与验证
 
 ```bash
@@ -107,23 +161,3 @@ python3 -m unittest discover -s tests -v
 ## 许可
 
 [MIT](LICENSE)。项目受团队式工作方式启发，与字节跳动无隶属关系；文中产品与公司名称归各自权利人所有。
-
-## 持续推进与退出检查 / Outcome continuity
-
-Byte distinguishes the overall outcome from a completed stage. In an authorized
-iterative workflow, a status question, finished run or uploaded report does not
-end the task. The main chat verifies each handback and executes the next action;
-the supervisor checks only its exact active run. Waiting requires fresh ACK,
-monitor and return-wake evidence. Explicit user pauses and resource limits win.
-
-长期循环保留一个整体目标和验收清单。文献、预检、训练、报告是阶段成果；
-未满足整体验收时继续下一项已授权工作。退出检查会拒绝缺失证据的完成或等待，
-但不是对模型或桌面应用的强制拦截器，不能保证未知科学问题必然有解。
-
-```bash
-python3 skills/byte-auto/scripts/continuation_check.py --state /path/to/state.json
-```
-
-Use `--help` for the record schema. Exit 0 permits the reported disposition;
-2 requires continued active work; 1 requires evidence/state reconciliation.
-[Shared contract](skills/byte-auto/references/long-running-work.md).
