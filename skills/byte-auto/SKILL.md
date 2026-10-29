@@ -89,11 +89,20 @@ the main turn must end, and independence—not just by model price:
   watcher can deliver it. Use a low-frequency heartbeat to detect a stale or
   missing watcher; terminal text and agent-idle status alone never prove a
   scientific run succeeded.
+- When the user explicitly requests a continuous scheduled two-chat loop,
+  retain one outcome-level heartbeat across analysis, literature review,
+  implementation and experiments. The cheaper supervisor checks main progress
+  while main owns active work; an idle main with ready work receives the same
+  heartbeat as its return fallback. Clear old run checks on handback, but do
+  not pause this authorized continuity monitor after the first ACK. Follow
+  the continuous-loop section of the [state contract](references/long-running-work.md).
 - Before scheduling a long check, validate the exact project directory, run
   identity, target conversation, model/tool availability, and notification
   route. Verify recurring registration and supervisor acknowledgement before
   ending the main turn; if either is missing, report supervision as unarmed.
-  Pause the per-run monitor on handback, not only at overall project completion.
+  End per-run checks on handback. Pause a run-only monitor; retarget an explicitly
+  authorized outcome monitor to current progress instead of leaving it on the
+  completed run or disabling the whole research loop.
   Verify that the main task actually begins the returned work; message delivery
   or an empty task reply is not a continuation acknowledgement.
   If a script can determine "still running" without model judgment,

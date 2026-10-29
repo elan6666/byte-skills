@@ -101,6 +101,12 @@ second relay owner. An independent Codex task or other harness needs an exact
 session identity and the durable baton before it acts. Neither lane turns a
 terminal status or an agent's final message into proof of run success.
 
+An explicitly authorized outcome-progress watchdog is read-only coordination,
+not a relay work stage. While main owns active work, the supervisor may inspect
+state/main status and retarget the authorized heartbeat; it must not register
+itself, write main-owned project state, query an old run or start experiments.
+The owner gate still applies to all project mutations and owned stage work.
+
 For the recurring main-design / independently supervised long-run pattern,
 use the independently callable
 [$byte-design-supervise](../byte-design-supervise/SKILL.md) skill. It keeps the main chat's launch gate separate from the

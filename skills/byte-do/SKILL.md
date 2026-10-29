@@ -86,8 +86,10 @@ Prefer an authorized same-task subagent for a bounded wait expected within
 about one hour and the current turn; use cross-chat supervision for longer or
 unattended work, not merely because a test needs waiting. A duration estimate
 does not authorize creating a new task or monitor.
-In that cross-chat lane, pause the per-run monitor after each handback; the
-general adaptive schedule below does not keep querying an unowned run. Do not
+In that cross-chat lane, end per-run checks after each handback. Pause a
+run-only monitor; if the user requested a continuous scheduled research loop,
+retarget the same outcome monitor to main progress and preserve it until the
+overall exit condition. Never keep querying an unowned old run. Do not
 call the handoff armed until the exact supervisor acknowledges and the saved
 future wake path is verified active. Do not call a return automatic until the
 main task actually acknowledges the handed-back run and starts owned work;

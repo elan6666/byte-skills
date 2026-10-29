@@ -34,7 +34,14 @@ If no return-wake route is verified, state that autonomous end-to-end progress
 is unverified and that manual resumption may be needed.
 
 Treat the periodic monitor as belonging to one active run, not to the whole
-project. Verify it is active for the exact supervisor and run after handoff;
+project, unless the user explicitly requests continuous scheduled pursuit of
+the overall outcome. In that continuous mode, use one monitor across phases:
+supervise the current run, then watch main progress during analysis/research/
+implementation, and resume an idle main with ready work. See the
+[continuous research procedure](references/research-loop.md). An outdated run
+tick must route to current work rather than ending an active research turn.
+
+For ordinary single-run monitoring, verify it is active for the exact supervisor and run after handoff;
 pause or delete it and verify inactivity after that run is handed back. For a
 later run, update the run identity and acceptance before reactivating it. An
 idle supervisor must not keep querying an old or nonexistent job.

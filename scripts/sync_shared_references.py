@@ -33,7 +33,8 @@ def copies():
     source = ROOT / "skills" / "byte-auto"
     for skill in LONG_CONSUMERS:
         if skill != "byte-auto":
-            for relative in ("references/long-running-work.md", "scripts/continuation_check.py"):
+            for relative in ("references/long-running-work.md", "scripts/continuation_check.py",
+                             "scripts/continuation_route.py"):
                 yield source / relative, ROOT / "skills" / skill / relative
 
 

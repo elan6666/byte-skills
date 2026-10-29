@@ -10,6 +10,12 @@ available and authorized) may run a short test but never takes the relay baton.
 An independent supervisor chat owns long-run observation and only the bounded
 repairs recorded in the handoff.
 
+For an explicitly requested continuous scheduled research loop, follow
+[research-loop.md](research-loop.md): end old run queries on return, but keep
+the same outcome monitor active as a main-progress watchdog. This specific
+mode overrides the run-only pause-on-handback instructions below. It also
+preserves the user's experiment/diagnosis/literature/solution iteration order.
+
 Choose the lane before launch. A short test or wait expected to settle within
 about one hour and the current turn normally stays with an authorized same-task
 subagent; the main chat keeps the baton and verifies the result. A trivial

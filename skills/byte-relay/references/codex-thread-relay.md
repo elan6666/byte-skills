@@ -24,6 +24,12 @@ For same-task helpers, do **not** use this cross-task baton protocol. Follow
 ownership and is preferred for bounded work expected within about one hour
 and its active turn. Cross-task supervision is for longer or unattended runs.
 
+If the user explicitly requested a continuous scheduled outcome, a shared
+monitor can switch from run observation to read-only main progress checking
+after handback. End the old run scope, retaining the authorized outcome
+heartbeat; do not pause the only recovery path after initial main ACK. Follow
+the bundled continuation contract for this exception to run-only cleanup.
+
 If native task operations are unavailable, keep the repository handoff valid and
 tell the user which exact supervisor task must be opened or resumed manually.
 
