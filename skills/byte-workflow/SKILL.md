@@ -20,8 +20,11 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    conditional transitions, failure routes and loop boundaries. Preserve the
    requested order. Review unknown conditions and unreachable steps before use.
 2. Bind project-specific objective, parameters and exact existing sessions.
-   Initialize only a new/inactive outcome; never overwrite another active
-   workflow or silently adopt a live experiment. Pin a snapshot so library edits
+   Initialize only a new/inactive outcome. For an explicitly requested live
+   migration, the exact current owner uses `adopt` with a fresh state hash,
+   immutable observation evidence and a coordinated state-write boundary;
+   preserve run identity, outcome and all acceptance criteria. Never silently
+   adopt or replay a live experiment. Pin a snapshot so library edits
    cannot change a running project. Template parameters grant no new authority.
 3. On each owned turn inspect `status`; execute the current step using the
    appropriate Byte capability. Record real output/source hashes in a step

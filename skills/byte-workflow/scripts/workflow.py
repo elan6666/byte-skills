@@ -424,6 +424,16 @@ def mutate(args):
             require(disposition == "yield_waiting", "run monitoring/return route is not armed")
             execution["monitor_status"] = "recorded_active"
             workflow["evidence"] += [execution[name] for name in ("supervisor_ack", "monitor_registration", "return_wake_receipt")]
+        elif command == "record-readiness":
+            require(args.session == manifest["roles"]["supervisor"] and execution["mode"] == "waiting",
+                    "the waiting owner records verified independent main-work completion")
+            value, ref = receipt(args.evidence, "main_readiness", outcome, workflow)
+            require(value.get("main_session") == manifest["roles"]["main"]
+                    and value.get("independent_work_remaining") is False, "requires actual main readiness, not a convenient flag change")
+            require(value.get("run_id") == execution["run_id"] and type(value.get("attempt")) is int
+                    and value["attempt"] == execution["attempt"], "readiness run identity mismatch")
+            execution["independent_work_remaining"] = False
+            workflow["evidence"].append(ref)
         elif command == "return-run":
             require(args.session == manifest["roles"]["supervisor"] and execution["mode"] == "waiting", "only the waiting supervisor returns a run")
             value, ref = receipt(args.evidence, "run_terminal", outcome, workflow)
@@ -558,6 +568,107 @@ def init(args):
             "step": template["start"], "monitor_status": "unverified"}
 
 
+def adopt(args):
+    """Explicit owner-run migration of a live legacy outcome, without run submission."""
+    source = Path(args.template).expanduser()
+    if not source.is_file():
+        source = Path(args.home).expanduser() / args.template / "workflow.yaml"
+    template = validate(load(source))
+    main_session, supervisor = session(args.main_session), session(args.supervisor_session)
+    require(main_session != supervisor, "main and supervisor must be distinct")
+    nonempty(args.authority_ref, "explicit migration authority reference")
+    nonempty(args.event_id, "migration event ID")
+    require(args.interval_minutes > 0, "interval must be positive")
+    nonempty(args.monitor_id, "existing monitor ID")
+    root, snapshot_path, state_path = paths(args.project)
+    with locked(state_path):
+        require(not snapshot_path.exists(), "pinned workflow already exists; inspect status instead of repeating migration")
+        before = state_path.read_bytes()
+        require(digest(before) == args.expect_state_sha256, "legacy state changed; reread and obtain a fresh owner checkpoint")
+        state = load(state_path)
+        outcome = state.get("overall_outcome")
+        require(isinstance(outcome, dict) and outcome.get("status") == "active", "adopt requires an existing active outcome")
+        require(not outcome.get("workflow"), "outcome already has workflow metadata")
+        require(state.get("owner_session") == args.session and args.session in (main_session, supervisor),
+                "only the exact current baton owner can adopt")
+        execution = outcome.get("execution")
+        require(isinstance(execution, dict), "legacy execution must be an object")
+        require(args.step in template["steps"], "migration step is not in the template")
+        step = template["steps"][args.step]
+        waiting = execution.get("mode") == "waiting"
+        if waiting:
+            require(args.session == supervisor and step.get("wait_owner") == "supervisor", "waiting migration must preserve supervisor-owned run")
+            require(execution.get("supervisor_session") == supervisor, "legacy supervisor differs from binding")
+            require(execution.get("owner_session") == main_session, "legacy run main differs from binding")
+            require(execution.get("monitor_id") == args.monitor_id, "migration must reuse the existing monitor")
+        else:
+            require(execution.get("mode") == "active", "unsupported legacy execution mode")
+            require(args.session == {"main": main_session, "supervisor": supervisor}[step["owner"]], "active migration must preserve step owner")
+        previous = {item["id"]: item for item in outcome["acceptance"]}
+        proposed = {item["id"]: item for item in template["acceptance"]}
+        require(set(previous) == set(proposed), "migration cannot add/drop overall acceptance criteria")
+        for key in previous:
+            require(previous[key]["description"] == proposed[key]["description"], "migration cannot rewrite acceptance descriptions")
+        effective_action = execution.get("next_action", outcome.get("next_action"))
+        require(isinstance(effective_action, dict) and effective_action.get("trigger") == ("run_terminal" if waiting else "ready"),
+                "legacy next action is inconsistent with its execution mode")
+        nonempty(effective_action.get("description"), "legacy next action")
+        evidence = load(args.evidence)
+        require(isinstance(evidence, dict) and evidence.get("kind") == "workflow_adoption" and evidence.get("status") == "verified", "requires a verified workflow_adoption receipt")
+        require(evidence.get("outcome_id") == outcome["id"] and evidence.get("owner_session") == args.session
+                and evidence.get("state_sha256") == args.expect_state_sha256, "adoption receipt identity/state mismatch")
+        require(evidence.get("coordination_writes_quiescent") is True, "coordinate a safe state-write boundary before adopting")
+        sources = evidence.get("sources")
+        require(isinstance(sources, list) and bool(sources), "adoption needs immutable source evidence")
+        for attachment in sources:
+            require(Path(attachment.get("path", "")).resolve() != state_path, "use immutable receipts, not the mutable state as an evidence source")
+            evidence_bytes(attachment, Path(args.evidence).resolve().parent, "adoption.sources")
+        if waiting:
+            require(evidence.get("run_id") == execution.get("run_id") and type(evidence.get("attempt")) is int
+                    and evidence["attempt"] == execution.get("attempt"), "adoption run/attempt mismatch")
+        parameters = copy.deepcopy(template.get("parameters", {}))
+        for binding in args.param:
+            key, separator, value = binding.partition("=")
+            require(separator and key in parameters, "unknown or invalid parameter: " + key)
+            parameters[key] = value
+        snapshot = {"schema_version": 1, "outcome_id": outcome["id"], "template_sha256": digest(source.read_bytes()),
+                    "definition": template, "parameters": parameters, "roles": {"main": main_session, "supervisor": supervisor},
+                    "model_preferences": {"main": None, "supervisor": None},
+                    "monitor": {"continuous": args.continuous, "id": args.monitor_id, "interval_minutes": args.interval_minutes}}
+        archive = root / ".byte-os/coordination/receipts" / ("pre-workflow-" + uuid.uuid4().hex + ".json")
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        with archive.open("xb") as stream:
+            stream.write(before)
+            stream.flush()
+            os.fsync(stream.fileno())
+        iteration = outcome.get("iteration", 1)
+        require(type(iteration) is int and iteration > 0, "legacy iteration must be positive")
+        workflow = {"engine": ENGINE, "instance_sha256": digest(encoded(snapshot)), "revision": 0,
+                    "step": args.step, "iteration": iteration, "visit": 1, "facts": {},
+                    "events": [{"id": args.event_id, "command": "adopt", "actor": args.session,
+                                "request_sha256": args.expect_state_sha256, "revision": 0, "at": now()}],
+                    "evidence": [reference(archive), reference(args.evidence)],
+                    "used_runs": [[execution["run_id"], execution["attempt"]]] if waiting else [],
+                    "adoption": {"authority_ref": args.authority_ref, "previous_state": reference(archive),
+                                 "preserved_next_action": copy.deepcopy(effective_action), "past_steps_replayed": False}}
+        outcome["workflow"] = workflow
+        outcome["next_action"] = copy.deepcopy(effective_action)
+        execution.pop("next_action", None)
+        execution["role"] = step["owner"]
+        # Preserve outcome ID, objective, criteria/evidence, run identities,
+        # independent-work flag, baton, stage and every unrelated legacy field.
+        atomic(snapshot_path, snapshot)
+        try:
+            require(digest(state_path.read_bytes()) == args.expect_state_sha256, "state changed during migration; no state was committed")
+            atomic(state_path, state)
+        except (OSError, Invalid):
+            snapshot_path.unlink()
+            raise
+    return {"adopted": True, "outcome_id": outcome["id"], "step": args.step, "revision": 0,
+            "owner_session": state["owner_session"], "mode": execution["mode"],
+            "previous_state": str(archive), "run_relaunched": False, "past_steps_replayed": False}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", default=str(Path.home() / ".byte/workflows"), help="Local reusable template library")
@@ -579,17 +690,31 @@ def main(argv=None):
     initializer.add_argument("--continuous", action="store_true")
     initializer.add_argument("--interval-minutes", type=int, default=20)
     initializer.add_argument("--param", action="append", default=[])
+    adopter = commands.add_parser("adopt", help="Explicit current-owner migration; preserves a live run and existing acceptance")
+    adopter.add_argument("--template", required=True)
+    adopter.add_argument("--authority-ref", required=True)
+    adopter.add_argument("--main-session", required=True)
+    adopter.add_argument("--supervisor-session", required=True)
+    adopter.add_argument("--session", required=True)
+    adopter.add_argument("--expect-state-sha256", required=True)
+    adopter.add_argument("--step", required=True)
+    adopter.add_argument("--evidence", required=True, type=Path)
+    adopter.add_argument("--event-id", required=True)
+    adopter.add_argument("--monitor-id", required=True)
+    adopter.add_argument("--continuous", action="store_true")
+    adopter.add_argument("--interval-minutes", type=int, default=20)
+    adopter.add_argument("--param", action="append", default=[])
     for name in ("status", "doctor", "route", "monitor-prompt", "export"):
         commands.add_parser(name)
     commands.choices["route"].add_argument("--caller-session", required=True)
     commands.choices["route"].add_argument("--main-status", choices=("active", "idle", "unknown"), default="unknown")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
-    for name in ("advance", "accept", "start-run", "arm-run", "return-run", "record-run", "ack-return", "block", "pause", "resume"):
+    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume"):
         sub = commands.add_parser(name)
         sub.add_argument("--session", required=True)
         sub.add_argument("--expect-revision", type=int, required=True)
         sub.add_argument("--event-id", required=True)
-        if name in ("advance", "accept", "start-run", "return-run", "record-run", "ack-return", "block"):
+        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block"):
             sub.add_argument("--evidence", required=True, type=Path)
         if name in ("start-run", "return-run"):
             sub.add_argument("--handoff", required=True, type=Path)
@@ -629,6 +754,8 @@ def main(argv=None):
             result = {"installed": installed}
         elif args.command == "init":
             result = init(args)
+        elif args.command == "adopt":
+            result = adopt(args)
         elif args.command in ("status", "doctor", "route", "monitor-prompt", "export"):
             root, manifest, state, outcome, workflow = opened(args.project)
             if args.command == "status":

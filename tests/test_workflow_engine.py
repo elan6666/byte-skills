@@ -420,6 +420,83 @@ class WorkflowEngineTests(unittest.TestCase):
         source.write_bytes(original)
         self.assertEqual(self.change("resume", extra=("--request-ref", "user:resume"))[0], 0)
 
+    def legacy_adoption(self):
+        state = self.state()
+        outcome = state["overall_outcome"]
+        outcome.pop("workflow")
+        outcome.update(iteration=5, scientific_complete=False, findings=["preserve prior evidence"])
+        outcome["execution"].update(mode="waiting", owner_session="codex:main", supervisor_session="codex:supervisor",
+                                    run_id="existing-live-run", attempt=2, independent_work_remaining=True)
+        action = {"trigger": "run_terminal", "description": "Preserve the precise existing post-fit next action"}
+        outcome["next_action"] = action
+        outcome["execution"]["next_action"] = copy.deepcopy(action)
+        state.update(owner_session="codex:supervisor", stage="supervise", unrelated_history={"keep": True})
+        self.state_path.write_text(json.dumps(state))
+        (self.project / ".byte-os/workflow.yaml").unlink()
+        original = self.state_path.read_bytes()
+        before_hash = hashlib.sha256(original).hexdigest()
+        source = self.artifact({"run_id": "existing-live-run", "attempt": 2, "observation": "local migration fixture"})
+        evidence = self.artifact({"kind": "workflow_adoption", "status": "verified", "outcome_id": outcome["id"],
+                                 "owner_session": "codex:supervisor", "state_sha256": before_hash,
+                                 "coordination_writes_quiescent": True, "run_id": "existing-live-run", "attempt": 2,
+                                 "sources": [hashref(source)]})
+        args = ["--template", str(self.template), "--authority-ref", "user:explicit-adoption", "--session", "codex:supervisor",
+                "--main-session", "codex:main", "--supervisor-session", "codex:supervisor", "--monitor-id", "test-monitor",
+                "--continuous", "--expect-state-sha256", before_hash, "--step", "experiment", "--evidence", str(evidence),
+                "--event-id", "adopt-test"]
+        return args, original, evidence
+
+    def test_explicit_owner_adoption_preserves_live_run_goal_and_evidence(self):
+        args, original, _ = self.legacy_adoption()
+        result = self.call("adopt", *args)
+        self.assertEqual(result[0], 0, result)
+        self.assertFalse(result[1]["run_relaunched"])
+        previous = json.loads(original)
+        current = self.state()
+        for key in ("owner_session", "stage", "unrelated_history"):
+            self.assertEqual(current[key], previous[key])
+        for key in ("id", "objective", "status", "acceptance", "findings", "scientific_complete"):
+            self.assertEqual(current["overall_outcome"][key], previous["overall_outcome"][key])
+        self.assertEqual(self.outcome()["execution"]["run_id"], "existing-live-run")
+        self.assertTrue(self.outcome()["execution"]["independent_work_remaining"])
+        self.assertEqual(self.workflow()["iteration"], 5)
+        self.assertEqual(Path(result[1]["previous_state"]).read_bytes(), original)
+        self.assertEqual(self.call("route", "--caller-session", "codex:supervisor")[1]["action"], "supervise_run")
+        readiness = self.proof("main_readiness", main_session="codex:main", independent_work_remaining=False,
+                               run_id="existing-live-run", attempt=2)
+        self.assertEqual(self.change("record-readiness", evidence=readiness)[0], 0)
+        self.assertFalse(self.outcome()["execution"]["independent_work_remaining"])
+        self.assertEqual(self.call("adopt", *args)[0], 1)
+
+    def test_adoption_rejects_wrong_owner_changed_state_or_weakened_acceptance(self):
+        for mode in ("owner", "state", "criteria", "run", "quiescent"):
+            with self.subTest(mode=mode):
+                self.project = self.root / ("legacy-" + mode)
+                self.state_path = self.project / ".byte-os/coordination/state.json"
+                init = self.call("init", "--template", str(self.template), "--objective", "Test",
+                                 "--authority-ref", "user:test", "--main-session", "codex:main", "--supervisor-session", "codex:supervisor",
+                                 "--monitor-id", "test-monitor")
+                self.assertEqual(init[0], 0, init)
+                args, before, proof = self.legacy_adoption()
+                if mode == "owner":
+                    args[args.index("--session") + 1] = "codex:main"
+                elif mode == "state":
+                    self.state_path.write_bytes(before + b" ")
+                    before = self.state_path.read_bytes()
+                elif mode == "criteria":
+                    template = definition()
+                    template["acceptance"][0]["description"] = "Weaken the original standard"
+                    altered = self.artifact(template)
+                    args[args.index("--template") + 1] = str(altered)
+                else:
+                    value = json.loads(proof.read_text())
+                    value["run_id" if mode == "run" else "coordination_writes_quiescent"] = "wrong" if mode == "run" else False
+                    proof.write_text(json.dumps(value))
+                result = self.call("adopt", *args)
+                self.assertEqual(result[0], 1, result)
+                self.assertEqual(self.state_path.read_bytes(), before)
+                self.assertFalse((self.project / ".byte-os/workflow.yaml").exists())
+
 
 if __name__ == "__main__":
     unittest.main()

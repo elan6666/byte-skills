@@ -49,7 +49,50 @@ uv run <skill>/scripts/workflow.py export --project /path/to/project --output /n
 
 The exported JSON text is valid YAML. The target must not already exist.
 V1 pins one instance per project; changing an active definition or migrating
-another existing outcome is deliberately not automated.
+another existing outcome is never implicit.
+
+## Explicit adoption of an existing active outcome
+
+When the user explicitly requests migration, coordinate the exact main and
+supervisor at a safe boundary for coordination-state writes. Preserve ongoing
+jobs and independent main work. The CURRENT baton owner calls `adopt`, not
+`init`. First customize the definition's acceptance IDs and descriptions to
+exactly match the existing outcome; choose the current real `--step` rather
+than replaying prior steps as if newly verified.
+
+```bash
+uv run <skill>/scripts/workflow.py adopt --project <project> \
+  --template <reviewed-project-template.yaml> --step experiment \
+  --main-session codex:<main-id> --supervisor-session codex:<supervisor-id> \
+  --session codex:<current-owner-id> --monitor-id <existing-id> --continuous \
+  --expect-state-sha256 <fresh-state-sha256> --authority-ref <explicit-user-request> \
+  --event-id <migration-id> --evidence <adoption-receipt.json>
+```
+
+The adoption receipt has kind `workflow_adoption`, status `verified`, exact
+`outcome_id`, `owner_session`, `state_sha256`,
+`coordination_writes_quiescent: true`, immutable source references and, while
+waiting, exact `run_id` and `attempt`. Do not reference the mutable state itself
+as a source. The engine archives its original bytes in an immutable receipt,
+pins the definition and uses a second state-hash check before committing.
+Owner, stage, goal, scientific status, original acceptance/evidence, run,
+attempt, active process, monitor and independent-work flag remain preserved.
+No job is submitted, stopped or replayed. State drift or wrong ownership rejects
+the migration. Existing active managed instances cannot be overwritten.
+
+Run `status` and `doctor`, then obtain fresh native monitor/ACK observations
+and `arm-run` if applicable. A preexisting run is imported, not retrospectively
+claimed to have passed engine launch gates. `doctor` can correctly report
+`continue_work` if the main still has independent work; do not force that flag
+false for a convenient waiting disposition. Preserve the same monitor, update
+its reusable prompt with `monitor-prompt`, and verify actual scheduling.
+
+If main finishes previously independent work while supervisor still owns the
+waiting run, `record-readiness` accepts a source-hashed `main_readiness` receipt
+with current step/run identity, `main_session` and
+`independent_work_remaining: false`. Only the supervisor owner records this
+transition, after actually receiving/verifying main's readiness evidence.
+Do not infer readiness from silence or manually clear the flag during adoption.
 
 ## Definition
 
