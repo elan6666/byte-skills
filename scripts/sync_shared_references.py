@@ -23,7 +23,7 @@ CONSUMERS = (
 
 LONG_CONSUMERS = (
     "byte-auto", "byte-build", "byte-do", "byte-plan", "byte-research",
-    "byte-status", "byte-relay", "byte-design-supervise",
+    "byte-status", "byte-relay", "byte-design-supervise", "byte-workflow",
 )
 
 

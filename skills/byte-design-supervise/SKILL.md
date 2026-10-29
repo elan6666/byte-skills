@@ -54,6 +54,12 @@ authorization.
 
 ## Outcome continuity
 
+When `overall_outcome.workflow.engine` is `byte-workflow/v1`, use the pinned
+workflow's `start-run` → supervisor `arm-run` → `return-run` → main
+`ack-return` commands. Direct relay mutations would bypass revision/event
+checks and are rejected. Native dispatch, scheduler readback and independent
+verification remain required; loading a template alone arms nothing.
+
 Keep the overall outcome separate from stage or run acceptance. During an
 already authorized iterative task, status questions and candidate discussions
 do not silently revoke execution authority. Reconcile the latest explicit user

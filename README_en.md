@@ -7,7 +7,7 @@
 <p align="center"><strong>A workflow that fits the task, from an idea to a verified result.</strong><br />Compose discussion, research, implementation, review, and long-running handoffs.</p>
 
 <p align="center">
-  <a href="#choose-a-skill"><img src="https://img.shields.io/badge/skills-12-8b5cf6?style=flat-square" alt="12 composable skills" /></a>
+  <a href="#choose-a-skill"><img src="https://img.shields.io/badge/skills-13-8b5cf6?style=flat-square" alt="13 composable skills" /></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 and Bash scripts" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT license" /></a>
   <a href="README.md"><img src="https://img.shields.io/badge/文档-简体中文-2563eb?style=flat-square" alt="简体中文文档" /></a>
@@ -39,6 +39,7 @@ Your client keeps its models and tools. Skills guide the procedure, and local he
 ## Quick start
 
 You need Git, Bash, Python 3, and a coding assistant that can load local `SKILL.md` files. The installer and Relay scripts use the Python standard library.
+For custom YAML workflows, `uv run` isolates the script's PyYAML dependency. JSON inputs also work directly with Python 3.
 
 ```bash
 git clone https://github.com/elan6666/byte-skills.git
@@ -76,6 +77,7 @@ The installer replaces Byte skill directories with matching names. Save any loca
 | [byte-brainstorm](skills/byte-brainstorm/SKILL.md) | Generating and comparing different approaches |
 | [byte-research](skills/byte-research/SKILL.md) | Checking external evidence that affects a decision |
 | [byte-plan](skills/byte-plan/SKILL.md) | Planning at a depth appropriate to the task |
+| [byte-workflow](skills/byte-workflow/SKILL.md) | Saving and reusing local workflows with custom steps, branches, loops, acceptance and role bindings |
 | [byte-build](skills/byte-build/SKILL.md) | Implementing a focused change and verifying the result |
 | [byte-review](skills/byte-review/SKILL.md) | Finding important issues in code and evidence |
 | [byte-status](skills/byte-status/SKILL.md) | Checking progress, blockers, and next actions |
@@ -120,6 +122,41 @@ $byte-relay Initialize handoff state for this project
 ```
 
 Relay includes local session-digest readers for Codex, Claude Code, DSH, and ZCode. Digest access does not imply live messaging support. A full ZCode conversation summary still needs its native tools. See the [coordination schema](skills/byte-relay/references/coordination-schema.md) for details.
+
+## Reusable local workflows
+
+```text
+$byte-workflow Save a research loop with result analysis, problem characterization,
+literature, solution design, implementation, experiment, and renewed analysis.
+Reuse it in other projects with separate parameters and main/supervisor bindings.
+```
+
+Install the bundled `experiment-research` template into your local library:
+
+```bash
+uv run skills/byte-workflow/scripts/workflow.py install-template
+uv run skills/byte-workflow/scripts/workflow.py list-templates
+```
+
+Templates live at `~/.byte/workflows/<id>/workflow.yaml`. Each project pins a
+snapshot in `.byte-os/workflow.yaml` and uses the existing
+`.byte-os/coordination/state.json` for runtime state. Library edits cannot
+silently change an active project. Steps can belong to main or supervisor;
+conditional transitions, loop boundaries and acceptance are configurable.
+
+Revision checks and stable event IDs prevent stale/duplicate transitions.
+Source-hashed receipts establish recorded step evidence; an empty reply cannot
+acknowledge substantive main continuation. Short waits retain main ownership;
+long waits transfer an unarmed baton and then require supervisor acknowledgement
+and recorded native monitoring before a justified wait. Only verified overall
+acceptance completes a workflow; explicit pause and external blockage are separate.
+
+Use `validate`, `init`, `status`, `advance`, `accept`, `start-run`, `arm-run`,
+`return-run`, `ack-return`, `record-run`, `route`, `doctor` and `export` through
+the CLI. See the [format and commands](skills/byte-workflow/references/format.md).
+The engine records and validates decisions; it neither executes model commands
+nor creates a native scheduler. Real client wakeups still require configuration
+and observation.
 
 ## Outcome continuity
 

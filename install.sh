@@ -48,7 +48,7 @@ for target in "${TARGETS[@]}"; do
   if [[ $CHECK_ONLY -eq 1 ]]; then
     for skill_dir in "$REPO_DIR"/skills/*/; do
       name="$(basename "$skill_dir")"
-      if ! diff -qr "$skill_dir" "$target/$name" >/dev/null; then
+      if ! diff -qr -x __pycache__ -x '*.pyc' "$skill_dir" "$target/$name" >/dev/null; then
         echo "out of sync: $target/$name" >&2
         exit 1
       fi
@@ -61,7 +61,9 @@ for target in "${TARGETS[@]}"; do
   for skill_dir in "$REPO_DIR"/skills/*/; do
     name="$(basename "$skill_dir")"
     rm -rf "$target/$name"
-    cp -R "$skill_dir" "$target/$name"
+    mkdir -p "$target/$name"
+    tar -C "$skill_dir" --exclude='__pycache__' --exclude='*.pyc' -cf - . |
+      tar -C "$target/$name" -xf -
     echo "installed $name -> $target/$name"
   done
   chmod +x "$target"/byte-relay/scripts/*.py 2>/dev/null || true

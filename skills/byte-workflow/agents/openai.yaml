@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your ByteDance Workflow"
+  short_description: "Save reusable workflows with verified loops and handoffs."
+  default_prompt: "Use $byte-workflow to define or run a reusable local workflow with custom steps, acceptance, and session roles."

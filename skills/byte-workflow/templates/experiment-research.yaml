@@ -1,0 +1,63 @@
+schema_version: 1
+id: experiment-research
+version: 1
+description: Evidence-led research from results to diagnosis, literature, solutions and new experiments.
+start: diagnose
+parameters:
+  problem: Describe the unresolved scientific problem
+  baseline: Identify the fixed comparison baseline
+  resource_limits: Use only the project's authorized resources
+acceptance:
+  - id: representation
+    description: Task-relevant representation improvement supported by matched evidence
+    scope: iteration
+  - id: prediction
+    description: Prediction quality satisfies the preregistered comparison criteria
+    scope: iteration
+  - id: reproducibility
+    description: Results, source, configuration and limitations independently verified
+    scope: iteration
+steps:
+  diagnose:
+    owner: main
+    action: Analyze ${problem} against ${baseline}; characterize the unresolved observation.
+    acceptance: {fact: problem_characterized, op: eq, value: true}
+    transitions: [{to: literature}]
+  literature:
+    owner: main
+    action: Inspect relevant primary sources, or justify reuse of already verified sources.
+    acceptance: {fact: sources_reviewed, op: eq, value: true}
+    transitions: [{to: design}]
+  design:
+    owner: main
+    action: Specify one falsifiable intervention, predicted observations and a matched experiment.
+    acceptance: {fact: hypothesis_preregistered, op: eq, value: true}
+    transitions: [{to: implement}]
+  implement:
+    owner: main
+    action: Implement the intervention and run meaningful checks within ${resource_limits}.
+    acceptance: {fact: checks_passed, op: eq, value: true}
+    transitions: [{to: experiment}]
+  experiment:
+    owner: main
+    action: Launch the authorized experiment, then independently verify its returned terminal result.
+    wait_owner: supervisor
+    acceptance: {fact: terminal_verified, op: eq, value: true}
+    transitions:
+      - when: {fact: exit_code, op: ne, value: 0}
+        to: repair
+      - to: evaluate
+  evaluate:
+    owner: main
+    action: Compare the new result to ${baseline}; verify overall criteria and interpret uncertainty.
+    acceptance: {fact: comparison_verified, op: eq, value: true}
+    transitions:
+      - when: {overall_accepted: true}
+        to: done
+      - to: diagnose
+        new_iteration: true
+  repair:
+    owner: main
+    action: Diagnose the execution fault, preserve its evidence and verify a bounded repair.
+    acceptance: {fact: repair_verified, op: eq, value: true}
+    transitions: [{to: experiment}]

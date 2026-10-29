@@ -29,6 +29,10 @@ Act directly when ordinary reasoning is enough. Do not load another Byte skill
 merely because it exists, announce an internal route by default, or force named
 stages. Combine capabilities naturally when the outcome genuinely needs them.
 
+For a reusable local workflow with custom steps, loops, acceptance and role
+bindings, use [$byte-workflow](../byte-workflow/SKILL.md). Its pinned definition
+and engine-managed state take precedence over ad hoc phase descriptions.
+
 ## State
 
 `.byte-os/` is optional. Use it only when persistent state will help a long-running

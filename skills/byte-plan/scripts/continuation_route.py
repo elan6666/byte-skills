@@ -45,6 +45,12 @@ def route(document, root, *, outcome_id, main, supervisor, caller, main_status):
     result["next_action"] = description
 
     if owner == supervisor:
+        if (mode == "active" and execution.get("role") == "supervisor"
+                and outcome.get("workflow", {}).get("engine") == "byte-workflow/v1"):
+            require(action.get("trigger") == "ready", "supervisor step needs a ready action")
+            result.update(action="continue_supervisor" if caller == supervisor else "dispatch_supervisor",
+                          target_session=supervisor)
+            return result
         # A watchdog does not grant ownership or infer a run from a saved prompt.
         require(mode == "waiting", "supervisor owns baton but outcome is not waiting")
         require(action.get("trigger") == "run_terminal", "supervisor wait needs a terminal trigger")

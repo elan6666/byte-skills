@@ -70,6 +70,8 @@ def handoff(args):
     project = Path(args.project).expanduser().resolve()
     state_path = project / ".byte-os" / "coordination" / "state.json"
     state = load_json(state_path)
+    if state.get("overall_outcome", {}).get("workflow", {}).get("engine") == "byte-workflow/v1":
+        raise RuntimeError("byte-workflow owns these transitions; use workflow.py start-run/return-run instead of a direct relay handoff")
     from_key = f"{args.from_harness}:{args.from_session_id}"
     session_ref(from_key)
     if state.get("owner") != args.from_harness:

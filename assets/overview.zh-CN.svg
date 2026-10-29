@@ -29,7 +29,8 @@
     <text x="358" y="361" class="label" fill="#a5b3ff">规划与保存</text>
     <text x="358" y="402" class="skill">byte-plan</text>
     <text x="358" y="443" class="skill">byte-future</text>
-    <text x="358" y="523" class="note">确定范围与下一步</text>
+    <text x="358" y="484" class="skill">byte-workflow</text>
+    <text x="358" y="523" class="note">规划任务、复用工作流</text>
   </g>
   <g>
     <rect x="614" y="326" width="252" height="222" rx="16" fill="#1a2c45" stroke="#34516c"/>

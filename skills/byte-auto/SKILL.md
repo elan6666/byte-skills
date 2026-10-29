@@ -42,6 +42,11 @@ unbounded retries of the same approach.
 
 ## Adaptive Loop
 
+If the outcome is managed by `byte-workflow/v1`, load its pinned project
+definition and use `$byte-workflow` revision-checked commands for transitions.
+Execute the selected action here; do not hand-edit or replace the engine's
+step, acceptance, role bindings or event history to end a phase.
+
 Repeat as useful:
 
 1. Inspect the current files, runtime, evidence, prior work, and relevant active lessons.

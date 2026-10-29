@@ -19,6 +19,11 @@ The repo remains the authority after messages, restarts, or context compaction.
 
 ## The relay turn
 
+For `overall_outcome.workflow.engine=byte-workflow/v1`, keep reading the same
+state, but perform transfers through `$byte-workflow` rather than
+`relay_state.py handoff`. The engine pins steps and validates revision/event
+identity; independent registry/digest reads do not grant write authority.
+
 1. **Read `.byte-os/coordination/state.json`.** If it does not exist, and the
    user asked to initialize, create it from the schema in
    `references/coordination-schema.md` and stop. Otherwise report who owns the

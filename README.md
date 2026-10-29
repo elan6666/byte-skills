@@ -7,7 +7,7 @@
 <p align="center"><strong>让 AI 编码助手按任务选择工作方式，从想法推进到经过验证的结果。</strong><br />讨论、研究、构建、评审与长任务交接，按实际需要组合。</p>
 
 <p align="center">
-  <a href="#skills"><img src="https://img.shields.io/badge/skills-12-8b5cf6?style=flat-square" alt="12 个可组合技能" /></a>
+  <a href="#skills"><img src="https://img.shields.io/badge/skills-13-8b5cf6?style=flat-square" alt="13 个可组合技能" /></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 和 Bash 脚本" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT 许可" /></a>
   <a href="README_en.md"><img src="https://img.shields.io/badge/docs-English-2563eb?style=flat-square" alt="English documentation" /></a>
@@ -43,6 +43,7 @@
 ## 快速开始
 
 需要 Git、Bash、Python 3，以及能够加载本地 `SKILL.md` 的编码助手。安装器和 Relay 脚本使用 Python 标准库。
+自定义工作流的 YAML 编辑支持通过 `uv run` 隔离加载 PyYAML；JSON 输入也可直接使用 Python 3。
 
 ```bash
 git clone https://github.com/elan6666/byte-skills.git
@@ -82,6 +83,7 @@ $byte-auto 完成这个功能，直到关键验收条件通过
 | [byte-brainstorm](skills/byte-brainstorm/SKILL.md) | 提出并比较不同思路 |
 | [byte-research](skills/byte-research/SKILL.md) | 查证会影响决策的外部信息 |
 | [byte-plan](skills/byte-plan/SKILL.md) | 制定与任务复杂度相称的执行计划 |
+| [byte-workflow](skills/byte-workflow/SKILL.md) | 本地保存与跨项目复用自定义步骤、分支、循环、验收和会话分工 |
 | [byte-build](skills/byte-build/SKILL.md) | 实现聚焦改动并验证结果 |
 | [byte-review](skills/byte-review/SKILL.md) | 根据代码和证据识别重要问题 |
 | [byte-status](skills/byte-status/SKILL.md) | 核实进展、阻塞和下一步 |
@@ -128,6 +130,26 @@ $byte-relay 初始化这个项目的交接状态
 ```
 
 Relay 包含 Codex、Claude Code、DSH 和 ZCode 的本地会话摘要读取支持；摘要不等于实时消息能力。ZCode 的完整会话摘要仍需由其原生工具补充。实现细节见[协调状态说明](skills/byte-relay/references/coordination-schema.md)。
+
+## 本地自定义工作流
+
+```text
+$byte-workflow 创建一个实验研究循环：结果分析、问题表征、文献、方案、实现、实验、再分析。
+保存到本地模板库；新项目复用时重新绑定项目参数和主／监督会话。
+```
+
+自带 `experiment-research` 模板。安装到本地模板库：
+
+```bash
+uv run skills/byte-workflow/scripts/workflow.py install-template
+uv run skills/byte-workflow/scripts/workflow.py list-templates
+```
+
+模板在 `~/.byte/workflows/<模板名>/workflow.yaml`。每个项目保存自己的 `.byte-os/workflow.yaml` 快照，并在既有 `.byte-os/coordination/state.json` 中运行。全局模板以后修改，不会改变已启动的项目。
+
+步骤可以分配给主会话或监督会话，支持条件分支、循环返回和独立验收。状态推进需要匹配版本号、稳定事件 ID 和带来源哈希的证据；空回复无法替代主会话的实际接手。短等待保留主会话所有权，长等待使用先交接、再确认监控生效的两阶段流程。整体验收通过才完成；显式暂停和真实外部阻塞有独立状态。
+
+CLI 提供 `validate`、`init`、`status`、`advance`、`accept`、`start-run`、`arm-run`、`return-run`、`ack-return`、`record-run`、`route`、`doctor` 和 `export`。详见 [格式与命令](skills/byte-workflow/references/format.md)。它检查本地状态与证据，不直接执行模型命令或创建定时任务；实际客户端调度仍需配置与验证。
 
 <a id="continuity"></a>
 
