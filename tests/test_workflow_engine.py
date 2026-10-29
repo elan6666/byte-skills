@@ -7,10 +7,12 @@ do not claim that an app scheduler or another model executed a turn.
 import copy
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -496,6 +498,314 @@ class WorkflowEngineTests(unittest.TestCase):
                 self.assertEqual(result[0], 1, result)
                 self.assertEqual(self.state_path.read_bytes(), before)
                 self.assertFalse((self.project / ".byte-os/workflow.yaml").exists())
+
+
+    def expired_monitor_return(self):
+        """Retarget a temporary HOME automation after its run has returned."""
+        temporary_home = self.root / ("fake-home-" + self.project.name)
+        replacement = patch.dict(os.environ, HOME=str(temporary_home))
+        replacement.start()
+        self.addCleanup(replacement.stop)
+        run_id = self.long_wait()
+        automation = temporary_home / ".codex/automations/test-monitor/automation.toml"
+        automation.parent.mkdir(parents=True)
+        automation.write_text("original immutable observation bytes\n")
+        other = self.artifact({"independent_source": "must remain strict"})
+        state = self.state()
+        workflow = state["overall_outcome"]["workflow"]
+        refs = []
+        for name in ("monitor_registration", "return_wake_receipt"):
+            ref = state["overall_outcome"]["execution"][name]
+            path = Path(ref["path"])
+            value = json.loads(path.read_text())
+            value["sources"] = [hashref(automation), hashref(other)]
+            path.write_text(json.dumps(value))
+            updated = hashref(path)
+            workflow["evidence"][workflow["evidence"].index(ref)] = updated
+            state["overall_outcome"]["execution"][name] = updated
+            refs.append(updated)
+        self.state_path.write_text(json.dumps(state))
+        terminal = self.proof("run_terminal", run_id=run_id, attempt=1, exit_code=0)
+        handoff = self.project / ".byte-os/coordination/handoffs/terminal.md"
+        handoff.write_text("# Actually returned test fixture; not scientific evidence\n")
+        result = self.change("return-run", evidence=terminal, extra=("--handoff", str(handoff)))
+        self.assertEqual(result[0], 0, result)
+        # Model the passage of time, keeping the original receipt hash bindings exact.
+        state = self.state()
+        workflow = state["overall_outcome"]["workflow"]
+        expired = datetime.now(timezone.utc) - timedelta(hours=2)
+        self.retiring = []
+        for name in ("monitor_registration", "return_wake_receipt"):
+            ref = state["overall_outcome"]["execution"][name]
+            path = Path(ref["path"])
+            value = json.loads(path.read_text())
+            value.update(checked_at=expired.isoformat(), valid_until=(expired + timedelta(minutes=20)).isoformat())
+            path.write_text(json.dumps(value))
+            updated = hashref(path)
+            workflow["evidence"][workflow["evidence"].index(ref)] = updated
+            state["overall_outcome"]["execution"][name] = updated
+            self.retiring.append(path)
+        # Reproduce only the compatibility-mirror defect in the pre-fix state.
+        for mapping in (state["overall_outcome"], state["overall_outcome"]["execution"]):
+            mapping.update(current_handoff="historical-launch", current_handoff_sha256="0" * 64,
+                           baton_owner_session="codex:supervisor")
+        self.state_path.write_text(json.dumps(state))
+        automation.write_text("retargeted current bytes; never the old snapshot\n")
+        self.automation, self.strict_source = automation, other
+        self.assertEqual(self.call("status")[0], 1)
+        return self.repair_evidence()
+
+    def repair_evidence(self):
+        state = self.state()
+        workflow = state["overall_outcome"]["workflow"]
+        targets = []
+        for ref in workflow["evidence"]:
+            try:
+                value = json.loads(Path(ref["path"]).read_text())
+            except (ValueError, UnicodeError):
+                continue
+            for source in value.get("sources", []):
+                if Path(source["path"]) == self.automation:
+                    targets.append(dict(receipt=ref, source=source))
+        returned = workflow["returned_run"]
+        proof = self.proof("workflow_evidence_repair", owner_session=state["owner_session"],
+                           revision=workflow["revision"], state_sha256=hashref(self.state_path)["sha256"],
+                           authority_ref="user:bounded-monitor-repair", run_id=returned["run_id"], attempt=returned["attempt"],
+                           observed_automation_sha256=hashref(self.automation)["sha256"], targets=targets)
+        return proof
+
+    def repair(self, proof, *, check_only=False, event="repair-fixture", actor=None, revision=None, state_hash=None):
+        value = json.loads(proof.read_text())
+        extra = ("--expect-state-sha256", state_hash or value["state_sha256"],
+                 "--authority-ref", value["authority_ref"]) + (("--check-only",) if check_only else ())
+        return self.change("repair-expired-monitor-sources", actor=actor, revision=revision,
+                           event=event, evidence=proof, extra=extra)
+
+    def test_monitor_source_repair_preview_commit_mirrors_and_exact_replay(self):
+        proof = self.expired_monitor_return()
+        before = self.state()
+        files = {str(p.resolve()): hashref(p)["sha256"] for p in self.root.rglob("*") if p.is_file()}
+        preview = self.repair(proof, check_only=True)
+        self.assertEqual(preview[0], 0, preview)
+        self.assertEqual(preview[1]["retired_source_count"], 2)
+        self.assertFalse(preview[1]["changed"])
+        self.assertEqual(files, {str(p.resolve()): hashref(p)["sha256"] for p in self.root.rglob("*") if p.is_file()})
+        result = self.repair(proof)
+        self.assertEqual(result[0], 0, result)
+        after = self.state()
+        workflow = after["overall_outcome"]["workflow"]
+        self.assertEqual(workflow["revision"], before["overall_outcome"]["workflow"]["revision"] + 1)
+        self.assertTrue(workflow["return_pending"])
+        self.assertEqual(workflow["returned_run"], before["overall_outcome"]["workflow"]["returned_run"])
+        self.assertEqual(workflow["facts"], before["overall_outcome"]["workflow"]["facts"])
+        self.assertEqual(after["overall_outcome"]["acceptance"], before["overall_outcome"]["acceptance"])
+        self.assertEqual(workflow["evidence"][:-1], before["overall_outcome"]["workflow"]["evidence"])
+        for mapping in (after["overall_outcome"], after["overall_outcome"]["execution"]):
+            self.assertEqual(mapping["current_handoff"], after["current_handoff"])
+            self.assertEqual(mapping["current_handoff_sha256"], after["current_handoff_sha256"])
+            self.assertEqual(mapping["baton_owner_session"], "codex:main")
+        for path in self.retiring:
+            self.assertEqual(files[str(path.resolve())], hashref(path)["sha256"])
+        for command in ("status", "doctor"):
+            observed = self.call(command)
+            self.assertEqual(observed[0], 0, observed)
+            self.assertFalse(observed[1]["historical_sources_valid"])
+        self.assertFalse(self.call("doctor")[1]["native_scheduler_verified"])
+        committed = self.state_path.read_bytes()
+        self.assertTrue(self.repair(proof)[1]["idempotent"])
+        self.assertEqual(self.state_path.read_bytes(), committed)
+        value = json.loads(proof.read_text())
+        value["authority_ref"] = "changed"
+        proof.write_text(json.dumps(value))
+        self.assertEqual(self.repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), committed)
+
+    def test_monitor_source_repair_rejects_authority_cas_and_incomplete_targets(self):
+        proof = self.expired_monitor_return()
+        before = self.state_path.read_bytes()
+        original = proof.read_bytes()
+        for options in ({"actor": "codex:supervisor"}, {"revision": 0}, {"state_hash": "0" * 64}):
+            with self.subTest(options=options):
+                self.assertEqual(self.repair(proof, **options)[0], 1)
+                self.assertEqual(self.state_path.read_bytes(), before)
+        for mutation in ("owner_session", "revision", "run_id", "attempt", "observed_automation_sha256", "targets"):
+            value = json.loads(original)
+            value[mutation] = [] if mutation == "targets" else "incorrect"
+            proof.write_text(json.dumps(value))
+            self.assertEqual(self.repair(proof)[0], 1, mutation)
+            self.assertEqual(self.state_path.read_bytes(), before)
+        proof.write_bytes(original)
+        lock = self.state_path.with_name("state.json.lock")
+        lock.write_text("test-owned-lock")
+        self.assertEqual(self.repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        lock.unlink()
+
+    def test_monitor_source_repair_does_not_ignore_nonmonitor_sources_or_science(self):
+        proof = self.expired_monitor_return()
+        original = self.strict_source.read_bytes()
+        self.strict_source.write_text("tampered scientific/other source")
+        before = self.state_path.read_bytes()
+        self.assertEqual(self.repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        self.strict_source.write_bytes(original)
+        state = self.state()
+        path = self.retiring[0]
+        value = json.loads(path.read_text())
+        value["kind"] = "acceptance_verification"
+        ref = next(r for r in state["overall_outcome"]["workflow"]["evidence"] if r["path"] == str(path))
+        path.write_text(json.dumps(value))
+        state["overall_outcome"]["workflow"]["evidence"][state["overall_outcome"]["workflow"]["evidence"].index(ref)] = hashref(path)
+        self.state_path.write_text(json.dumps(state))
+        proof = self.repair_evidence()
+        before = self.state_path.read_bytes()
+        self.assertEqual(self.repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+
+    def test_monitor_repair_history_stays_strict_and_ack_is_not_automatic(self):
+        proof = self.expired_monitor_return()
+        self.assertEqual(self.repair(proof)[0], 0)
+        after = self.state_path.read_bytes()
+        for path in (self.retiring[0], self.strict_source,
+                     Path(self.workflow()["historical_source_invalidations"][0]["audit"]["path"])):
+            original = path.read_bytes()
+            path.write_bytes(original + b"tamper")
+            self.assertEqual(self.call("status")[0], 1)
+            self.assertEqual(self.state_path.read_bytes(), after)
+            path.write_bytes(original)
+        empty = self.proof("main_continuation", run_id=self.workflow()["returned_run"]["run_id"], attempt=1)
+        self.assertEqual(self.change("ack-return", evidence=empty)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), after)
+        _, output, command = self.real_trial(0)
+        ack = self.proof("main_continuation", run_id=self.workflow()["returned_run"]["run_id"], attempt=1,
+                         sources=[hashref(output)], executed_action=dict(command=command, exit_code=0, result_ref=hashref(output)))
+        self.assertEqual(self.change("ack-return", evidence=ack)[0], 0)
+        self.advance({"verified": True})
+        self.assertEqual(self.call("doctor")[0], 0)
+
+    def test_monitor_source_repair_rejects_unexpired_and_waiting_lanes(self):
+        proof = self.expired_monitor_return()
+        state = self.state()
+        state["overall_outcome"]["execution"]["mode"] = "waiting"
+        self.state_path.write_text(json.dumps(state))
+        proof = self.repair_evidence()
+        before = self.state_path.read_bytes()
+        self.assertEqual(self.repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        state["overall_outcome"]["execution"]["mode"] = "active"
+        path = self.retiring[0]
+        old_ref = next(r for r in state["overall_outcome"]["workflow"]["evidence"] if r["path"] == str(path))
+        value = json.loads(path.read_text())
+        value["valid_until"] = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        path.write_text(json.dumps(value))
+        state["overall_outcome"]["workflow"]["evidence"][state["overall_outcome"]["workflow"]["evidence"].index(old_ref)] = hashref(path)
+        self.state_path.write_text(json.dumps(state))
+        proof = self.repair_evidence()
+        before = self.state_path.read_bytes()
+        self.assertEqual(self.repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+
+
+    def test_new_arm_rejects_mutable_monitor_sources_and_accepts_snapshot(self):
+        self.long_wait()
+        state = self.state()
+        fields = ("supervisor_ack", "monitor_registration", "return_wake_receipt")
+        originals = {field: Path(state["overall_outcome"]["execution"][field]["path"]) for field in fields}
+        live = Path.home() / ".codex/automations/test-monitor/automation.toml"
+        # Use an isolated HOME before computing the live automation path.
+        replacement = patch.dict(os.environ, HOME=str(self.root / "arm-home"))
+        replacement.start()
+        self.addCleanup(replacement.stop)
+        live = Path.home() / ".codex/automations/test-monitor/automation.toml"
+        live.parent.mkdir(parents=True)
+        live.write_text("native registration readback fixture\n")
+        source = self.artifact({"snapshot": "immutable registration observation"})
+        for field in ("monitor_registration", "return_wake_receipt"):
+            for mutable in (live, self.state_path):
+                value = json.loads(originals[field].read_text())
+                value["sources"] = [hashref(mutable)]
+                changed = self.artifact(value)
+                extra = []
+                for name in fields:
+                    extra += ["--" + name.replace("_", "-"), str(changed if name == field else originals[name])]
+                before = self.state_path.read_bytes()
+                result = self.change("arm-run", extra=tuple(extra))
+                self.assertEqual(result[0], 1, result)
+                self.assertIn("immutable snapshots", result[1]["error"])
+                self.assertEqual(self.state_path.read_bytes(), before)
+        value = json.loads(originals["monitor_registration"].read_text())
+        value["sources"] = [hashref(source)]
+        immutable = self.artifact(value)
+        extra = []
+        for field in fields:
+            extra += ["--" + field.replace("_", "-"), str(immutable if field == "monitor_registration" else originals[field])]
+        self.assertEqual(self.change("arm-run", extra=tuple(extra))[0], 0)
+
+    def test_retired_receipt_cannot_arm_or_verify_scientific_acceptance(self):
+        proof = self.expired_monitor_return()
+        self.assertEqual(self.repair(proof)[0], 0)
+        invalid = self.workflow()["historical_source_invalidations"][0]["receipt"]
+        accepted = self.proof("acceptance_verification", {"loss": 0.0}, criterion_id="quality", sources=[invalid])
+        self.assertEqual(self.change("accept", evidence=accepted, extra=("--criterion", "quality"))[0], 1)
+        _, output, command = self.real_trial(0)
+        ack = self.proof("main_continuation", run_id=self.workflow()["returned_run"]["run_id"], attempt=1,
+                         sources=[hashref(output)], executed_action=dict(command=command, exit_code=0, result_ref=hashref(output)))
+        self.assertEqual(self.change("ack-return", evidence=ack)[0], 0)
+        launch = self.proof("run_launch", run_id="new-distinct-run", attempt=1, process={"host": "fixture", "identity": "new"})
+        handoff = self.project / ".byte-os/coordination/handoffs/new.md"
+        handoff.write_text("# New run identity, not a retry\n")
+        self.assertEqual(self.change("start-run", evidence=launch, extra=("--run-id", "new-distinct-run", "--handoff", str(handoff)))[0], 0)
+        # References need not match the new run: the explicit retirement check rejects first.
+        extra = ("--supervisor-ack", str(self.retiring[1]), "--monitor-registration", invalid["path"],
+                 "--return-wake-receipt", str(self.retiring[1]))
+        result = self.change("arm-run", extra=extra)
+        self.assertEqual(result[0], 1, result)
+        self.assertIn("retired historical", result[1]["error"])
+
+
+
+    def test_repair_double_cas_preserves_concurrent_state_or_automation_changes(self):
+        import contextlib
+        import importlib.util
+        import io
+        for drift in ("state", "automation"):
+            with self.subTest(drift=drift):
+                # A distinct fixture project keeps failed-attempt audit artifacts intact.
+                self.project = self.root / ("cas-" + drift)
+                self.project.mkdir()
+                self.state_path = self.project / ".byte-os/coordination/state.json"
+                result = self.call("init", "--template", str(self.template), "--objective", "CAS test",
+                                   "--authority-ref", "user:test", "--main-session", "codex:main",
+                                   "--supervisor-session", "codex:supervisor", "--monitor-id", "test-monitor", "--continuous")
+                self.assertEqual(result[0], 0, result)
+                proof = self.expired_monitor_return()
+                original_state = self.state_path.read_bytes()
+                sys.path.insert(0, str(CLI.parent))
+                try:
+                    spec = importlib.util.spec_from_file_location("repair_cas_test_" + drift, CLI)
+                    module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(module)
+                finally:
+                    sys.path.pop(0)
+                write = module.write_immutable
+                def concurrent_write(path, data):
+                    write(path, data)
+                    if path.name == "AUDIT.json":
+                        if drift == "state":
+                            self.state_path.write_bytes(original_state + b" ")
+                        else:
+                            self.automation.write_text("another real native retarget\n")
+                value = json.loads(proof.read_text())
+                argv = ["repair-expired-monitor-sources", "--project", str(self.project),
+                        "--session", "codex:main", "--expect-revision", str(self.workflow()["revision"]),
+                        "--event-id", "double-cas", "--expect-state-sha256", value["state_sha256"],
+                        "--authority-ref", value["authority_ref"], "--evidence", str(proof)]
+                with patch.object(module, "write_immutable", concurrent_write), contextlib.redirect_stdout(io.StringIO()) as output:
+                    code = module.main(argv)
+                self.assertEqual(code, 1, output.getvalue())
+                self.assertIn("changed before repair commit", output.getvalue())
+                self.assertEqual(self.state_path.read_bytes(), original_state + (b" " if drift == "state" else b""))
+
 
 
 if __name__ == "__main__":

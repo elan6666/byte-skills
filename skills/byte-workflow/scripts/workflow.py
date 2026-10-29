@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from continuation_check import Invalid, acceptance_evidence, check, evidence_bytes, nonempty, require
+from continuation_check import Invalid, acceptance_evidence, check, evidence_bytes, nonempty, require, timestamp
 from continuation_route import route
 
 
@@ -233,7 +233,82 @@ def paths(project):
     return root, root / ".byte-os/workflow.yaml", root / ".byte-os/coordination/state.json"
 
 
+def retired_sources(workflow, root):
+    """Verify hash-pinned retirement audits; never exempt a receipt's own bytes."""
+    entries = workflow.get("historical_source_invalidations", [])
+    require(isinstance(entries, list), "invalid historical source ledger")
+    allowed, audits = set(), {}
+    for entry in entries:
+        require(isinstance(entry, dict) and set(entry) == {"receipt", "source", "audit", "status"}
+                and entry["status"] == "invalid_retired", "invalid historical source marker")
+        audit_key = digest(encoded(entry["audit"]))
+        if audit_key not in audits:
+            audit = json.loads(evidence_bytes(entry["audit"], root, "source retirement audit"))
+            require(audit.get("kind") == "expired_monitor_source_retirement"
+                    and audit.get("status") == "invalid_retired"
+                    and audit.get("project") == str(root)
+                    and audit.get("instance_sha256") == workflow["instance_sha256"],
+                    "source retirement audit identity mismatch")
+            before = json.loads(evidence_bytes(audit["previous_state"], root, "repair previous state"))
+            old = before["overall_outcome"]
+            proof = json.loads(evidence_bytes(audit["repair_evidence"], root, "repair evidence"))
+            require(proof.get("kind") == "workflow_evidence_repair" and proof.get("status") == "verified"
+                    and proof.get("outcome_id") == old["id"]
+                    and proof.get("owner_session") == before["owner_session"]
+                    and proof.get("state_sha256") == audit["previous_state"]["sha256"]
+                    and proof.get("revision") == old["workflow"]["revision"]
+                    and proof.get("authority_ref") == audit["authority_ref"]
+                    and proof.get("targets") == audit["targets"]
+                    and proof.get("observed_automation_sha256") == audit["snapshot"]["sha256"],
+                    "source retirement audit differs from owner evidence")
+            for source in proof.get("sources", []):
+                evidence_bytes(source, Path(audit["repair_evidence"]["path"]).parent, "repair evidence source")
+            require(isinstance(proof.get("sources"), list) and bool(proof["sources"]),
+                    "repair evidence needs immutable sources")
+            evidence_bytes(audit["snapshot"], root, "repair current automation snapshot")
+            evidence_bytes(audit["terminal_receipt"], root, "repair terminal receipt")
+            evidence_bytes(audit["handoff"], root, "repair return handoff")
+            require(old["workflow"].get("return_pending") is True
+                    and old["execution"]["mode"] == "active"
+                    and old["workflow"]["returned_run"]["receipt"] == audit["terminal_receipt"]
+                    and old["workflow"]["returned_run"]["run_id"] == audit["run_id"]
+                    and old["workflow"]["returned_run"]["attempt"] == audit["attempt"],
+                    "retirement requires an already returned run")
+            audits[audit_key] = audit
+        audit = audits[audit_key]
+        target = {"receipt": entry["receipt"], "source": entry["source"]}
+        require(target in audit["targets"] and entry["receipt"] in workflow["evidence"],
+                "retirement marker is not in its immutable audit/history")
+        saved = json.loads(evidence_bytes(entry["receipt"], root, "retired receipt"))
+        # Each audit carries its own historical run; later iterations cannot revive it.
+        require(saved.get("kind") in ("monitor_registration", "return_wake")
+                and saved.get("status") == {"monitor_registration": "active", "return_wake": "verified"}[saved["kind"]]
+                and saved.get("outcome_id") == audit["outcome_id"]
+                and saved.get("run_id") == audit["run_id"]
+                and type(saved.get("attempt")) is int and saved["attempt"] == audit["attempt"]
+                and entry["source"] in saved.get("sources", [])
+                and str(source_path(entry["source"], Path(entry["receipt"]["path"]).parent)) == audit["automation_path"]
+                and entry["source"]["sha256"] != audit["snapshot"]["sha256"]
+                and timestamp(saved.get("valid_until"), "retired receipt.valid_until")
+                < timestamp(audit["checked_at"], "repair checked_at"),
+                "retirement can only cover exact expired monitor sources")
+        key = digest(encoded(target))
+        require(key not in allowed, "duplicate retired source")
+        allowed.add(key)
+    for key, audit in audits.items():
+        declared = [dict(receipt=e["receipt"], source=e["source"]) for e in entries
+                    if digest(encoded(e["audit"])) == key]
+        require(declared == audit["targets"], "retirement audit target set differs from ledger")
+    return allowed
+
+
+def source_path(source, root):
+    path = Path(source["path"])
+    return (path if path.is_absolute() else root / path).resolve()
+
+
 def verify_history(workflow, root):
+    retired = retired_sources(workflow, root)
     for ref in workflow["evidence"]:
         data = evidence_bytes(ref, root, "workflow.evidence")
         try:
@@ -242,7 +317,131 @@ def verify_history(workflow, root):
             continue
         if isinstance(saved, dict):
             for source in saved.get("sources", []):
-                evidence_bytes(source, Path(ref["path"]).parent, "workflow.evidence.sources")
+                if digest(encoded(dict(receipt=ref, source=source))) not in retired:
+                    evidence_bytes(source, Path(ref["path"]).parent, "workflow.evidence.sources")
+
+
+def history_diagnostics(workflow):
+    entries = workflow.get("historical_source_invalidations", [])
+    return {"historical_sources_valid": not bool(entries),
+            "invalidated_historical_sources": entries}
+
+
+def sync_handoff(state, handoff):
+    """Keep old relay readers aligned with the engine's canonical handoff."""
+    outcome = state["overall_outcome"]
+    for mapping in (state, outcome, outcome["execution"]):
+        mapping.update(current_handoff=handoff["path"], current_handoff_sha256=handoff["sha256"])
+        if "baton_owner_session" in mapping:
+            mapping["baton_owner_session"] = state["owner_session"]
+
+
+def repair_expired_monitor_sources(args, root, manifest, state, outcome, workflow, state_bytes):
+    """Prepare one exact returned-run repair; ordinary evidence checks stay strict."""
+    require(args.session == manifest["roles"]["main"] and outcome["execution"]["mode"] == "active"
+            and workflow.get("return_pending") is True, "repair requires active main with a pending returned run")
+    require(digest(state_bytes) == args.expect_state_sha256, "repair state SHA256 mismatch")
+    nonempty(args.authority_ref, "repair authority reference")
+    proof, ref = receipt(args.evidence, "workflow_evidence_repair", outcome, workflow)
+    returned = workflow["returned_run"]
+    require(proof.get("owner_session") == args.session
+            and type(proof.get("revision")) is int and proof["revision"] == workflow["revision"]
+            and proof.get("state_sha256") == args.expect_state_sha256
+            and proof.get("authority_ref") == args.authority_ref
+            and proof.get("run_id") == returned["run_id"]
+            and type(proof.get("attempt")) is int and proof["attempt"] == returned["attempt"],
+            "repair evidence owner/revision/state/run mismatch")
+    terminal = json.loads(evidence_bytes(returned["receipt"], root, "returned run terminal"))
+    require(terminal.get("kind") == "run_terminal" and terminal.get("status") == "verified"
+            and terminal.get("outcome_id") == outcome["id"]
+            and terminal.get("run_id") == returned["run_id"]
+            and type(terminal.get("attempt")) is int and terminal["attempt"] == returned["attempt"]
+            and type(terminal.get("exit_code")) is int and terminal["exit_code"] == returned["exit_code"],
+            "repair terminal identity mismatch")
+    for source in terminal.get("sources", []):
+        evidence_bytes(source, Path(returned["receipt"]["path"]).parent, "terminal source")
+    require(bool(terminal.get("sources")), "terminal needs strict sources")
+    handoff = {"path": state["current_handoff"], "sha256": state["current_handoff_sha256"]}
+    evidence_bytes(handoff, root, "canonical return handoff")
+    require(handoff in workflow["evidence"] and returned["receipt"] in workflow["evidence"],
+            "repair terminal and handoff must already belong to workflow history")
+    identifier(manifest["monitor"]["id"], "monitor ID")
+    automation = (Path.home() / ".codex/automations" / manifest["monitor"]["id"] / "automation.toml").resolve()
+    current = automation.read_bytes()
+    require(proof.get("observed_automation_sha256") == digest(current), "automation readback SHA256 mismatch")
+    # Repair evidence must itself be immutable, not a new reference to mutable state/config.
+    for source in proof["sources"]:
+        require(source_path(source, Path(args.evidence).resolve().parent) not in
+                (automation, paths(args.project)[2]), "repair evidence sources must be immutable snapshots")
+    existing = retired_sources(workflow, root)
+    targets, stamp = [], datetime.now(timezone.utc)
+    for historical in workflow["evidence"]:
+        data = evidence_bytes(historical, root, "workflow.evidence")
+        try:
+            saved = json.loads(data)
+        except (ValueError, UnicodeError):
+            continue
+        if not isinstance(saved, dict):
+            continue
+        for source in saved.get("sources", []):
+            target = dict(receipt=historical, source=source)
+            if digest(encoded(target)) in existing:
+                continue
+            try:
+                evidence_bytes(source, Path(historical["path"]).parent, "workflow.evidence.sources")
+            except Invalid:
+                require(saved.get("kind") in ("monitor_registration", "return_wake")
+                        and saved.get("status") == {"monitor_registration": "active", "return_wake": "verified"}[saved["kind"]]
+                        and saved.get("outcome_id") == outcome["id"]
+                        and saved.get("run_id") == returned["run_id"]
+                        and type(saved.get("attempt")) is int and saved["attempt"] == returned["attempt"]
+                        and source_path(source, Path(historical["path"]).parent) == automation
+                        and set(source) == {"path", "sha256"}
+                        and isinstance(source["sha256"], str)
+                        and re.fullmatch(r"[0-9a-f]{64}", source["sha256"])
+                        and source["sha256"] != digest(current)
+                        and timestamp(saved.get("checked_at"), "expired monitor.checked_at")
+                        < timestamp(saved.get("valid_until"), "expired monitor.valid_until") < stamp,
+                        "only exact expired returned-run monitor sources can be retired")
+                targets.append(target)
+    require(bool(targets) and proof.get("targets") == targets,
+            "repair requires the exact complete ordered failing-source list")
+    proposed = copy.deepcopy(state)
+    sync_handoff(proposed, handoff)
+    return dict(proof=ref, targets=targets, stamp=stamp.isoformat(), automation=automation,
+                current=current, handoff=handoff, terminal=returned["receipt"], proposed=proposed)
+
+
+def write_immutable(path, data):
+    with path.open("xb") as stream:
+        stream.write(data)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+def commit_monitor_repair(args, prepared, root, state, workflow, request_hash, state_bytes):
+    directory = root / ".byte-os/coordination/receipts" / ("workflow-source-repair-" + request_hash)
+    require(not directory.exists(), "repair artifact directory already exists; inspect prior attempt")
+    directory.mkdir(parents=True)
+    snapshot, previous, audit_path = (directory / name for name in ("automation-current.toml", "previous-state.json", "AUDIT.json"))
+    write_immutable(snapshot, prepared["current"])
+    write_immutable(previous, state_bytes)
+    returned = workflow["returned_run"]
+    audit = dict(kind="expired_monitor_source_retirement", status="invalid_retired",
+                 project=str(root), outcome_id=state["overall_outcome"]["id"],
+                 instance_sha256=workflow["instance_sha256"], checked_at=prepared["stamp"],
+                 authority_ref=args.authority_ref, repair_evidence=prepared["proof"],
+                 previous_state=reference(previous), snapshot=reference(snapshot),
+                 automation_path=str(prepared["automation"]), run_id=returned["run_id"],
+                 attempt=returned["attempt"], terminal_receipt=prepared["terminal"],
+                 handoff=prepared["handoff"], targets=prepared["targets"])
+    write_immutable(audit_path, encoded(audit))
+    target = prepared["proposed"]
+    repaired = target["overall_outcome"]["workflow"]
+    repaired.setdefault("historical_source_invalidations", []).extend(
+        dict(**item, audit=reference(audit_path), status="invalid_retired") for item in prepared["targets"])
+    repaired["evidence"].append(reference(audit_path))
+    return target
 
 
 def opened(project, verify_evidence=True):
@@ -295,6 +494,11 @@ def receipt(path, kind, outcome, workflow, *, current_step=True):
     require(isinstance(sources, list) and bool(sources), "receipt needs source artifacts")
     for source in sources:
         evidence_bytes(source, Path(path).resolve().parent, "receipt.sources")
+        if kind == "acceptance_verification":
+            require(not any(source_path(source, Path(path).resolve().parent) == Path(e["receipt"]["path"]).resolve()
+                            and source["sha256"] == e["receipt"]["sha256"]
+                            for e in workflow.get("historical_source_invalidations", [])),
+                    "retired monitoring cannot serve as scientific acceptance evidence")
     return value, ref
 
 
@@ -324,10 +528,12 @@ def current_facts(workflow, facts):
 def mutate(args):
     _, _, state_path = paths(args.project)
     with locked(state_path):
-        root, manifest, state, outcome, workflow = opened(args.project, verify_evidence=args.command != "pause")
+        state_bytes = state_path.read_bytes()
+        repairing = args.command == "repair-expired-monitor-sources"
+        root, manifest, state, outcome, workflow = opened(args.project, verify_evidence=args.command not in ("pause", "repair-expired-monitor-sources"))
         require(args.session in manifest["roles"].values(), "actor is not in this workflow")
         payload = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()
-                   if k not in ("expect_revision", "event_id", "project")}
+                   if k not in ("expect_revision", "event_id", "project", "check_only")}
         for key in ("evidence", "handoff", "supervisor_ack", "monitor_registration", "return_wake_receipt"):
             if payload.get(key):
                 payload[key] = reference(payload[key])
@@ -343,7 +549,21 @@ def mutate(args):
             require(state.get("owner_session") == args.session, "actor does not own the project baton")
         step = manifest["definition"]["steps"][workflow["step"]]
         execution = outcome["execution"]
-        if command == "advance":
+        if repairing:
+            prepared = repair_expired_monitor_sources(args, root, manifest, state, outcome, workflow, state_bytes)
+            preview = {"check_only": args.check_only, "outcome_id": outcome["id"],
+                       "revision": workflow["revision"], "retired_source_count": len(prepared["targets"]),
+                       "targets": prepared["targets"], "historical_sources_valid": False,
+                       "handoff_mirrors": {"before": {name: {k: mapping.get(k) for k in ("current_handoff", "current_handoff_sha256", "baton_owner_session")}
+                                                        for name, mapping in (("root", state), ("outcome", outcome), ("execution", execution))},
+                                           "after": prepared["handoff"]}}
+            require(state_path.read_bytes() == state_bytes, "state changed during repair inspection")
+            require(prepared["automation"].read_bytes() == prepared["current"], "automation changed during repair inspection")
+            if args.check_only:
+                return dict(preview, changed=False)
+            state = commit_monitor_repair(args, prepared, root, state, workflow, request_hash, state_bytes)
+            outcome, workflow = state["overall_outcome"], state["overall_outcome"]["workflow"]
+        elif command == "advance":
             require(execution["mode"] == "active" and args.session == manifest["roles"][step["owner"]], "advance requires the active step owner")
             require(not workflow.get("return_pending"), "main must acknowledge substantive continuation before advancing")
             value, ref = receipt(args.evidence, "step_result", outcome, workflow)
@@ -409,8 +629,7 @@ def mutate(args):
                 execution.pop(name, None)
             outcome["next_action"] = {"description": "Verify current run terminal and return to main", "trigger": "run_terminal"}
             state.update(owner=supervisor.split(":", 1)[0], owner_session=supervisor, stage="supervise")
-            state["current_handoff"] = handoff["path"]
-            state["current_handoff_sha256"] = handoff["sha256"]
+            sync_handoff(state, handoff)
             workflow["used_runs"].append(list(identity))
             clear_iteration_acceptance(outcome)
             workflow["evidence"] += [ref, handoff]
@@ -420,6 +639,15 @@ def mutate(args):
                     "only the current supervisor can acknowledge and arm its run")
             for name in ("supervisor_ack", "monitor_registration", "return_wake_receipt"):
                 execution[name] = reference(getattr(args, name))
+                require(not any(e["receipt"] == execution[name] for e in workflow.get("historical_source_invalidations", [])),
+                        "retired historical monitoring cannot arm a run")
+                if name in ("monitor_registration", "return_wake_receipt"):
+                    saved = load(getattr(args, name))
+                    live = (Path.home() / ".codex/automations" / manifest["monitor"]["id"] / "automation.toml").resolve()
+                    for source in saved.get("sources", []):
+                        require(source_path(source, Path(execution[name]["path"]).parent) not in (live, state_path),
+                                "monitor sources require immutable snapshots, not live automation/state")
+                        evidence_bytes(source, Path(execution[name]["path"]).parent, "monitor snapshot source")
             disposition, _, _ = check(outcome, root, datetime.now(timezone.utc), 3600)
             require(disposition == "yield_waiting", "run monitoring/return route is not armed")
             execution["monitor_status"] = "recorded_active"
@@ -445,8 +673,8 @@ def mutate(args):
             workflow["returned_run"] = {"run_id": execution["run_id"], "attempt": execution["attempt"], "exit_code": value["exit_code"], "receipt": ref}
             workflow["return_pending"] = True
             workflow["evidence"] += [ref, handoff]
-            state.update(current_handoff=handoff["path"], current_handoff_sha256=handoff["sha256"])
             make_ready(manifest, state, workflow["step"])
+            sync_handoff(state, handoff)
             execution["main_continuation"] = "pending"
         elif command == "ack-return":
             require(args.session == manifest["roles"]["main"] and workflow.get("return_pending"), "no pending main return")
@@ -515,6 +743,10 @@ def mutate(args):
         workflow["revision"] += 1
         workflow["events"].append({"id": args.event_id, "command": command, "actor": args.session,
                                    "request_sha256": request_hash, "revision": workflow["revision"], "at": now()})
+        if repairing:
+            verify_history(workflow, root)
+            require(state_path.read_bytes() == state_bytes, "state changed before repair commit")
+            require(prepared["automation"].read_bytes() == prepared["current"], "automation changed before repair commit")
         atomic(state_path, state)
         return {"revision": workflow["revision"], "outcome_id": outcome["id"], "status": outcome["status"],
                 "step": workflow["step"], "iteration": workflow["iteration"], "owner_session": state["owner_session"]}
@@ -709,13 +941,17 @@ def main(argv=None):
     commands.choices["route"].add_argument("--caller-session", required=True)
     commands.choices["route"].add_argument("--main-status", choices=("active", "idle", "unknown"), default="unknown")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
-    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume"):
+    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources"):
         sub = commands.add_parser(name)
         sub.add_argument("--session", required=True)
         sub.add_argument("--expect-revision", type=int, required=True)
         sub.add_argument("--event-id", required=True)
-        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block"):
+        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "repair-expired-monitor-sources"):
             sub.add_argument("--evidence", required=True, type=Path)
+        if name == "repair-expired-monitor-sources":
+            sub.add_argument("--expect-state-sha256", required=True)
+            sub.add_argument("--authority-ref", required=True)
+            sub.add_argument("--check-only", action="store_true")
         if name in ("start-run", "return-run"):
             sub.add_argument("--handoff", required=True, type=Path)
         if name == "accept":
@@ -763,13 +999,14 @@ def main(argv=None):
                           "step": workflow["step"], "iteration": workflow["iteration"], "visit": workflow["visit"],
                           "owner_session": state["owner_session"], "next_action": outcome["next_action"],
                           "return_pending": workflow.get("return_pending", False), "monitor": manifest["monitor"],
-                          "acceptance": outcome["acceptance"]}
+                          "acceptance": outcome["acceptance"], **history_diagnostics(workflow)}
             elif args.command == "doctor":
                 for ref in workflow["evidence"]:
                     evidence_bytes(ref, root, "workflow.evidence")
                 disposition, reasons, _ = check(outcome, root, datetime.now(timezone.utc), 3600)
                 result = {"consistent": True, "disposition": disposition, "reasons": reasons,
-                          "native_scheduler_verified": False, "limitation": "Local records only; reread the app monitor and observe scheduling separately."}
+                          "native_scheduler_verified": False, "limitation": "Local records only; reread the app monitor and observe scheduling separately.",
+                          **history_diagnostics(workflow)}
             elif args.command == "route":
                 result = route(state, root, outcome_id=outcome["id"], main=manifest["roles"]["main"],
                                supervisor=manifest["roles"]["supervisor"], caller=args.caller_session, main_status=args.main_status)

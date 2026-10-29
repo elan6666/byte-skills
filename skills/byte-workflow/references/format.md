@@ -236,6 +236,80 @@ The attached `command_result` JSON must match that command/exit, have
 `result_ref` must also be in `sources`. An empty ACK or delivered message fails.
 Only then can main advance the experiment result into evaluation or repair.
 
+### Retired monitor sources after return
+
+Monitor and return-wake `sources` must use immutable readback snapshots, never
+the pinned monitor's live `~/.codex/automations/<id>/automation.toml` or the
+authority `state.json`. `arm-run` rejects those two mutable paths for these two
+receipt kinds only. The live path may remain descriptive metadata. A snapshot
+records the bytes actually observed then; it does not prove current scheduling,
+an immediate event bridge, or future wakeup delivery.
+
+If an older receipt already referenced that mutable TOML, preserve its original
+bytes and hashes. Do not reconstruct a missing old TOML from prompt fields or
+rewrite historical receipts. Normal history and scientific acceptance checks
+remain strict. After the exact run has returned, active main may explicitly
+retire only the failed source bindings in expired `monitor_registration` and
+`return_wake` receipts:
+
+```bash
+python3 <skill>/scripts/workflow.py repair-expired-monitor-sources \
+  --project <authority-project> --session <exact-main-ref> \
+  --expect-revision <fresh-revision> --expect-state-sha256 <fresh-state-hash> \
+  --event-id <stable-id> --authority-ref <explicit-repair-authority> \
+  --evidence <immutable-owner-repair-receipt.json> --check-only
+```
+
+The repair receipt has the normal current outcome/step/iteration/visit identity,
+`kind: workflow_evidence_repair`, `status: verified`, immutable nonempty `sources`,
+and these extra fields:
+
+```json
+{
+  "owner_session": "codex:<main-id>",
+  "revision": 10,
+  "state_sha256": "<actual-authority-state-SHA256>",
+  "authority_ref": "<same-explicit-authority-as-CLI>",
+  "run_id": "<returned-run>",
+  "attempt": 1,
+  "observed_automation_sha256": "<current-live-TOML-SHA256>",
+  "targets": [{
+    "receipt": {"path": "/absolute/old-receipt.json", "sha256": "<original-hash>"},
+    "source": {"path": "/absolute/live/automation.toml", "sha256": "<old-hash>"}
+  }]
+}
+```
+
+`targets` is the exact complete ordered list of failing sources in current
+workflow history. Each original receipt's own hash must still match, its kind,
+outcome/run/attempt and expiry must match the returned run, and only the pinned
+monitor TOML source may fail. All other receipts/sources still validate normally.
+Current state/automation cannot themselves be repair `sources`; use immutable
+inspection output/readback files. Inspection output is evidence of observation,
+not a claim that the old SHA has been recovered.
+
+`--check-only` writes no state or repair artifacts. After reviewing that preview,
+remove only this flag with the same event/evidence. The engine double-checks the
+state bytes and live TOML, saves exact current bytes and pre-repair state plus a
+hash-pinned audit in a fresh `workflow-source-repair-<request-hash>/` receipt
+directory, and commits one revision. Drift rejects the write and preserves any
+already-created forensic artifacts; inspect those before a new repair attempt.
+Exact successful event replay is idempotent; changed evidence is rejected.
+
+Original history refs remain unchanged. The additional
+`historical_source_invalidations` ledger labels each exact source
+`invalid_retired`, never revalidated. `status`/`doctor` expose
+`historical_sources_valid: false` and the markers. Receipt bytes, other sources,
+repair evidence/snapshot/audit and scientific acceptance remain hash checked.
+Retired monitor receipts cannot arm a run or serve as scientific acceptance.
+New waits still need fresh ACK/monitor/return-wake evidence.
+
+Start/return commands synchronize root, outcome and execution handoff mirrors;
+existing baton-owner mirrors track the actual baton. This repair also aligns a
+pre-fix state's mirrors to its already hash-verified root return handoff. It does
+not acknowledge continuation, change acceptance/facts, or execute/stop/retry jobs.
+Main must still run and prove the independent action required by `ack-return`.
+
 ## Native scheduler integration and recovery
 
 `monitor-prompt --project <path>` emits a stable prompt and requested monitor
