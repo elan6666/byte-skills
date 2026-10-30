@@ -336,6 +336,136 @@ def sync_handoff(state, handoff):
             mapping["baton_owner_session"] = state["owner_session"]
 
 
+def run_mirrors(state):
+    keys = ("run_id", "attempt", "stage_scope", "active_background_job")
+    outcome = state["overall_outcome"]
+    return {name: {key: copy.deepcopy(mapping[key]) for key in keys if key in mapping}
+            for name, mapping in (("root", state), ("outcome", outcome), ("execution", outcome["execution"]))}
+
+
+def sync_run_mirrors(state, launch, launch_refs, scope=None):
+    """Mirror only identity declared by launch evidence; never infer job metadata."""
+    outcome = state["overall_outcome"]
+    job = dict(run_id=launch["run_id"], attempt=launch["attempt"],
+               process=copy.deepcopy(launch["process"]), launch_receipts=copy.deepcopy(launch_refs))
+    if scope is not None:
+        nonempty(scope, "stage_scope")
+        job["stage_scope"] = scope
+    for mapping in (state, outcome, outcome["execution"]):
+        mapping.update(run_id=launch["run_id"], attempt=launch["attempt"],
+                       active_background_job=copy.deepcopy(job))
+        mapping.pop("stage_scope", None)
+        if scope is not None:
+            mapping["stage_scope"] = scope
+
+
+def handoff_scope(data):
+    text = data.decode("utf-8")
+    scopes = []
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            require(key not in result, "duplicate JSON handoff key: " + key)
+            result[key] = value
+        return result
+    try:
+        value = json.loads(text, object_pairs_hook=unique)
+    except json.JSONDecodeError:
+        value = None
+    if isinstance(value, dict) and "stage_scope" in value:
+        nonempty(value["stage_scope"], "handoff stage_scope")
+        scopes.append(value["stage_scope"])
+    for line in re.findall(r"^[ \t]*stage_scope:[^\n]*", text, re.MULTILINE):
+        match = re.fullmatch(r"[ \t]*stage_scope:[ \t]*([a-z][a-z0-9_-]*)[ \t\r]*", line)
+        require(match is not None, "malformed explicit handoff stage_scope")
+        scopes.append(match[1])
+    scopes += re.findall(r"; scope ([a-z][a-z0-9_-]*)\.", text)
+    require(bool(scopes) and len(set(scopes)) == 1,
+            "current handoff needs one unambiguous explicit stage_scope")
+    return scopes[0]
+
+
+def repair_run_mirrors(args, root, state, outcome, workflow, state_bytes):
+    """Prepare a current-owner metadata repair without changing a running job."""
+    execution = outcome["execution"]
+    require(execution["mode"] == "waiting" and not workflow.get("return_pending"),
+            "run mirror repair requires a waiting run")
+    require(digest(state_bytes) == args.expect_state_sha256, "repair state SHA256 mismatch")
+    proof, ref = receipt(args.evidence, "run_identity_mirror_repair", outcome, workflow)
+    run_id, attempt = execution.get("run_id"), execution.get("attempt")
+    nonempty(run_id, "execution.run_id")
+    require(type(attempt) is int and attempt > 0, "invalid execution attempt")
+    require(proof.get("owner_session") == args.session
+            and type(proof.get("revision")) is int and proof["revision"] == workflow["revision"]
+            and proof.get("state_sha256") == args.expect_state_sha256
+            and proof.get("run_id") == run_id
+            and type(proof.get("attempt")) is int and proof["attempt"] == attempt,
+            "repair evidence owner/revision/state/run mismatch")
+    handoff = {"path": execution.get("current_handoff"), "sha256": execution.get("current_handoff_sha256")}
+    evidence_bytes(handoff, root, "current run handoff")
+    require(handoff in workflow["evidence"] and proof.get("handoff") == handoff,
+            "repair must bind the current recorded handoff")
+    require(source_path(handoff, root).is_relative_to(root / ".byte-os/coordination/handoffs"),
+            "current handoff must be in coordination/handoffs")
+    launches = []
+    for item in workflow["evidence"]:
+        data = evidence_bytes(item, root, "run launch history")
+        try:
+            saved = json.loads(data)
+        except (ValueError, UnicodeError):
+            continue
+        if isinstance(saved, dict) and saved.get("kind") == "run_launch" and saved.get("run_id") == run_id:
+            require(type(saved.get("attempt")) is int, "invalid recorded launch attempt")
+            if saved["attempt"] == attempt:
+                launch, launch_ref = receipt(source_path(item, root), "run_launch", outcome, workflow)
+                require(launch_ref == item, "recorded launch reference mismatch")
+                launches.append((launch, item))
+    launch_refs = [item for _, item in launches]
+    require(bool(launches) and proof.get("launch_receipts") == launch_refs,
+            "repair requires the exact recorded current-run launch receipts")
+    launch = launches[0][0]
+    process = launch.get("process")
+    require(isinstance(process, dict) and process.get("host") and process.get("identity"),
+            "launch needs durable process/scheduler identity")
+    require(encoded(proof.get("process")) == encoded(process)
+            and all(encoded(item.get("process")) == encoded(process) for item, _ in launches),
+            "repair process differs from recorded launch")
+    scope = proof.get("stage_scope")
+    nonempty(scope, "repair stage_scope")
+    require(scope == handoff_scope(evidence_bytes(handoff, root, "scope handoff")),
+            "repair scope differs from explicit current handoff declaration")
+    for item, _ in launches:
+        require("stage_scope" not in item or item["stage_scope"] == scope,
+                "repair scope differs from recorded launch")
+    require(all(item in proof["sources"] for item in launch_refs + [handoff]),
+            "repair sources must include every launch and current handoff")
+    proposed = copy.deepcopy(state)
+    sync_run_mirrors(proposed, launch, launch_refs, scope)
+    return dict(proof=ref, handoff=handoff, launches=launch_refs,
+                before=run_mirrors(state), after=run_mirrors(proposed), proposed=proposed)
+
+
+def commit_run_mirror_repair(prepared, root, workflow, request_hash, state_bytes):
+    directory = root / ".byte-os/coordination/receipts" / ("run-mirror-repair-" + request_hash)
+    require(not directory.exists(), "repair artifact directory already exists; inspect prior attempt")
+    directory.mkdir(parents=True)
+    previous, audit_path = directory / "previous-state.json", directory / "AUDIT.json"
+    write_immutable(previous, state_bytes)
+    identity = prepared["after"]["execution"]
+    audit = dict(kind="run_identity_mirror_repair_audit", status="verified", checked_at=now(),
+                 outcome_id=prepared["proposed"]["overall_outcome"]["id"],
+                 instance_sha256=workflow["instance_sha256"], revision=workflow["revision"],
+                 owner_session=prepared["proposed"]["owner_session"],
+                 run_id=identity["run_id"], attempt=identity["attempt"],
+                 repair_evidence=prepared["proof"], previous_state=reference(previous),
+                 before=prepared["before"], after=prepared["after"],
+                 sources=[prepared["proof"], reference(previous), prepared["handoff"]] + prepared["launches"])
+    write_immutable(audit_path, encoded(audit))
+    target = prepared["proposed"]
+    target["overall_outcome"]["workflow"]["evidence"] += [prepared["proof"], reference(audit_path)]
+    return target
+
+
 def repair_expired_monitor_sources(args, root, manifest, state, outcome, workflow, state_bytes):
     """Prepare one exact returned-run repair; ordinary evidence checks stay strict."""
     require(args.session == manifest["roles"]["main"] and outcome["execution"]["mode"] == "active"
@@ -530,6 +660,7 @@ def mutate(args):
     with locked(state_path):
         state_bytes = state_path.read_bytes()
         repairing = args.command == "repair-expired-monitor-sources"
+        mirror_repair = args.command == "repair-run-mirrors"
         root, manifest, state, outcome, workflow = opened(args.project, verify_evidence=args.command not in ("pause", "repair-expired-monitor-sources"))
         require(args.session in manifest["roles"].values(), "actor is not in this workflow")
         payload = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()
@@ -562,6 +693,14 @@ def mutate(args):
             if args.check_only:
                 return dict(preview, changed=False)
             state = commit_monitor_repair(args, prepared, root, state, workflow, request_hash, state_bytes)
+            outcome, workflow = state["overall_outcome"], state["overall_outcome"]["workflow"]
+        elif mirror_repair:
+            prepared = repair_run_mirrors(args, root, state, outcome, workflow, state_bytes)
+            require(state_path.read_bytes() == state_bytes, "state changed during repair inspection")
+            if args.check_only:
+                return dict(check_only=True, changed=False, revision=workflow["revision"],
+                            before=prepared["before"], after=prepared["after"])
+            state = commit_run_mirror_repair(prepared, root, workflow, request_hash, state_bytes)
             outcome, workflow = state["overall_outcome"], state["overall_outcome"]["workflow"]
         elif command == "advance":
             require(execution["mode"] == "active" and args.session == manifest["roles"][step["owner"]], "advance requires the active step owner")
@@ -620,7 +759,12 @@ def mutate(args):
             require(isinstance(value.get("process"), dict) and value["process"].get("host") and value["process"].get("identity"), "launch needs durable process/scheduler identity")
             handoff = reference(args.handoff)
             require(Path(args.handoff).resolve().is_relative_to(root / ".byte-os/coordination/handoffs"), "handoff must be in project coordination/handoffs")
+            if "stage_scope" in value:
+                nonempty(value["stage_scope"], "launch stage_scope")
+                require(value["stage_scope"] == handoff_scope(evidence_bytes(handoff, root, "launch scope handoff")),
+                        "launch scope differs from explicit handoff declaration")
             main_session, supervisor = manifest["roles"]["main"], manifest["roles"]["supervisor"]
+            previous_mirrors = run_mirrors(state)
             execution.update(mode="waiting", run_id=args.run_id, attempt=args.attempt,
                              owner_session=main_session, supervisor_session=supervisor,
                              monitor_id=manifest["monitor"]["id"], independent_work_remaining=False,
@@ -630,6 +774,10 @@ def mutate(args):
             outcome["next_action"] = {"description": "Verify current run terminal and return to main", "trigger": "run_terminal"}
             state.update(owner=supervisor.split(":", 1)[0], owner_session=supervisor, stage="supervise")
             sync_handoff(state, handoff)
+            sync_run_mirrors(state, value, [ref], value.get("stage_scope"))
+            if any(previous_mirrors.values()):
+                workflow.setdefault("run_mirror_history", []).append(
+                    dict(command="start-run", launch_receipt=ref, previous=previous_mirrors))
             workflow["used_runs"].append(list(identity))
             clear_iteration_acceptance(outcome)
             workflow["evidence"] += [ref, handoff]
@@ -747,6 +895,9 @@ def mutate(args):
             verify_history(workflow, root)
             require(state_path.read_bytes() == state_bytes, "state changed before repair commit")
             require(prepared["automation"].read_bytes() == prepared["current"], "automation changed before repair commit")
+        if mirror_repair:
+            verify_history(workflow, root)
+            require(state_path.read_bytes() == state_bytes, "state changed before repair commit")
         atomic(state_path, state)
         return {"revision": workflow["revision"], "outcome_id": outcome["id"], "status": outcome["status"],
                 "step": workflow["step"], "iteration": workflow["iteration"], "owner_session": state["owner_session"]}
@@ -941,17 +1092,18 @@ def main(argv=None):
     commands.choices["route"].add_argument("--caller-session", required=True)
     commands.choices["route"].add_argument("--main-status", choices=("active", "idle", "unknown"), default="unknown")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
-    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources"):
+    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors"):
         sub = commands.add_parser(name)
         sub.add_argument("--session", required=True)
         sub.add_argument("--expect-revision", type=int, required=True)
         sub.add_argument("--event-id", required=True)
-        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "repair-expired-monitor-sources"):
+        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "repair-expired-monitor-sources", "repair-run-mirrors"):
             sub.add_argument("--evidence", required=True, type=Path)
-        if name == "repair-expired-monitor-sources":
+        if name in ("repair-expired-monitor-sources", "repair-run-mirrors"):
             sub.add_argument("--expect-state-sha256", required=True)
-            sub.add_argument("--authority-ref", required=True)
             sub.add_argument("--check-only", action="store_true")
+        if name == "repair-expired-monitor-sources":
+            sub.add_argument("--authority-ref", required=True)
         if name in ("start-run", "return-run"):
             sub.add_argument("--handoff", required=True, type=Path)
         if name == "accept":

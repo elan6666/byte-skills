@@ -214,6 +214,60 @@ rejects the unarmed intermediate state. Main must reconcile an unarmed lane
 rather than silently ending or relaunching the job. Invalid launch evidence
 does not transfer ownership. The engine never launches, kills or retries jobs.
 
+`start-run` also synchronizes `run_id`, `attempt` and a minimal
+`active_background_job` across root/outcome/execution. The job contains only the
+recorded launch process and receipt references, without inferred paths or PIDs.
+An optional launch `stage_scope` must equal the explicit scope in the same hashed
+handoff. Without that launch field, stale scope mirrors are removed. Previous
+mirror values remain in `workflow.run_mirror_history`; old opaque process
+identities remain supported.
+
+### Repairing stale run mirrors during a wait
+
+The current baton owner can repair an already recorded waiting run, including
+an armed run, without returning or relaunching it:
+
+```bash
+python3 <skill>/scripts/workflow.py repair-run-mirrors \
+  --project <authority-project> --session <exact-current-owner-ref> \
+  --expect-revision <fresh-revision> --expect-state-sha256 <fresh-state-hash> \
+  --event-id <stable-id> --evidence <immutable-owner-repair-receipt.json> \
+  --check-only
+```
+
+The normal verified receipt identity (`outcome_id`, `step_id`, `iteration`,
+`visit`, `sources`) is required, with `kind: run_identity_mirror_repair` and:
+
+```json
+{
+  "owner_session": "codex:<current-owner-id>",
+  "revision": 94,
+  "state_sha256": "<fresh-authority-state-sha256>",
+  "run_id": "<current-execution-run>",
+  "attempt": 2,
+  "stage_scope": "<explicit-authorized-current-handoff-scope>",
+  "handoff": {"path": "<current-handoff>", "sha256": "<current-hash>"},
+  "launch_receipts": [{"path": "<original-run-launch>", "sha256": "<original-hash>"}],
+  "process": {"host": "<original-host>", "identity": "<exact-original-value>"}
+}
+```
+
+`process.identity` may be the original structured object; copy it exactly.
+`launch_receipts` lists every matching recorded current-run launch in history
+order. `sources` must include each launch and the current hashed handoff; their
+original source hashes must still verify. The scope must be explicitly declared
+in that handoff as JSON `stage_scope`, a standalone `stage_scope: identifier`
+line, or `; scope identifier.`. Conflicting or absent declarations fail.
+
+First inspect `--check-only`, then omit it with the same fresh state guards.
+The repair preserves mode, baton/owners, handoff, protocol, acceptance criteria,
+monitor receipts and prior evidence/history. Only the run/attempt/scope/job
+mirrors change, plus the normal revision/event/evidence records. An immutable
+`run-mirror-repair-<request-hash>/` receipt directory archives the exact previous
+state and before/after mirrors. State bytes are checked again before committing;
+a concurrent change aborts without replacing that state. The command never
+creates, retargets or validates native scheduling.
+
 Supervisor uses `return-run` with a verified `run_terminal` receipt containing
 the exact run/attempt and an integer `exit_code`, plus a new `--handoff`.
 State returns to main with continuation pending. Supervisor cannot advance an

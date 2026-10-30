@@ -248,14 +248,16 @@ class WorkflowEngineTests(unittest.TestCase):
             self.assertEqual(result[1]["action"], action)
         self.assertEqual(self.call("route", "--caller-session", "codex:main", "--main-status", "active")[1]["action"], "continue_main")
 
-    def long_wait(self):
+    def long_wait(self, scope=None, process=None):
         self.experiment_step()
         outcome, workflow = self.outcome(), self.workflow()
         run_id = "long-test"
         handoff = self.project / ".byte-os/coordination/handoffs/launch.md"
         handoff.parent.mkdir(parents=True)
-        handoff.write_text("# Local test fixture handoff; not a native model launch\n")
-        launch = self.proof("run_launch", run_id=run_id, attempt=1, process={"host": "fixture", "identity": "test-process"})
+        handoff.write_text("# Local test fixture handoff; not a native model launch\n" +
+                           (f"Exact run: {run_id}; attempt1; scope {scope}.\n" if scope is not None else ""))
+        launch = self.proof("run_launch", run_id=run_id, attempt=1,
+                            process=process or {"host": "fixture", "identity": "test-process"})
         result = self.change("start-run", evidence=launch, extra=("--run-id", run_id, "--handoff", str(handoff)))
         self.assertEqual(result[0], 0, result)
         self.assertEqual(self.outcome()["execution"]["monitor_status"], "unarmed")
@@ -806,6 +808,205 @@ class WorkflowEngineTests(unittest.TestCase):
                 self.assertIn("changed before repair commit", output.getvalue())
                 self.assertEqual(self.state_path.read_bytes(), original_state + (b" " if drift == "state" else b""))
 
+
+
+    def run_mirror_fixture(self, scope="current_scope"):
+        process = {"host": "fixture", "identity": {"pid": 4142, "uid": 1000, "ppid": 1,
+                   "start_ticks": 987, "command_sha256": "a" * 64, "script_basename": "fit.sh"}}
+        self.long_wait(scope=scope, process=process)
+        state = self.state()
+        outcome, execution = state["overall_outcome"], state["overall_outcome"]["execution"]
+        for mapping in (state, outcome, execution):
+            mapping.update(stage_scope="stale_scope", active_background_job={"run_id": "stale", "pid": 12,
+                           "custom_extension": {"preserve": True}})
+        for mapping in (state, outcome):
+            mapping.update(run_id="stale", attempt=99)
+        self.state_path.write_text(json.dumps(state))
+        launch_refs = [ref for ref in outcome["workflow"]["evidence"]
+                       if Path(ref["path"]).suffix == ".json" and
+                       json.loads(Path(ref["path"]).read_text()).get("kind") == "run_launch"]
+        handoff = dict(path=execution["current_handoff"], sha256=execution["current_handoff_sha256"])
+        return self.proof("run_identity_mirror_repair", owner_session=state["owner_session"],
+                          revision=outcome["workflow"]["revision"], state_sha256=hashref(self.state_path)["sha256"],
+                          run_id=execution["run_id"], attempt=execution["attempt"], process=process,
+                          launch_receipts=launch_refs, handoff=handoff, stage_scope="current_scope",
+                          sources=launch_refs + [handoff])
+
+    def mirror_repair(self, proof, **kwargs):
+        return self.change("repair-run-mirrors", evidence=proof,
+                           extra=("--expect-state-sha256", json.loads(proof.read_text())["state_sha256"]), **kwargs)
+
+    def test_start_run_synchronizes_mirrors_and_removes_undeclared_scope(self):
+        self.experiment_step()
+        for declared in (None, "declared_scope"):
+            with self.subTest(declared=declared):
+                # Reuse a saved active fixture to isolate both launch shapes.
+                original = self.state_path.read_bytes()
+                state = self.state()
+                for mapping in (state, state["overall_outcome"], state["overall_outcome"]["execution"]):
+                    mapping.update(run_id="stale", attempt=99, stage_scope="stale_scope",
+                                   active_background_job={"extension": "keep in history"})
+                self.state_path.write_text(json.dumps(state))
+                launch = self.proof("run_launch", run_id="fresh", attempt=2,
+                                    process={"host": "fixture", "identity": "legacy-opaque"},
+                                    **({"stage_scope": declared} if declared else {}))
+                handoff = self.project / ".byte-os/coordination/handoffs/fresh.md"
+                handoff.parent.mkdir(exist_ok=True)
+                handoff.write_text("# Actual launch handoff fixture\n" +
+                                   (f"stage_scope: {declared}\n" if declared else ""))
+                result = self.change("start-run", evidence=launch, extra=("--run-id", "fresh", "--attempt", "2", "--handoff", str(handoff)))
+                self.assertEqual(result[0], 0, result)
+                state = self.state()
+                for mapping in (state, state["overall_outcome"], state["overall_outcome"]["execution"]):
+                    self.assertEqual((mapping["run_id"], mapping["attempt"]), ("fresh", 2))
+                    self.assertEqual(mapping.get("stage_scope"), declared)
+                    self.assertEqual(mapping["active_background_job"]["process"]["identity"], "legacy-opaque")
+                archive = self.workflow()["run_mirror_history"][-1]["previous"]
+                self.assertEqual(archive["root"]["active_background_job"], {"extension": "keep in history"})
+                self.assertEqual(archive["execution"]["run_id"], "stale")
+                self.state_path.write_bytes(original)
+
+    def test_start_run_rejects_scope_not_declared_by_exact_handoff(self):
+        self.experiment_step()
+        launch = self.proof("run_launch", run_id="fresh", attempt=1, stage_scope="substituted",
+                            process={"host": "fixture", "identity": "legacy-opaque"})
+        handoff = self.project / ".byte-os/coordination/handoffs/fresh.md"
+        handoff.parent.mkdir(exist_ok=True)
+        handoff.write_text("Exact run: fresh; attempt1; scope authorized.\n")
+        before = self.state_path.read_bytes()
+        result = self.change("start-run", evidence=launch, extra=("--run-id", "fresh", "--handoff", str(handoff)))
+        self.assertEqual(result[0], 1, result)
+        self.assertIn("launch scope differs", result[1]["error"])
+        self.assertEqual(self.state_path.read_bytes(), before)
+
+    def test_run_mirror_repair_preserves_baton_protocol_and_archives_exact_previous_state(self):
+        proof = self.run_mirror_fixture()
+        before_bytes, before = self.state_path.read_bytes(), self.state()
+        preview = self.change("repair-run-mirrors", evidence=proof, event="mirror-preview",
+                              extra=("--expect-state-sha256", hashref(self.state_path)["sha256"], "--check-only"))
+        self.assertEqual(preview[0], 0, preview)
+        self.assertEqual(self.state_path.read_bytes(), before_bytes)
+        result = self.mirror_repair(proof, event="mirror-commit")
+        self.assertEqual(result[0], 0, result)
+        after = self.state()
+        self.assertEqual(self.call("doctor")[0], 0)
+        self.assertEqual(after["owner_session"], before["owner_session"])
+        for name, old, new in (("root", before, after),
+                               ("outcome", before["overall_outcome"], after["overall_outcome"]),
+                               ("execution", before["overall_outcome"]["execution"], after["overall_outcome"]["execution"])):
+            self.assertEqual((new["run_id"], new["attempt"], new["stage_scope"]), ("long-test", 1, "current_scope"))
+            self.assertEqual(new["active_background_job"]["process"], json.loads(proof.read_text())["process"])
+            excluded = {"run_id", "attempt", "stage_scope", "active_background_job", "workflow", "overall_outcome", "execution"}
+            self.assertEqual({k: v for k, v in old.items() if k not in excluded},
+                             {k: v for k, v in new.items() if k not in excluded}, name)
+        audit_ref = self.workflow()["evidence"][-1]
+        audit = json.loads(Path(audit_ref["path"]).read_text())
+        self.assertEqual(Path(audit["previous_state"]["path"]).read_bytes(), before_bytes)
+        self.assertEqual(audit["before"]["root"]["active_background_job"]["custom_extension"], {"preserve": True})
+        self.assertEqual(self.workflow()["used_runs"], before["overall_outcome"]["workflow"]["used_runs"])
+        self.assertTrue(self.mirror_repair(proof, event="mirror-commit")[1]["idempotent"])
+
+    def test_run_mirror_repair_rejects_substitution_and_stale_guards(self):
+        proof = self.run_mirror_fixture()
+        original = json.loads(proof.read_text())
+        before = self.state_path.read_bytes()
+        other_launch = self.proof("run_launch", run_id="long-test", attempt=1,
+                                  process={"host": "fixture", "identity": "unrecorded"})
+        float_pid = copy.deepcopy(original["process"])
+        float_pid["identity"]["pid"] = float(float_pid["identity"]["pid"])
+        variants = [dict(launch_receipts=[hashref(other_launch)]), dict(process=float_pid), dict(owner_session="codex:main"), dict(revision=0), dict(state_sha256="0" * 64),
+                    dict(run_id="other"), dict(attempt=2), dict(attempt=True), dict(stage_scope="other_scope"),
+                    dict(process={"host": "fixture", "identity": {"pid": 4143}}), dict(launch_receipts=[]),
+                    dict(handoff=hashref(self.artifact({"different": "handoff"}))), dict(sources=[original["handoff"]])]
+        for changed in variants:
+            with self.subTest(changed=changed):
+                altered = self.artifact(dict(original, **changed))
+                result = self.mirror_repair(altered)
+                self.assertEqual(result[0], 1, result)
+                self.assertEqual(self.state_path.read_bytes(), before)
+        for kwargs in (dict(actor="codex:main"), dict(revision=0)):
+            result = self.mirror_repair(proof, **kwargs)
+            self.assertEqual(result[0], 1, result)
+            self.assertEqual(self.state_path.read_bytes(), before)
+        self.state_path.write_bytes(before + b" ")
+        result = self.mirror_repair(proof)
+        self.assertEqual(result[0], 1, result)
+        self.assertIn("SHA256 mismatch", result[1]["error"])
+        self.assertEqual(self.state_path.read_bytes(), before + b" ")
+
+    def test_run_mirror_repair_requires_one_explicit_consistent_handoff_scope(self):
+        proof = self.run_mirror_fixture()
+        state = self.state()
+        execution = state["overall_outcome"]["execution"]
+        path = Path(execution["current_handoff"])
+        old_ref = hashref(path)
+        template = json.loads(proof.read_text())
+        for text, valid in (("# No declaration\n", False),
+                            ("stage_scope: current_scope\nstage_scope: conflicting_scope\n", False),
+                            ("Exact run: long-test; attempt1; scope current_scope.\nstage_scope: conflicting_scope\n", False),
+                            ("stage_scope: current_scope\n", True),
+                            ('{"stage_scope":"conflicting_scope","stage_scope":"current_scope"}', False),
+                            ('stage_scope: "current_scope"\n', False),
+                            (json.dumps({"stage_scope": "current_scope"}), True)):
+            with self.subTest(text=text):
+                path.write_text(text)
+                ref = hashref(path)
+                current = copy.deepcopy(state)
+                for mapping in (current, current["overall_outcome"], current["overall_outcome"]["execution"]):
+                    mapping["current_handoff_sha256"] = ref["sha256"]
+                current["overall_outcome"]["workflow"]["evidence"] = [ref if e == old_ref else e for e in current["overall_outcome"]["workflow"]["evidence"]]
+                self.state_path.write_text(json.dumps(current))
+                altered = self.artifact(dict(template, handoff=ref, sources=template["launch_receipts"] + [ref],
+                                             state_sha256=hashref(self.state_path)["sha256"]))
+                result = self.change("repair-run-mirrors", evidence=altered,
+                                     extra=("--expect-state-sha256", hashref(self.state_path)["sha256"], "--check-only"))
+                self.assertEqual(result[0], 0 if valid else 1, result)
+
+    def test_run_mirror_repair_rejects_nonwaiting_and_source_tamper(self):
+        proof = self.run_mirror_fixture()
+        before = self.state_path.read_bytes()
+        launch = json.loads(proof.read_text())["launch_receipts"][0]
+        launch_source = json.loads(Path(launch["path"]).read_text())["sources"][0]
+        source = Path(launch_source["path"])
+        source_before = source.read_bytes()
+        source.write_text("{}")
+        self.assertEqual(self.mirror_repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        source.write_bytes(source_before)
+        terminal = self.proof("run_terminal", run_id="long-test", attempt=1, exit_code=0)
+        handoff = self.project / ".byte-os/coordination/handoffs/returned.md"
+        handoff.write_text("# Returned\n")
+        self.assertEqual(self.change("return-run", evidence=terminal, extra=("--handoff", str(handoff)))[0], 0)
+        after_return = self.state_path.read_bytes()
+        self.assertEqual(self.mirror_repair(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), after_return)
+
+    def test_run_mirror_repair_double_cas_preserves_concurrent_state(self):
+        import contextlib
+        import importlib.util
+        import io
+        proof = self.run_mirror_fixture()
+        original = self.state_path.read_bytes()
+        sys.path.insert(0, str(CLI.parent))
+        try:
+            spec = importlib.util.spec_from_file_location("mirror_repair_cas", CLI)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        finally:
+            sys.path.pop(0)
+        write = module.write_immutable
+        def concurrent_write(path, data):
+            write(path, data)
+            if path.name == "AUDIT.json":
+                self.state_path.write_bytes(original + b" ")
+        argv = ["repair-run-mirrors", "--project", str(self.project), "--session", "codex:supervisor",
+                "--expect-revision", str(self.workflow()["revision"]), "--event-id", "mirror-cas",
+                "--expect-state-sha256", hashref(self.state_path)["sha256"], "--evidence", str(proof)]
+        with patch.object(module, "write_immutable", concurrent_write), contextlib.redirect_stdout(io.StringIO()) as output:
+            code = module.main(argv)
+        self.assertEqual(code, 1, output.getvalue())
+        self.assertIn("state changed before repair commit", output.getvalue())
+        self.assertEqual(self.state_path.read_bytes(), original + b" ")
 
 
 if __name__ == "__main__":
