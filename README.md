@@ -1,49 +1,45 @@
 <p align="center">
-  <img src="assets/byte-skills-banner.svg" alt="Byte Skills：围绕目标，组合所需能力" width="100%" />
+  <img src="assets/byte-skills-banner.svg" alt="Byte Skills: choose the capabilities a task needs" width="100%" />
 </p>
 
 <h1 align="center">Byte Skills</h1>
 
-<p align="center"><strong>让 AI 编码助手按任务选择工作方式，从想法推进到经过验证的结果。</strong><br />讨论、研究、构建、评审与长任务交接，按实际需要组合。</p>
+<p align="center"><strong>A workflow that fits the task, from an idea to a verified result.</strong><br />Compose discussion, research, implementation, review, and long-running handoffs.</p>
 
 <p align="center">
-  <a href="#skills"><img src="https://img.shields.io/badge/skills-13-8b5cf6?style=flat-square" alt="13 个可组合技能" /></a>
-  <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 和 Bash 脚本" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT 许可" /></a>
-  <a href="README_en.md"><img src="https://img.shields.io/badge/docs-English-2563eb?style=flat-square" alt="English documentation" /></a>
+  <a href="#choose-a-skill"><img src="https://img.shields.io/badge/skills-13-8b5cf6?style=flat-square" alt="13 composable skills" /></a>
+  <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 and Bash scripts" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT license" /></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/文档-简体中文-2563eb?style=flat-square" alt="简体中文文档" /></a>
 </p>
 
 <p align="center">
-  <strong>简体中文</strong> · <a href="README_en.md">English</a><br />
-  <a href="#overview">技能总览</a> · <a href="#quick-start">快速安装</a> · <a href="#skills">选择技能</a> · <a href="#supervision">长任务协作</a> · <a href="#continuity">持续推进</a>
+  <a href="README.zh-CN.md">简体中文</a> · <strong>English</strong><br />
+  <a href="#overview">Overview</a> · <a href="#quick-start">Quick start</a> · <a href="#example">Example</a> · <a href="#choose-a-skill">Skills</a> · <a href="#short-waits-and-long-jobs">Supervision</a> · <a href="#outcome-continuity">Outcome continuity</a>
 </p>
 
 ---
 
-**围绕目标组织工作，让证据决定下一步。** Byte Skills 是一组可组合的 `byte-*` 技能，由你正在使用的编码助手读取执行。简单任务直接完成；复杂任务按需要选择研究、规划、实现和核验能力。
+**Organize around the outcome. Let evidence guide the next step.** Byte Skills is a composable family of `byte-*` skills read and executed by your coding assistant. Small tasks stay simple; larger tasks combine research, planning, implementation, and verification as needed.
 
-客户端继续提供原来的模型和工具。Skills 指导工作方式，配套本地脚本记录交接和证据；跨会话消息、子代理与自动化依赖客户端能力及用户授权。
+Your client keeps its models and tools. Skills guide the procedure, and local helper scripts record handoffs and evidence. Messaging, subagents, and automation depend on the client's capabilities and user authorization.
 
-| 能力 | 对用户的作用 |
+| Capability | What it gives you |
 | --- | --- |
-| **按需组合** | 综合请求从 `byte-do` 开始，明确改动直接使用对应技能；不强制固定流水线。 |
-| **以结果为目标** | `byte-auto` 区分阶段完成与整体目标达标，继续推进已授权的后续工作。 |
-| **证据优先** | 根据实际代码、测试、运行收据与来源判断进展，避免只凭文字状态报喜。 |
-| **可恢复协作** | Relay 保存准确会话身份、当前所有者、交接与产物证据。 |
-| **明确授权边界** | 长运行检查、跨会话操作、付费资源及破坏性动作各自遵守实际授权。 |
+| **Compose what is useful** | Start mixed requests with `byte-do`, or invoke a focused skill directly. There is no required fixed pipeline. |
+| **Preserve the overall outcome** | `byte-auto` distinguishes a completed stage from an accepted overall result and advances authorized next steps. |
+| **Evidence before claims** | Assess progress using actual code, tests, runtime receipts, and sources. |
+| **Recoverable collaboration** | Relay records exact session identity, ownership, handoffs, and artifact evidence. |
+| **Explicit authority boundaries** | Long-running checks, cross-chat actions, paid resources, and destructive operations each retain their authorization requirements. |
 
-<a id="overview"></a>
+## Overview
 
-## 技能总览
+<img src="assets/overview.svg" alt="Five common entries: byte-do, byte-auto, byte-discuss, byte-design-supervise and byte-workflow; intermediate capabilities are grouped below" width="100%" />
 
-<img src="assets/overview.zh-CN.svg" alt="byte-do 按需组合理解、规划、执行和协作四类技能，由真实证据决定下一步" width="100%" />
+## Quick start
 
-<a id="quick-start"></a>
-
-## 快速开始
-
-需要 Git、Bash、Python 3，以及能够加载本地 `SKILL.md` 的编码助手。安装器和 Relay 脚本使用 Python 标准库。
-自定义工作流的 YAML 编辑支持通过 `uv run` 隔离加载 PyYAML；JSON 输入也可直接使用 Python 3。
+You need Git, Bash, Python 3, and a coding assistant that can load local `SKILL.md` files. The installer and Relay scripts use the Python standard library.
+For custom YAML workflows, `uv run` isolates the script's PyYAML dependency. JSON inputs also work directly with Python 3.
 
 ```bash
 git clone https://github.com/elan6666/byte-skills.git
@@ -51,145 +47,185 @@ cd byte-skills
 ./install.sh --all
 ```
 
-这会安装到 `~/.agents/skills` 和 `~/.codex/skills`。安装后刷新技能列表或重新打开会话；按客户端要求操作。
+This installs into `~/.agents/skills` and `~/.codex/skills`. Refresh the skill list or reopen the conversation as required by your client.
 
 ```text
-$byte-do 帮我把这个想法做成可运行的原型，并验证关键流程
-$byte-build 修复登录回调，并运行相关测试
-$byte-research 比较这三个方案，给出有来源的建议
-$byte-auto 完成这个功能，直到关键验收条件通过
+$byte-do Describe the change you need; choose the relevant skills and verify the result
+$byte-auto Complete this feature through the default workflow until acceptance passes
+$byte-discuss Compare these directions and help me choose the scope
+$byte-design-supervise Hand this verified long run to my designated supervisor chat
+$byte-workflow Save my research loop with steps, conditions, acceptance and session roles
 ```
 
-`byte-do` 是显式的综合入口。任务很明确时，可以直接调用对应技能。以上是 Codex 风格的调用示例；实际触发语法由客户端决定。
+`byte-do` turns a natural-language request into the appropriate skill combination.
+`byte-auto` drives the default complete delivery workflow, adapting its depth to the task.
+You can also discuss first, hand off a long job, or save your own reusable process.
+These examples use Codex-style invocation; your client determines the trigger syntax.
 
-其他安装方式：
+Other installation options:
 
 ```bash
-./install.sh                              # 仅安装到 ~/.agents/skills
-./install.sh --target ~/.claude/skills     # 指定其他技能目录
-./install.sh --all --check                # 检查已安装副本是否一致
+./install.sh                              # Only ~/.agents/skills
+./install.sh --target ~/.claude/skills     # Another skill directory
+./install.sh --all --check                # Verify installed-copy parity
 ```
 
-安装器会替换目标目录中同名的 Byte 技能；请先保存自行修改的版本。支持程度取决于客户端的技能格式和工具能力，跨会话通信与自动化需要相应的运行环境。只有读取 DSH 压缩会话时才需要额外安装 `zstd`。
+The installer replaces Byte skill directories with matching names. Save any local customizations first. Compatibility depends on the client's skill format and available tools; cross-conversation messaging and automation require runtime support. Install `zstd` separately only if you need to read compressed DSH sessions.
 
-<a id="skills"></a>
+## Example
 
-## 选择技能
+**GraD-Pert: from an experiment question to implementation and supervised follow-up.**
+A real research project used Byte to compare ablation options, implement scoped changes,
+verify the code, and pass readiness evidence to an existing supervisor without restarting
+the active experiment. The prompts below are adapted for reuse, not a verbatim transcript.
 
-| 技能 | 适用场景 |
+```text
+$byte-discuss What could explain this result? Compare experiment options against the existing baseline.
+$byte-do Implement the chosen change, preserve baseline behavior, and run the relevant checks.
+$byte-auto Continue the authorized experiment workflow; distinguish code readiness from validated results.
+$byte-design-supervise Verify startup, hand the exact long run to the supervisor, then return evidence for main-chat verification and continuation.
+```
+
+**Observed snapshot, 31 October 2026:** design, implementation, local checks and a native
+cross-chat readiness message were recorded. Hardware preflight and the proposed new
+training runs were still pending. This example demonstrates the workflow, not a claim
+of improved model quality or a completed research outcome.
+
+[Read the walkthrough →](examples/gradpert.md) · [中文案例 →](examples/gradpert.zh-CN.md) · [All examples →](examples/README.md)
+
+## Choose a skill
+
+Start with one of these five common entries. Supporting skills can be selected as the
+work progresses; you do not need to invoke every intermediate step.
+
+| Entry | When to use it |
 | --- | --- |
-| [byte-do](skills/byte-do/SKILL.md) | 综合任务：选择最小且有用的能力组合 |
-| [byte-discuss](skills/byte-discuss/SKILL.md) | 讨论需求、方向和取舍 |
-| [byte-brainstorm](skills/byte-brainstorm/SKILL.md) | 提出并比较不同思路 |
-| [byte-research](skills/byte-research/SKILL.md) | 查证会影响决策的外部信息 |
-| [byte-plan](skills/byte-plan/SKILL.md) | 制定与任务复杂度相称的执行计划 |
-| [byte-workflow](skills/byte-workflow/SKILL.md) | 本地保存与跨项目复用自定义步骤、分支、循环、验收和会话分工 |
-| [byte-build](skills/byte-build/SKILL.md) | 实现聚焦改动并验证结果 |
-| [byte-review](skills/byte-review/SKILL.md) | 根据代码和证据识别重要问题 |
-| [byte-status](skills/byte-status/SKILL.md) | 核实进展、阻塞和下一步 |
-| [byte-future](skills/byte-future/SKILL.md) | 保存以后再做的想法 |
-| [byte-auto](skills/byte-auto/SKILL.md) | 持续推进已授权目标，直到完成或遇到真实阻塞 |
-| [byte-design-supervise](skills/byte-design-supervise/SKILL.md) | Codex 主会话设计与启动，独立会话监督长任务 |
-| [byte-relay](skills/byte-relay/SKILL.md) | 跨会话或客户端的身份、所有权与交接记录 |
+| [byte-do](skills/byte-do/SKILL.md) | Describe a task in natural language; automatically select and combine the relevant skills. |
+| [byte-auto](skills/byte-auto/SKILL.md) | Drive the default delivery workflow: clarify, plan, implement, verify, repair and accept the overall result. |
+| [byte-discuss](skills/byte-discuss/SKILL.md) | Clarify an idea, compare options, and settle scope or tradeoffs before building. |
+| [byte-design-supervise](skills/byte-design-supervise/SKILL.md) | Have a Codex main chat verify launch, hand a long job to a supervisor, then verify the returned result and continue. |
+| [byte-workflow](skills/byte-workflow/SKILL.md) | Save custom steps, branches, loops, acceptance and role bindings locally for reuse across projects. |
 
-<a id="supervision"></a>
-
-## 短等待与长任务
-
-![监督模式选择：短等待使用同会话子代理，长任务通过可验证的交接进入监督会话](assets/supervision.zh-CN.svg)
-
-| 情况 | 推荐方式 |
+| Supporting capabilities | Skills |
 | --- | --- |
-| 很快能完成的命令 | 主助手直接执行 |
-| 预计约 1 小时以内、能在当前回合完成的测试等待 | 获授权的同会话子代理；主会话保留所有权并核实结果 |
-| 预计约 1 小时以上，或需要主会话结束后继续的训练、消融、批处理 | 明确的监督会话与已授权的事件通知或定时检查 |
+| Explore alternatives and check evidence | [byte-brainstorm](skills/byte-brainstorm/SKILL.md), [byte-research](skills/byte-research/SKILL.md) |
+| Plan, implement, review and save deferred ideas | [byte-plan](skills/byte-plan/SKILL.md), [byte-build](skills/byte-build/SKILL.md), [byte-review](skills/byte-review/SKILL.md), [byte-future](skills/byte-future/SKILL.md) |
+| Inspect progress and maintain handoff records | [byte-status](skills/byte-status/SKILL.md), [byte-relay](skills/byte-relay/SKILL.md) |
 
-时长是选择方式的参考。子代理和模型选择受运行环境及用户授权约束；等待时间超出预期时，应重新评估监督方式。
+## Short waits and long jobs
 
-长任务由主会话先确认真实启动，记录运行身份、日志、验收标准和修复范围，再通过 `byte-relay` 交接。监督会话只处理约定范围内的问题，任务结束后交回证据，并停用本次运行的监控。主会话核实结果后推进已授权的下一阶段。
+![Supervision routing: short waits use a same-task helper; long jobs use a verified supervisor handoff](assets/supervision.svg)
 
-**跨会话消息送达不代表主会话已经恢复执行。** 自动续跑需要双向唤醒路径和实际接手确认。`run_event.py` 可以记录进程退出事件并调用配置的通知器；空闲 Codex 会话能否被唤醒，仍需在目标环境中验证。没有经过验证的事件适配器时，定时检查有一个检查周期的发现延迟。详见[监督流程](skills/byte-design-supervise/references/workflow.md)和[事件桥接说明](skills/byte-relay/references/codex-event-bridge.md)。
+| Situation | Preferred approach |
+| --- | --- |
+| A quick command | Run it directly in the main task |
+| A bounded test expected within about an hour and the current turn | Use an authorized same-task subagent; the main chat retains ownership and verifies the result |
+| Training, ablations, or batch work expected to take about an hour or more, or to outlive the main turn | Use an identified supervisor chat with authorized event notifications or scheduled checks |
 
-## 可恢复的交接
+Duration is a routing estimate. Delegation and model choice depend on runtime support and user authorization. Reassess the route when a short job takes longer than expected.
 
-普通工作不需要 `.byte-os/`。需要跨会话恢复或明确交接时，Relay 使用项目内的记录：
+For a long job, the main chat first verifies that it started, records the run identity, logs, acceptance criteria, and repair scope, then hands it over through `byte-relay`. The supervisor handles only the agreed scope, returns the terminal evidence, and disables that run's monitor. The main chat verifies the result and advances the next authorized stage.
+
+**A delivered cross-chat message does not prove that the main chat resumed.** Automatic continuation requires working wake paths in both directions and an observable acknowledgement. `run_event.py` records process exits and calls a configured notifier; waking an idle Codex chat still needs verification in the target environment. Without a tested event adapter, scheduled checks can take up to one check interval to detect a change. See the [supervision workflow](skills/byte-design-supervise/references/workflow.md) and [event bridge notes](skills/byte-relay/references/codex-event-bridge.md).
+
+## Recoverable handoffs
+
+Ordinary work does not require `.byte-os/`. When a project needs resumable cross-chat work or explicit handoffs, Relay keeps its records inside the project:
 
 ```text
 .byte-os/coordination/
-├── state.json       # 当前所有者、阶段、下一步与验收标准
-├── sessions.json    # 会话 ID、客户端、模型来源与 Git 快照
-├── handoffs/        # 交接说明和会话摘要
-├── receipts/        # 执行、验证与产物证据
-└── reviews/         # 需要时生成的评审材料
+├── state.json       # Current owner, stage, next action, and acceptance
+├── sessions.json    # Session ID, client, model provenance, and Git snapshot
+├── handoffs/        # Handoff notes and session digests
+├── receipts/        # Execution, verification, and artifact evidence
+└── reviews/         # Review packages when needed
 ```
 
-同一份协调状态只有一个写入所有者。消息负责通知；项目文件、代码和运行证据用于核实事实。模型信息只有在有运行时证据时才视为已验证，技能本身不负责切换模型。
+Each coordination state has one write owner. Messages notify participants; project files, code, and runtime evidence establish the facts. Model identity is verified only when supported by native runtime evidence. The skills do not select or switch models themselves.
 
 ```text
-$byte-relay 初始化这个项目的交接状态
+$byte-relay Initialize handoff state for this project
 ```
 
-Relay 包含 Codex、Claude Code、DSH 和 ZCode 的本地会话摘要读取支持；摘要不等于实时消息能力。ZCode 的完整会话摘要仍需由其原生工具补充。实现细节见[协调状态说明](skills/byte-relay/references/coordination-schema.md)。
+Relay includes local session-digest readers for Codex, Claude Code, DSH, and ZCode. Digest access does not imply live messaging support. A full ZCode conversation summary still needs its native tools. See the [coordination schema](skills/byte-relay/references/coordination-schema.md) for details.
 
-## 本地自定义工作流
+## Reusable local workflows
 
 ```text
-$byte-workflow 创建一个实验研究循环：结果分析、问题表征、文献、方案、实现、实验、再分析。
-保存到本地模板库；新项目复用时重新绑定项目参数和主／监督会话。
+$byte-workflow Save a research loop with result analysis, problem characterization,
+literature, solution design, implementation, experiment, and renewed analysis.
+Reuse it in other projects with separate parameters and main/supervisor bindings.
 ```
 
-自带 `experiment-research` 模板。安装到本地模板库：
+Install the bundled `experiment-research` template into your local library:
 
 ```bash
 uv run skills/byte-workflow/scripts/workflow.py install-template
 uv run skills/byte-workflow/scripts/workflow.py list-templates
 ```
 
-模板在 `~/.byte/workflows/<模板名>/workflow.yaml`。每个项目保存自己的 `.byte-os/workflow.yaml` 快照，并在既有 `.byte-os/coordination/state.json` 中运行。全局模板以后修改，不会改变已启动的项目。
+Templates live at `~/.byte/workflows/<id>/workflow.yaml`. Each project pins a
+snapshot in `.byte-os/workflow.yaml` and uses the existing
+`.byte-os/coordination/state.json` for runtime state. Library edits cannot
+silently change an active project. Steps can belong to main or supervisor;
+conditional transitions, loop boundaries and acceptance are configurable.
 
-步骤可以分配给主会话或监督会话，支持条件分支、循环返回和独立验收。状态推进需要匹配版本号、稳定事件 ID 和带来源哈希的证据；空回复无法替代主会话的实际接手。短等待保留主会话所有权，长等待使用先交接、再确认监控生效的两阶段流程。整体验收通过才完成；显式暂停和真实外部阻塞有独立状态。
+Revision checks and stable event IDs prevent stale/duplicate transitions.
+Source-hashed receipts establish recorded step evidence; an empty reply cannot
+acknowledge substantive main continuation. Short waits retain main ownership;
+long waits transfer an unarmed baton and then require supervisor acknowledgement
+and recorded native monitoring before a justified wait. Only verified overall
+acceptance completes a workflow; explicit pause and external blockage are separate.
 
-CLI 提供 `validate`、`init`、`status`、`advance`、`accept`、`start-run`、`arm-run`、`return-run`、`ack-return`、`record-run`、`route`、`doctor` 和 `export`。详见 [格式与命令](skills/byte-workflow/references/format.md)。它检查本地状态与证据，不直接执行模型命令或创建定时任务；实际客户端调度仍需配置与验证。
+Use `validate`, `init`, `status`, `advance`, `accept`, `start-run`, `arm-run`,
+`return-run`, `ack-return`, `record-run`, `route`, `doctor` and `export` through
+the CLI. See the [format and commands](skills/byte-workflow/references/format.md).
+The engine records and validates decisions; it neither executes model commands
+nor creates a native scheduler. Real client wakeups still require configuration
+and observation.
 
-<a id="continuity"></a>
+## Outcome continuity
 
-## 持续推进，而不丢失整体目标
+An authorized long-running or iterative task keeps one overall outcome and acceptance checklist. Research, preflight, training, and reports are stages. The main conversation verifies each handback, then executes the next authorized action. A supervisor checks only its exact active run and disables that run's monitor after handback.
 
-对于已经授权的长期或迭代任务，保存一个整体目标与验收清单。研究、预检、训练和报告分别是阶段成果；主会话核验交回结果后，继续下一项已授权工作。监督者只检查自己负责的准确运行，交回后停用本次监控。
+Explicit user pauses, scope boundaries, and resource limits always take precedence. Ordinary tasks use ordinary conversation state; Goal mode requires an explicit request. Standalone status questions or discussions do not grant new execution authority.
 
-如果你明确要求用双会话定时持续推进，使用同一个**整体目标定时任务**跨阶段续接：运行中监督当前实验；主会话分析、查文献和实现时，由监督会话低频检查它是否仍活跃；主会话空闲但有已授权工作时，将同一定时任务转向主会话恢复执行。结束旧运行的查询，不会暂停整个研究循环。旧阶段提醒必须以最新目标和所有权重新分流。详见[持续研究流程](skills/byte-design-supervise/references/research-loop.md)。
-
-这种模式会保留你指定的研究顺序，例如“实验结果 → 问题表征 → 文献 → 方案 → 实现与实验 → 分析 → 下一轮”。检查助手可输出当前应恢复主会话、监督运行还是保持安静：
-
-```bash
-python3 skills/byte-auto/scripts/continuation_route.py --help
-```
-
-它只读取状态并给出分流决定；实际定时任务仍须通过客户端配置、回读验证并观察真实触发。自动化唤醒可能消耗模型额度，只有整体目标达标、明确暂停或存在真实外部阻塞时才停用这类获授权的持续检查。
-
-明确的用户暂停、范围与资源限制始终优先。普通任务默认使用普通会话状态；只有用户要求时才使用 Goal。单独询问状态或讨论方向，不会凭空产生执行权限。
-
-配套退出检查根据已有状态，区分实际完成、已验证的监督等待、用户暂停和具体外部阻塞：
+A local exit check uses the existing state to distinguish completion, verified supervised waiting, an explicit pause, and a concrete external blocker:
 
 ```bash
 python3 skills/byte-auto/scripts/continuation_check.py --state /path/to/state.json
 ```
 
-用 `--help` 查看记录结构。退出码 `0` 允许检查结果所对应的退出方式，`2` 表示仍需继续实质工作，`1` 表示状态或证据需要对账。详见 [持续工作约定](skills/byte-auto/references/long-running-work.md)。
+Use `--help` for the record schema. Exit `0` permits the disposition returned by the check, `2` requires continued substantive work, and `1` requires state/evidence reconciliation. See the [long-running work contract](skills/byte-auto/references/long-running-work.md).
 
-这个脚本核对本地记录的一致性，不能拦截客户端结束回复，也不能单独证明调度、唤醒或科学结论正确。未知研究问题不能保证必然有解。
+The helper checks consistency of local records. It cannot intercept a client's final response or independently prove live scheduling, wakeups, or scientific correctness. It does not guarantee a solution to an open research problem.
 
-## 维护与验证
+## Maintenance and verification
+
+For an explicitly requested continuous two-chat research loop, keep one
+outcome-level heartbeat across experiments and active analysis, literature
+review, and implementation. The supervisor watches the current run or quietly
+checks main-chat progress. If the main chat is idle with authorized ready work,
+retarget the same heartbeat to main for recovery. End checks of a completed run
+without disabling the overall recovery path. Stale reminders route from current
+state. Preserve the user's chosen research order; see the
+[continuous research procedure](skills/byte-design-supervise/references/research-loop.md).
+
+`skills/byte-auto/scripts/continuation_route.py --help` documents the read-only
+routing helper. Native configuration, readback and observed scheduled execution
+are still required. Heartbeats can consume model quota. Stop this authorized
+outcome monitor on verified completion, an explicit pause, or an evidenced
+external blocker with no independent work remaining.
 
 ```bash
 python3 scripts/sync_shared_references.py --check
 python3 -m unittest discover -s tests -v
 ```
 
-保留的回归测试覆盖会话登记与权限、交接、执行收据、进程事件、重复启动防护和失败通知状态。它们在临时目录中运行，不需要模型 API、GPU 或外部账号，也不验证客户端的定时调度或自动唤醒。
+The retained regression tests cover session registration and authority, handoffs, task receipts, process events, duplicate-launch prevention, and failure-delivery states. They run in temporary directories without a model API, GPU, or external account. They do not verify a client's scheduling or automatic wakeup behavior.
 
-修改共享证据约定时，编辑 `shared/evidence-contract.md`，再运行 `python3 scripts/sync_shared_references.py`。每个使用它的技能都携带自己的副本，便于独立安装。
+To change the shared evidence contract, edit `shared/evidence-contract.md` and run `python3 scripts/sync_shared_references.py`. Each consuming skill bundles a copy so it can be installed independently.
 
-## 许可
+## License
 
-[MIT](LICENSE)。项目受团队式工作方式启发，与字节跳动无隶属关系；文中产品与公司名称归各自权利人所有。
+[MIT](LICENSE). Inspired by team-based workflows; not affiliated with ByteDance. Product and company names belong to their respective owners.
