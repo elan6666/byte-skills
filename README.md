@@ -349,3 +349,7 @@ These checks do not run account-dependent live tests or start an agent service.
 Runtime hashes bind installations to the Byte source tree; rebuilding never
 reads a separate SessionBridge repository. Historical import provenance lives
 in `packages/byte-bridge/ORIGIN.json`.
+
+Marketplace ZIPs expose the same 14 Byte entries. Embedded adapter instructions
+are shipped as readable `SKILL.template.md` files and restored by `install.sh`
+before source/payload integrity checks. Their contents remain unchanged.

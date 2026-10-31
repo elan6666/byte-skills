@@ -318,3 +318,6 @@ python3 scripts/build_bridge_runtime.py --check
 这些检查不会运行需要账号的真实测试或启动 Agent 服务。安装包以源码树哈希绑定
 Byte 内部源码，构建不再读取独立 SessionBridge 仓库；历史导入来源保留在
 `packages/byte-bridge/ORIGIN.json`。
+
+应用市场 ZIP 仍展示同样的 14 个 Byte 入口。适配器内部说明以可阅读的
+`SKILL.template.md` 打包，由 `install.sh` 在源码与运行包完整性检查前恢复；说明内容不变。

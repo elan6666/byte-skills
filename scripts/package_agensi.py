@@ -27,12 +27,17 @@ def main():
                 'source_commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT).decode().strip(),
                 'skills': skills, 'skill_count': len(skills),
                 'files': {n: hashlib.sha256((ROOT / n).read_bytes()).hexdigest() for n in names}}
+    templates = {n: {'path': str(Path(n).with_name('SKILL.template.md')),
+                      'sha256': manifest['files'][n]}
+                 for n in names if n.endswith('/SKILL.md')
+                 and n not in {f'skills/{skill}/SKILL.md' for skill in skills}}
+    manifest['embedded_skill_templates'] = templates
     with zipfile.ZipFile(args.output, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
         for name in names:
             path = ROOT / name
             if not path.is_file() or path.is_symlink():
                 raise ValueError(f'Noncanonical public package file: {name}')
-            archive.write(path, name)
+            archive.write(path, templates.get(name, {}).get('path', name))
         archive.writestr('BYTE_PACKAGE.json', json.dumps(manifest, indent=2) + '\n')
     print(json.dumps({'package': str(args.output.resolve()), 'version': args.version,
                       'skills': len(skills), 'files': len(names) + 1,
