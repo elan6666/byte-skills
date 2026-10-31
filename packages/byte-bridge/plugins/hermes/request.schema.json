@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "anyOf": [
+    {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "const": "report"
+        },
+        "payload": {
+          "type": "object",
+          "properties": {
+            "task_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "summary": {
+              "type": "string",
+              "minLength": 1
+            },
+            "artifact_paths": {
+              "type": "array",
+              "items": {
+                "description": "Project-relative artifact path; no absolute paths or parent traversal",
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!.*(?:^|[/\\\\])\\.\\.(?:[/\\\\]|$)).+$"
+              }
+            },
+            "native_receipts": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "attempt": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "authority_epoch": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "task_id",
+            "summary",
+            "artifact_paths"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "command",
+        "payload"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "enum": [
+            "context",
+            "sessions",
+            "request",
+            "status",
+            "acknowledge",
+            "supervise",
+            "return",
+            "recover",
+            "cancel"
+          ]
+        },
+        "payload": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "command"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "type": "object",
+  "properties": {
+    "command": {
+      "type": "string",
+      "enum": [
+        "context",
+        "sessions",
+        "request",
+        "status",
+        "report",
+        "acknowledge",
+        "supervise",
+        "return",
+        "recover",
+        "cancel"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "command"
+  ],
+  "additionalProperties": false
+}

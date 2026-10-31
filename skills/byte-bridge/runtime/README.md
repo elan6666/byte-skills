@@ -1,8 +1,11 @@
+
+> Byte Bridge is maintained only in `elan6666/byte-skills`, under `packages/byte-bridge`. `skills/byte-bridge/runtime` is generated from this package. The former SessionBridge project is retired; existing `session-bridge` commands and protocol names remain compatibility aliases.
+
 <p align="center">
-  <img src="assets/sessionbridge-banner.svg" alt="SessionBridge — connect the conversations you already work in" width="100%" />
+  <img src="assets/sessionbridge-banner.svg" alt="Byte Bridge — connect the conversations you already work in" width="100%" />
 </p>
 
-<h1 align="center">SessionBridge · 会桥</h1>
+<h1 align="center">Byte Bridge</h1>
 
 <p align="center"><strong>Cross-session collaboration for the agent apps you already use.</strong><br />Delegate work, supervise runs, and bring results back to the original conversation.</p>
 
@@ -20,13 +23,13 @@
 
 ---
 
-**Keep the conversation. Share the work.** SessionBridge connects selected, existing agent sessions so one conversation can delegate a task, another can check a running job, and results can return to the original conversation for verification. Use it between two chats in the same app or across different agent apps.
+**Keep the conversation. Share the work.** Byte Bridge connects selected, existing agent sessions so one conversation can delegate a task, another can check a running job, and results can return to the original conversation for verification. Use it between two chats in the same app or across different agent apps.
 
 Your apps keep their conversation history, models, accounts, and tool permissions. A local coordination service records tasks and delivery receipts; the bridge core makes no model API calls of its own.
 
 > **Early access:** 0.1 is an integration prototype. Supported versions and session modes vary by app. Read the [compatibility guide](docs/support.en.md) before connecting a working session.
 
-## Why SessionBridge?
+## Why Byte Bridge?
 
 | Capability | What it gives you |
 | --- | --- |
@@ -40,7 +43,7 @@ Your apps keep their conversation history, models, accounts, and tool permission
 ## Overview
 
 <p align="center">
-  <img src="assets/overview.svg" alt="A main session delegates through SessionBridge to worker and supervisor sessions; results return for verification, with task records stored locally in SQLite" width="100%" />
+  <img src="assets/overview.svg" alt="A main session delegates through Byte Bridge to worker and supervisor sessions; results return for verification, with task records stored locally in SQLite" width="100%" />
 </p>
 
 1. **Connect** the original sessions to the same project and give them clear aliases.
@@ -57,8 +60,8 @@ Your apps keep their conversation history, models, accounts, and tool permission
 Requires **Node.js ≥24.15.0 and <25**, npm, and macOS or Linux. Individual agents and their model access must already be available.
 
 ```bash
-git clone https://github.com/elan6666/Session-bridge.git
-cd Session-bridge
+git clone https://github.com/elan6666/byte-skills.git
+cd byte-skills/packages/byte-bridge
 npm ci --ignore-scripts
 npm run build
 npm run pack:plugins
@@ -69,26 +72,26 @@ To install the generated local package into a prefix of your choice:
 
 ```bash
 npm pack
-npm install --prefix "$HOME/.local/sessionbridge" ./sessionbridge-local-0.1.0.tgz
-export PATH="$HOME/.local/sessionbridge/node_modules/.bin:$PATH"
+npm install --prefix "$HOME/.local/byte-bridge" ./byte-skills-bridge-0.1.0.tgz
+export PATH="$HOME/.local/byte-bridge/node_modules/.bin:$PATH"
 ```
 
-The PATH change applies to that terminal. In an already-open agent app, use the absolute executable path if `session-bridge` is not found. You can also run the source CLI as `node /absolute/path/to/Session-bridge/dist/src/cli/main.js`.
+The PATH change applies to that terminal. In an already-open agent app, use the absolute executable path if `byte-bridge` is not found. You can also run the source CLI as `node /absolute/path/to/byte-skills/packages/byte-bridge/dist/src/cli/main.js`.
 
 ### 2. Prepare a project and enable the integrations
 
 Replace `/absolute/path/to/project` with the directory you want the sessions to share.
 
 ```bash
-session-bridge setup --harness codex --with zcode --project /absolute/path/to/project --dry-run
-session-bridge setup --harness codex --with zcode --project /absolute/path/to/project --json
+byte-bridge setup --harness codex --with zcode --project /absolute/path/to/project --dry-run
+byte-bridge setup --harness codex --with zcode --project /absolute/path/to/project --json
 ```
 
 Run the second command from the original Codex main chat. It initializes the project, installs selected integration files, starts a bounded service (one hour by default), and attempts to connect that native source. `targets_ready` identifies integrations still awaiting native activation. It starts no models and changes no provider configuration. Installation alone is not a connected session.
 
 ```bash
-session-bridge service status --project /absolute/path/to/project
-session-bridge service stop --project /absolute/path/to/project
+byte-bridge service status --project /absolute/path/to/project
+byte-bridge service stop --project /absolute/path/to/project
 ```
 
 Stopping requires matching service ownership. Foreground `daemon start` remains available; do not start a second core. See the [ZCode guide](docs/zcode.md) for original-session activation and active intake.
@@ -99,10 +102,10 @@ For a Codex pair, ask **each original chat** to run its own connection command:
 
 ```bash
 # In the main Codex conversation:
-session-bridge connect --harness codex --alias main --project /absolute/path/to/project
+byte-bridge connect --harness codex --alias main --project /absolute/path/to/project
 
 # In the supervisor Codex conversation:
-session-bridge connect --harness codex --alias supervisor --project /absolute/path/to/project
+byte-bridge connect --harness codex --alias supervisor --project /absolute/path/to/project
 ```
 
 Run `connect` from the chat's native working directory, passing the shared project explicitly. Other apps enroll through their native plugin/extension entry points; see the integration table below. A session ID typed into an external terminal does not replace native enrollment.
@@ -159,7 +162,7 @@ Task data is stored in the project's private `.session-bridge/` directory. App p
 | [CLI reference](docs/cli.md) | Structured requests, reports, run receipts, supervision, recovery, and uninstall |
 | [Compatibility guide](docs/support.en.md) | Per-app versions, lifecycle conditions, and current limits |
 | [Natural-language Skill](skills/sessionbridge-do/SKILL.md) | The procedure used by a connected agent |
-| [Adapter contract](https://github.com/elan6666/Session-bridge/blob/main/src/adapters/contract.ts) | Integrating another app's native session interface |
+| [Adapter contract](https://github.com/elan6666/byte-skills/blob/main/packages/byte-bridge/src/adapters/contract.ts) | Integrating another app's native session interface |
 
 Ordinary projects use the built-in standalone task mode. Projects already using Byte can keep Byte as their ownership authority; explicit source pins and committed v1 handoff imports are described in the [Byte integration guide](docs/byte.md). See [optional project management integration](docs/support.en.md#optional-project-management-integration).
 

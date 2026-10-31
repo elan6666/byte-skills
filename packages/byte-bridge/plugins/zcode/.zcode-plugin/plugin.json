@@ -1,0 +1,1 @@
+{"name":"sessionbridge","version":"0.1.0","description":"Cooperate from this existing ZCode session through explicit native tool intake","mcpServers":{"sessionbridge":{"command":"node","args":["${ZCODE_PLUGIN_ROOT}/scripts/mcp.mjs"],"env":{"SESSIONBRIDGE_PROJECT":"${ZCODE_PROJECT_DIR}"}}}}

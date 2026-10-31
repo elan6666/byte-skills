@@ -5,3 +5,7 @@ __pycache__/
 node_modules/
 .session-bridge/
 *.tgz
+
+packages/byte-bridge/dist/
+packages/byte-bridge/docs/distribution/
+packages/byte-bridge/coverage/

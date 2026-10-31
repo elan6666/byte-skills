@@ -10,7 +10,7 @@ export const SKILLS = ['sessionbridge-do', 'session-bridge-delegate', 'session-b
 export function bytesHash(text) { return createHash('sha256').update(text).digest('hex'); }
 export function packageRoot() { let dir = dirname(fileURLToPath(import.meta.url)); for (let i = 0; i < 6; i++) {
     const path = join(dir, 'package.json');
-    if (existsSync(path) && JSON.parse(readFileSync(path, 'utf8')).name === '@sessionbridge/local')
+    if (existsSync(path) && ['@byte-skills/bridge', '@sessionbridge/local'].includes(JSON.parse(readFileSync(path, 'utf8')).name))
         return realpathSync(dir);
     dir = dirname(dir);
 } throw new Error('SessionBridge package root is unavailable'); }

@@ -2,7 +2,7 @@
 
 [English](support.en.md) · [简体中文](support.md) · [Back to README](../README.md)
 
-SessionBridge 0.1 is a local session-integration prototype. Connection, delivery, model execution, and task acceptance are separate states. Check the app version, session mode, and actual task requirements independently.
+Byte Bridge 0.1 is a local session-integration prototype. Connection, delivery, model execution, and task acceptance are separate states. Check the app version, session mode, and actual task requirements independently.
 
 ## Runtime requirements
 

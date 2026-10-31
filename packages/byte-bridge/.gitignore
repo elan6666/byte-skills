@@ -1,0 +1,27 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.key
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.session-bridge/
+evidence/local/
+.DS_Store
+.worktrees/
+*.tgz
+.superpowers/
+.local/
+# Local development records are excluded from public exports.
+AGENTS.md
+.byte-os/
+docs/superpowers/
+docs/acceptance/
+docs/research/
+docs/maintenance/
+docs/distribution/
+evidence/
+acceptance/

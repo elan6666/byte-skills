@@ -1,8 +1,11 @@
+
+> 本工程只在 `elan6666/byte-skills` 的 `packages/byte-bridge` 中维护。`skills/byte-bridge/runtime` 由此生成；原 SessionBridge 项目已停止独立维护。既有 `session-bridge` 命令与协议名称保留为兼容别名。
+
 <p align="center">
-  <img src="assets/sessionbridge-banner.svg" alt="会桥 SessionBridge：连接你已经在用的 Agent 会话" width="100%" />
+  <img src="assets/sessionbridge-banner.svg" alt="会桥 Byte Bridge：连接你已经在用的 Agent 会话" width="100%" />
 </p>
 
-<h1 align="center">会桥 · SessionBridge</h1>
+<h1 align="center">Byte Bridge</h1>
 
 <p align="center"><strong>让已经打开的 Agent 会话，一起完成任务。</strong><br />跨对话分工、检查运行进度，将结果送回原主会话。</p>
 
@@ -61,8 +64,8 @@
 需要 **Node.js ≥24.15.0 且 <25**、npm，以及 macOS 或 Linux。参与协作的 Agent 应用及模型访问需预先可用。
 
 ```bash
-git clone https://github.com/elan6666/Session-bridge.git
-cd Session-bridge
+git clone https://github.com/elan6666/byte-skills.git
+cd byte-skills/packages/byte-bridge
 npm ci --ignore-scripts
 npm run build
 npm run pack:plugins
@@ -73,26 +76,26 @@ node dist/src/cli/main.js --help
 
 ```bash
 npm pack
-npm install --prefix "$HOME/.local/sessionbridge" ./sessionbridge-local-0.1.0.tgz
-export PATH="$HOME/.local/sessionbridge/node_modules/.bin:$PATH"
+npm install --prefix "$HOME/.local/byte-bridge" ./byte-skills-bridge-0.1.0.tgz
+export PATH="$HOME/.local/byte-bridge/node_modules/.bin:$PATH"
 ```
 
-PATH 修改只对当前终端生效。已打开的 Agent 应用若找不到 `session-bridge`，请使用可执行文件的绝对路径。源码方式也可以运行 `node /源码绝对路径/Session-bridge/dist/src/cli/main.js`。
+PATH 修改只对当前终端生效。已打开的 Agent 应用若找不到 `byte-bridge`，请使用可执行文件的绝对路径。源码方式也可以运行 `node /源码绝对路径/byte-skills/packages/byte-bridge/dist/src/cli/main.js`。
 
 ### 2. 准备项目并启用接入
 
 将 `/absolute/path/to/project` 替换为希望各会话协作的项目目录。
 
 ```bash
-session-bridge setup --harness codex --with zcode --project /absolute/path/to/project --dry-run
-session-bridge setup --harness codex --with zcode --project /absolute/path/to/project --json
+byte-bridge setup --harness codex --with zcode --project /absolute/path/to/project --dry-run
+byte-bridge setup --harness codex --with zcode --project /absolute/path/to/project --json
 ```
 
 让原主 Codex 聊天运行第二条命令。它一次完成初始化、所选插件文件安装、有界服务启动和当前来源连接；默认服务一小时，到期关闭。`targets_ready` 会明确指出尚未接入的应用；需要在目标原应用启用插件，不能把文件安装当作已连接。不会替你启动模型或修改模型配置。
 
 ```bash
-session-bridge service status --project /absolute/path/to/project
-session-bridge service stop --project /absolute/path/to/project
+byte-bridge service status --project /absolute/path/to/project
+byte-bridge service stop --project /absolute/path/to/project
 ```
 
 只会关闭身份可核对的自有服务。需要前台运行时仍可选择 `daemon start`，不要与已运行服务重复启动。ZCode 原会话的启用与主动收件见[上手指南](docs/zcode.zh-CN.md)。
@@ -103,10 +106,10 @@ session-bridge service stop --project /absolute/path/to/project
 
 ```bash
 # 在主 Codex 会话中：
-session-bridge connect --harness codex --alias main --project /absolute/path/to/project
+byte-bridge connect --harness codex --alias main --project /absolute/path/to/project
 
 # 在监督 Codex 会话中：
-session-bridge connect --harness codex --alias supervisor --project /absolute/path/to/project
+byte-bridge connect --harness codex --alias supervisor --project /absolute/path/to/project
 ```
 
 从聊天原生工作目录运行 `connect`，通过参数明确指定协作项目。其他应用通过各自插件／扩展的原生入口登记，见下方接入表。在外部终端手填聊天 ID，不能代替原会话连接证明。
@@ -166,7 +169,7 @@ harness 指运行 Agent 的应用环境。各应用的 Skill 语法和启用方�
 | [命令参考](docs/cli.zh-CN.md) | 结构化请求、报告、运行收据、监督、恢复与卸载 |
 | [兼容性与限制](docs/support.md) | 各应用版本、生命周期条件与当前边界 |
 | [自然语言 Skill](skills/sessionbridge-do/SKILL.md) | 已连接 Agent 实际遵循的操作步骤 |
-| [连接器接口](https://github.com/elan6666/Session-bridge/blob/main/src/adapters/contract.ts) | 对接其他应用的原生会话能力 |
+| [连接器接口](https://github.com/elan6666/byte-skills/blob/main/packages/byte-bridge/src/adapters/contract.ts) | 对接其他应用的原生会话能力 |
 
 普通项目使用会桥内置的独立任务模式。已有 Byte 项目可保留 Byte 的工作权限记录，会桥负责传输、调度与回报；显式源码固定与 v1 已提交交接导入见 [Byte 接入指南](docs/byte.zh-CN.md)，见 [可选项目管理集成](docs/support.md#可选项目管理集成)。
 

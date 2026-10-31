@@ -1,3 +1,6 @@
+
+> Byte Bridge is maintained only in `elan6666/byte-skills`, under `packages/byte-bridge`. `skills/byte-bridge/runtime` is generated from this package. The former SessionBridge project is retired; existing `session-bridge` commands and protocol names remain compatibility aliases.
+
 # OpenCode SessionBridge
 
 Two distinct modes are available:

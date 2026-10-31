@@ -1,11 +1,11 @@
 ---
 name: byte-bridge
-description: Connect agent chats, assign main and supervisor roles, delegate scoped work, supervise an identified long run, and return results through the bundled SessionBridge. Use for same-app or cross-app collaboration; short same-task helpers remain native subagents.
+description: Connect agent chats, assign main and supervisor roles, delegate scoped work, supervise an identified long run, and return results through the bundled Byte Bridge runtime. Use for same-app or cross-app collaboration; short same-task helpers remain native subagents.
 ---
 
 # Byte Bridge
 
-Use SessionBridge as Byte's cross-chat collaboration layer. Understand the
+Use Byte Bridge as Byte's cross-chat collaboration layer. Understand the
 natural-language request in the current agent, then call its structured CLI or
 native tools. The bridge connects selected existing sessions; it does not choose
 models, grant tool permissions, or make its own model API calls.
@@ -101,3 +101,6 @@ unloaded chat or arbitrary existing GUI/TUI.
 `byte-do`, `byte-auto` and custom `byte-workflow` projects use this same transport.
 
 Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills).
+
+Maintain the complete project only in `packages/byte-bridge` in that repository.
+The installed `runtime/` is generated; former SessionBridge names are compatibility aliases.

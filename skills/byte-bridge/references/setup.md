@@ -1,26 +1,29 @@
 # Bridge setup and compatibility
 
-The runtime under `../runtime/` is a product-only snapshot of
-[SessionBridge](https://github.com/elan6666/Session-bridge). `BYTE_SOURCE.json`
-records the source commit and file hashes. Source and compiled CLI are shipped
-together; no global CLI, private acceptance material or existing connection is
-copied. Node.js 24.15–24.x is required only for Bridge.
-The snapshot retains unit/integration regression sources for maintenance, but
-excludes live account tests, local evidence and developer history. Ordinary
-bootstrap installs production dependencies only. To rebuild and run the Node
-suite as a maintainer, use the snapshot's development dependencies and `npm test`.
+Byte Bridge is maintained entirely inside the Byte Skills repository at
+[`packages/byte-bridge`](https://github.com/elan6666/byte-skills/tree/main/packages/byte-bridge).
+That directory contains the complete source, native plugins, scripts, unit,
+integration and live-test suites, and product documentation. The former
+SessionBridge project is retired; its protocol identifiers remain compatibility
+aliases. No external source checkout is needed.
 
-Install all Byte skills normally, then explicitly install Bridge dependencies:
+The `../runtime/` directory is a generated installation payload, not a second
+editable project. `BYTE_SOURCE.json` records the canonical source-tree hash and
+payload hashes. Historical origin metadata does not select a runtime source.
+Node.js 24.15–24.x is required only for Bridge.
+
+Install all Byte skills and explicitly install production Bridge dependencies:
 
 ```bash
 ./install.sh --all --bridge
 ```
 
 Or run `python3 scripts/bridge.py bootstrap` from the installed `byte-bridge`
-directory. This installs dependencies, not agent apps or model accounts. For
-source maintenance, build/test the pinned SessionBridge source before running
-the repository's `scripts/sync_sessionbridge.py`; never copy its development
-worktree wholesale.
+directory. This installs dependencies, not agent apps or model accounts.
+Maintainers edit `packages/byte-bridge` and run the repository's
+`python3 scripts/build_bridge_runtime.py --build`; `--check` rejects source or
+payload drift. See the root README for development checks. Live tests require
+separate authorization and suitable accounts; ordinary installation runs none.
 
 ## Original Codex chats
 
@@ -61,7 +64,7 @@ someone else's active job just to activate an updated skill.
 ## Other apps
 
 Read the bundled [compatibility matrix](../runtime/docs/support.en.md) for exact
-versions and mode-specific evidence. In the source snapshot, routes include:
+versions and mode-specific evidence. Available routes include:
 
 | App | Mode boundary |
 | --- | --- |

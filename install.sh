@@ -39,6 +39,8 @@ if [[ ${#TARGETS[@]} -eq 0 ]]; then
   TARGETS+=("${HOME}/.agents/skills")
 fi
 
+python3 "$REPO_DIR/scripts/build_bridge_runtime.py" --check
+
 if [[ $CHECK_ONLY -eq 1 ]]; then
   python3 "$REPO_DIR/scripts/sync_shared_references.py" --check
 else

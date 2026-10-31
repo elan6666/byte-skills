@@ -49,7 +49,7 @@ Keep the daemon in its own terminal. Installation places project integration fil
 
 ## Start a dedicated ZCode worker
 
-Prepare a separate native ZCode profile home with working model access. Its native `.zcode/v2/provider_config.json` supplies model configuration; follow the [official ZCode configuration guide](https://github.com/zai-org/ZCode/blob/main/apps/zcode-cli/docs/usage/03-config.md). SessionBridge does not copy credentials from other applications. The adapted macOS runtime is the desktop-bundled `Resources/glm/zcode.cjs` with adjacent provider resources; an explicit absolute `binary` override is available and remains version checked.
+Prepare a separate native ZCode profile home with working model access. Its native `.zcode/v2/provider_config.json` supplies model configuration; follow the [official ZCode configuration guide](https://github.com/zai-org/ZCode/blob/main/apps/zcode-cli/docs/usage/03-config.md). Byte Bridge does not copy credentials from other applications. The adapted macOS runtime is the desktop-bundled `Resources/glm/zcode.cjs` with adjacent provider resources; an explicit absolute `binary` override is available and remains version checked.
 
 Save this non-secret JSON as the private project file `.session-bridge/zcode-start.json`:
 
@@ -62,7 +62,7 @@ Save this non-secret JSON as the private project file `.session-bridge/zcode-sta
 }
 ```
 
-`profile_dir` is the dedicated home, not its `.zcode/cli` subdirectory. Choose `build`, `edit`, `plan`, `yolo`, or `guarded` explicitly; ZCode defines their semantics. SessionBridge does not approve native permission requests, so actions requiring an interactive decision can remain blocked. Select `yolo` only for a dedicated environment where you explicitly accept direct native tool execution. The deadline or Ctrl-C closes this dedicated runtime without stopping other applications.
+`profile_dir` is the dedicated home, not its `.zcode/cli` subdirectory. Choose `build`, `edit`, `plan`, `yolo`, or `guarded` explicitly; ZCode defines their semantics. Byte Bridge does not approve native permission requests, so actions requiring an interactive decision can remain blocked. Select `yolo` only for a dedicated environment where you explicitly accept direct native tool execution. The deadline or Ctrl-C closes this dedicated runtime without stopping other applications.
 
 ```bash
 session-bridge host --harness zcode --project /path/to/project --stdin \

@@ -116,7 +116,7 @@ $byte-bridge 确认启动后交接准确的长任务；监督者回传证据，�
 | [byte-do](skills/byte-do/SKILL.md) | 自然语言描述任务，自动选择并组合对应技能。 |
 | [byte-auto](skills/byte-auto/SKILL.md) | 自动推进默认完整流程：明确目标、规划、实现、核验、修复，直到整体验收。 |
 | [byte-discuss](skills/byte-discuss/SKILL.md) | 讨论想法、比较方案，先明确需求、范围和取舍。 |
-| [byte-bridge](skills/byte-bridge/SKILL.md) | 连接会话或不同 Agent 应用，设置角色、派发任务、监督准确运行并回传结果；自带 SessionBridge 运行时。 |
+| [byte-bridge](skills/byte-bridge/SKILL.md) | 连接会话或不同 Agent 应用，设置角色、派发任务、监督准确运行并回传结果；自带 Byte Bridge 运行时。 |
 | [byte-workflow](skills/byte-workflow/SKILL.md) | 自定义步骤、分支、循环、验收和分工，保存到本地并跨项目复用。 |
 
 | 中间能力 | 对应技能 |
@@ -139,7 +139,7 @@ $byte-bridge 确认启动后交接准确的长任务；监督者回传证据，�
 
 时长是选择方式的参考。子代理和模型选择受运行环境及用户授权约束；等待时间超出预期时，应重新评估监督方式。
 
-跨会话操作统一使用内置 SessionBridge 支持的 `byte-bridge`。
+跨会话操作统一使用本仓库维护的 `byte-bridge`。
 `byte-design-supervise` 保留为训练／消融预设，`byte-relay` 保留本地证据和旧版权限辅助工具。
 Byte 管工作流与验收，Bridge 管投递、监督和回执，不再建立第二套工作所有者。
 
@@ -237,3 +237,28 @@ python3 -m unittest discover -s tests -v
 ## 许可
 
 [MIT](LICENSE)。项目受团队式工作方式启发，与字节跳动无隶属关系；文中产品与公司名称归各自权利人所有。
+
+## Bridge 开发与维护
+
+原 SessionBridge 的完整产品工程已合并，后续**只维护本 Byte 仓库**：
+[`packages/byte-bridge`](packages/byte-bridge/README.zh-CN.md) 包含源码、原生适配器、
+插件、单元/集成/真实测试源码、打包工具和文档。原独立项目停止维护。
+既有 `session-bridge` 命令和 `sessionbridge_*` 协议名保留为兼容别名。
+
+- `packages/byte-bridge/`：唯一可编辑的完整工程。
+- `skills/byte-bridge/`：用户入口和启动器。
+- `skills/byte-bridge/runtime/`：从上述工程生成的安装包，不直接修改。
+
+```bash
+npm --prefix packages/byte-bridge ci --ignore-scripts
+npm --prefix packages/byte-bridge run lint
+npm --prefix packages/byte-bridge run typecheck
+npm --prefix packages/byte-bridge test
+python3 -m unittest discover -s packages/byte-bridge/tests/python
+python3 scripts/build_bridge_runtime.py --build
+python3 scripts/build_bridge_runtime.py --check
+```
+
+这些检查不会运行需要账号的真实测试或启动 Agent 服务。安装包以源码树哈希绑定
+Byte 内部源码，构建不再读取独立 SessionBridge 仓库；历史导入来源保留在
+`packages/byte-bridge/ORIGIN.json`。

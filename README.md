@@ -115,7 +115,7 @@ work progresses; you do not need to invoke every intermediate step.
 | [byte-do](skills/byte-do/SKILL.md) | Describe a task in natural language; automatically select and combine the relevant skills. |
 | [byte-auto](skills/byte-auto/SKILL.md) | Drive the default delivery workflow: clarify, plan, implement, verify, repair and accept the overall result. |
 | [byte-discuss](skills/byte-discuss/SKILL.md) | Clarify an idea, compare options, and settle scope or tradeoffs before building. |
-| [byte-bridge](skills/byte-bridge/SKILL.md) | Connect chats or agent apps, assign roles, delegate scoped work, supervise exact runs and return results. Includes the SessionBridge runtime. |
+| [byte-bridge](skills/byte-bridge/SKILL.md) | Connect chats or agent apps, assign roles, delegate scoped work, supervise exact runs and return results. Includes the Byte Bridge runtime. |
 | [byte-workflow](skills/byte-workflow/SKILL.md) | Save custom steps, branches, loops, acceptance and role bindings locally for reuse across projects. |
 
 | Supporting capabilities | Skills |
@@ -136,7 +136,7 @@ work progresses; you do not need to invoke every intermediate step.
 
 Duration is a routing estimate. Delegation and model choice depend on runtime support and user authorization. Reassess the route when a short job takes longer than expected.
 
-Cross-chat operations now go through `byte-bridge`, backed by the bundled SessionBridge.
+Cross-chat operations now go through `byte-bridge`, using the runtime maintained in this repository.
 `byte-design-supervise` remains its training/ablation preset; `byte-relay` retains
 local evidence and legacy owner helpers. Byte owns the workflow and acceptance;
 Bridge owns transport and supervision records, not a second work baton.
@@ -256,3 +256,30 @@ To change the shared evidence contract, edit `shared/evidence-contract.md` and r
 ## License
 
 [MIT](LICENSE). Inspired by team-based workflows; not affiliated with ByteDance. Product and company names belong to their respective owners.
+
+## Bridge development
+
+The complete former SessionBridge project is now maintained **only here**, in
+[`packages/byte-bridge`](packages/byte-bridge/README.md): source, native adapters,
+plugins, unit/integration/live test sources, packaging tools and documentation.
+The former standalone project is retired. Existing `session-bridge` commands and
+`sessionbridge_*` protocol names remain compatibility aliases.
+
+- `packages/byte-bridge/`: canonical editable project.
+- `skills/byte-bridge/`: user-facing skill and launcher.
+- `skills/byte-bridge/runtime/`: generated installation payload; do not edit directly.
+
+```bash
+npm --prefix packages/byte-bridge ci --ignore-scripts
+npm --prefix packages/byte-bridge run lint
+npm --prefix packages/byte-bridge run typecheck
+npm --prefix packages/byte-bridge test
+python3 -m unittest discover -s packages/byte-bridge/tests/python
+python3 scripts/build_bridge_runtime.py --build
+python3 scripts/build_bridge_runtime.py --check
+```
+
+These checks do not run account-dependent live tests or start an agent service.
+Runtime hashes bind installations to the Byte source tree; rebuilding never
+reads a separate SessionBridge repository. Historical import provenance lives
+in `packages/byte-bridge/ORIGIN.json`.

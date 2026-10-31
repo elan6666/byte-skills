@@ -24,7 +24,7 @@ def load(name, path):
 
 bridge = load("byte_bridge_launcher", ROOT / "skills/byte-bridge/scripts/bridge.py")
 handoff = load("byte_bridge_handoff", ROOT / "skills/byte-bridge/scripts/handoff.py")
-exporter = load("byte_bridge_export", ROOT / "scripts/sync_sessionbridge.py")
+exporter = load("byte_bridge_export", ROOT / "scripts/build_bridge_runtime.py")
 
 
 class BridgeTests(unittest.TestCase):
@@ -155,20 +155,54 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(result.returncode, 3)
         self.assertFalse((outside / "out.json").exists())
 
-    def test_export_uses_product_allowlist(self):
-        for directory in exporter.DIRECTORIES:
-            (self.root / directory).mkdir(parents=True, exist_ok=True)
-        for name in (*exporter.FILES, *("docs/" + n for n in exporter.DOCS),
-                     "src/core.ts", "dist/src/core.js", "evidence/private.json", "AGENTS.md",
-                     ".byte-os/STATUS.md", "plugins/codex/.sessionbridge-runtime.json"):
+    def product(self):
+        files = {
+            "package.json": json.dumps({"files": ["dist/src", "plugins", "README.md"]}),
+            "package-lock.json": "{}", "LICENSE": "MIT", "README.md": "Byte Bridge",
+            "ORIGIN.json": json.dumps({"origin_repository": "historical", "origin_commit": "baseline"}),
+            "src/core.ts": "source", "tests/live/run.ts": "live test source",
+            "dist/src/cli/main.js": "compiled", "plugins/codex/main.js": "plugin",
+            "plugins/codex/.sessionbridge-runtime.json": "private locator",
+            "evidence/private.json": "private", "node_modules/local/index.js": "dependency",
+        }
+        for name, data in files.items():
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text("fixture")
+            path.write_text(data)
+
+    def test_runtime_contains_payload_while_full_project_retains_tests(self):
+        self.product()
         selected = {name for name, _ in exporter.selected_files(self.root)}
-        self.assertIn("src/core.ts", selected)
-        self.assertIn("dist/src/core.js", selected)
-        self.assertFalse(any(name.startswith(("evidence/", ".byte-os/")) or name == "AGENTS.md" for name in selected))
+        self.assertIn("dist/src/cli/main.js", selected)
+        self.assertIn("plugins/codex/main.js", selected)
+        self.assertNotIn("src/core.ts", selected)
+        self.assertNotIn("tests/live/run.ts", selected)
         self.assertNotIn("plugins/codex/.sessionbridge-runtime.json", selected)
+        maintained = {name for name, _ in exporter.source_files(self.root)}
+        self.assertIn("tests/live/run.ts", maintained)
+        self.assertNotIn("evidence/private.json", maintained)
+
+    def test_source_change_invalidates_generated_runtime(self):
+        self.product()
+        with tempfile.TemporaryDirectory() as output:
+            destination = Path(output) / "runtime"
+            exporter.export(self.root, destination)
+            exporter.check_runtime(self.root, destination)
+            before = exporter.source_digest(self.root)
+            (self.root / "node_modules/local/index.js").write_text("different dependency")
+            self.assertEqual(exporter.source_digest(self.root), before)
+            (self.root / "src/core.ts").write_text("new implementation")
+            with self.assertRaisesRegex(ValueError, "stale"):
+                exporter.check_runtime(self.root, destination)
+
+    def test_runtime_tampering_is_rejected(self):
+        self.product()
+        with tempfile.TemporaryDirectory() as output:
+            destination = Path(output) / "runtime"
+            exporter.export(self.root, destination)
+            (destination / "dist/src/cli/main.js").write_text("tampered")
+            with self.assertRaisesRegex(ValueError, "changed"):
+                exporter.check_runtime(self.root, destination)
 
 
 if __name__ == "__main__":

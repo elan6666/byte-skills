@@ -16,7 +16,7 @@ RUNTIME = Path(__file__).resolve().parents[1] / "runtime"
 
 def verify_bundle(root: Path) -> dict:
     manifest = json.loads((root / "BYTE_SOURCE.json").read_text())
-    if manifest.get("schema") != "byte-sessionbridge-source/v1":
+    if manifest.get("schema") not in ("byte-sessionbridge-source/v1", "byte-bridge-runtime/v2"):
         raise ValueError("Unsupported bundled runtime manifest")
     for name, expected in manifest["files"].items():
         relative = Path(name)
@@ -63,7 +63,9 @@ def main(argv: list[str] | None = None) -> int:
             if args.arguments:
                 parser.error("doctor takes no project argument; use exec doctor --project PATH --json")
             print(json.dumps({"state": "ready" if dependency_ready(RUNTIME) else "needs_bootstrap",
-                              "source_commit": manifest["source_commit"], "runtime": str(RUNTIME),
+                              "source_commit": manifest.get("source_commit", manifest.get("origin_commit")),
+                              "maintained_in": manifest.get("maintained_in"),
+                              "source_tree_sha256": manifest.get("source_tree_sha256"), "runtime": str(RUNTIME),
                               "node": node, "files_verified": len(manifest["files"]),
                               "models_started": 0, "project_modified": False}))
             return 0 if dependency_ready(RUNTIME) else 3
