@@ -1,5 +1,11 @@
 # Codex task-to-task relay
 
+Current cross-chat operations use [$byte-bridge](../../byte-bridge/SKILL.md),
+its source pin and a single transport journal. The rules below preserve the
+launch/evidence/monitoring contract. Legacy direct-message examples are for
+existing Relay recovery only; new managed workflows commit engine handoffs
+and import them through Bridge. Do not run both routes.
+
 Use this mode when two or more Codex tasks share one project: for example, a
 main task implements core code and tests, then a supervisor task watches a long
 performance or ablation run and returns anomalies or completion evidence.

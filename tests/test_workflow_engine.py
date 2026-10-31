@@ -190,6 +190,40 @@ class WorkflowEngineTests(unittest.TestCase):
         self.advance({"observed": True})
         self.assertEqual(self.change("advance", evidence=proof)[0], 1)
 
+    def test_bridge_harnesses_keep_exact_owner_through_real_engine_handoff(self):
+        for index, harness in enumerate(("codex", "claude", "dsh", "zcode", "pi", "hermes", "kimi", "opencode")):
+            with self.subTest(harness=harness):
+                self.project = self.root / ("bridge-" + harness)
+                self.project.mkdir()
+                self.state_path = self.project / ".byte-os/coordination/state.json"
+                main = harness + ":original-main"
+                supervisor = "opencode:original-supervisor" if harness != "opencode" else "kimi:original-supervisor"
+                result = self.call("init", "--template", str(self.template), "--objective", "Bounded bridge test",
+                                   "--authority-ref", "user:offline-test", "--main-session", main,
+                                   "--supervisor-session", supervisor, "--monitor-id", "offline-fixture-monitor")
+                self.assertEqual(result[0], 0, result)
+                self.experiment_step()
+                run_id = "bridge-run-" + str(index)
+                launch = self.proof("run_launch", run_id=run_id, attempt=1,
+                                    process={"host": "isolated-test", "identity": run_id})
+                handoff = self.project / ".byte-os/coordination/handoffs/start.json"
+                handoff.parent.mkdir(parents=True, exist_ok=True)
+                handoff.write_text(json.dumps({"stage_scope": "bounded-offline-test"}))
+                start = self.change("start-run", evidence=launch, extra=("--run-id", run_id, "--attempt", "1", "--handoff", str(handoff)))
+                self.assertEqual(start[0], 0, start)
+                self.assertEqual(self.state()["owner_session"], supervisor)
+                terminal = self.proof("run_terminal", run_id=run_id, attempt=1, exit_code=1)
+                returned = handoff.with_name("return.json")
+                returned.write_text(json.dumps({"stage_scope": "bounded-offline-test"}))
+                before = self.state_path.read_bytes()
+                wrong = self.change("return-run", actor=main, evidence=terminal, extra=("--handoff", str(returned)))
+                self.assertEqual(wrong[0], 1)
+                self.assertEqual(before, self.state_path.read_bytes())
+                result = self.change("return-run", actor=supervisor, evidence=terminal, extra=("--handoff", str(returned)))
+                self.assertEqual(result[0], 0, result)
+                self.assertEqual(self.state()["owner_session"], main)
+                self.assertTrue(self.workflow()["return_pending"])
+
     def test_template_is_pinned_and_existing_instance_cannot_be_overwritten(self):
         self.template.write_text(json.dumps(dict(definition(), start="literature")))
         self.assertEqual(self.call("status")[1]["step"], "diagnose")

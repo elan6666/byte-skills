@@ -7,7 +7,7 @@
 <p align="center"><strong>A workflow that fits the task, from an idea to a verified result.</strong><br />Compose discussion, research, implementation, review, and long-running handoffs.</p>
 
 <p align="center">
-  <a href="#choose-a-skill"><img src="https://img.shields.io/badge/skills-13-8b5cf6?style=flat-square" alt="13 composable skills" /></a>
+  <a href="#choose-a-skill"><img src="https://img.shields.io/badge/skills-14-8b5cf6?style=flat-square" alt="14 composable skills" /></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 and Bash scripts" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT license" /></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/文档-简体中文-2563eb?style=flat-square" alt="简体中文文档" /></a>
@@ -34,7 +34,7 @@ Your client keeps its models and tools. Skills guide the procedure, and local he
 
 ## Overview
 
-<img src="assets/overview.svg" alt="Five common entries: byte-do, byte-auto, byte-discuss, byte-design-supervise and byte-workflow; intermediate capabilities are grouped below" width="100%" />
+<img src="assets/overview.svg" alt="Five common entries: byte-do, byte-auto, byte-discuss, byte-bridge and byte-workflow; intermediate capabilities are grouped below" width="100%" />
 
 ## Quick start
 
@@ -47,13 +47,13 @@ cd byte-skills
 ./install.sh --all
 ```
 
-This installs into `~/.agents/skills` and `~/.codex/skills`. Refresh the skill list or reopen the conversation as required by your client.
+This installs 14 skills into `~/.agents/skills` and `~/.codex/skills`. Refresh the skill list or reopen the conversation as required by your client.
 
 ```text
 $byte-do Describe the change you need; choose the relevant skills and verify the result
 $byte-auto Complete this feature through the default workflow until acceptance passes
 $byte-discuss Compare these directions and help me choose the scope
-$byte-design-supervise Hand this verified long run to my designated supervisor chat
+$byte-bridge Hand this verified long run to my designated supervisor chat
 $byte-workflow Save my research loop with steps, conditions, acceptance and session roles
 ```
 
@@ -61,6 +61,17 @@ $byte-workflow Save my research loop with steps, conditions, acceptance and sess
 `byte-auto` drives the default complete delivery workflow, adapting its depth to the task.
 You can also discuss first, hand off a long job, or save your own reusable process.
 These examples use Codex-style invocation; your client determines the trigger syntax.
+
+For cross-chat collaboration, enable the bundled Bridge runtime explicitly:
+
+```bash
+./install.sh --all --bridge
+```
+
+Bridge requires Node.js 24.15–24.x; the other Byte skills keep their Python/Bash
+requirements. This installs pinned npm dependencies, without starting models,
+services or chats. Then use `$byte-bridge` to connect the selected original
+sessions and inspect their capabilities. See the [Bridge guide](skills/byte-bridge/references/setup.md).
 
 Other installation options:
 
@@ -77,13 +88,14 @@ The installer replaces Byte skill directories with matching names. Save any loca
 **GraD-Pert: from an experiment question to implementation and supervised follow-up.**
 A real research project used Byte to compare ablation options, implement scoped changes,
 verify the code, and pass readiness evidence to an existing supervisor without restarting
-the active experiment. The prompts below are adapted for reuse, not a verbatim transcript.
+the active experiment. The prompts below use the current entry names and are adapted for reuse; the
+historical project records predate `byte-bridge`.
 
 ```text
 $byte-discuss What could explain this result? Compare experiment options against the existing baseline.
 $byte-do Implement the chosen change, preserve baseline behavior, and run the relevant checks.
 $byte-auto Continue the authorized experiment workflow; distinguish code readiness from validated results.
-$byte-design-supervise Verify startup, hand the exact long run to the supervisor, then return evidence for main-chat verification and continuation.
+$byte-bridge Verify startup, hand the exact long run to the supervisor, then return evidence for main-chat verification and continuation.
 ```
 
 **Observed snapshot, 31 October 2026:** design, implementation, local checks and a native
@@ -103,14 +115,14 @@ work progresses; you do not need to invoke every intermediate step.
 | [byte-do](skills/byte-do/SKILL.md) | Describe a task in natural language; automatically select and combine the relevant skills. |
 | [byte-auto](skills/byte-auto/SKILL.md) | Drive the default delivery workflow: clarify, plan, implement, verify, repair and accept the overall result. |
 | [byte-discuss](skills/byte-discuss/SKILL.md) | Clarify an idea, compare options, and settle scope or tradeoffs before building. |
-| [byte-design-supervise](skills/byte-design-supervise/SKILL.md) | Have a Codex main chat verify launch, hand a long job to a supervisor, then verify the returned result and continue. |
+| [byte-bridge](skills/byte-bridge/SKILL.md) | Connect chats or agent apps, assign roles, delegate scoped work, supervise exact runs and return results. Includes the SessionBridge runtime. |
 | [byte-workflow](skills/byte-workflow/SKILL.md) | Save custom steps, branches, loops, acceptance and role bindings locally for reuse across projects. |
 
 | Supporting capabilities | Skills |
 | --- | --- |
 | Explore alternatives and check evidence | [byte-brainstorm](skills/byte-brainstorm/SKILL.md), [byte-research](skills/byte-research/SKILL.md) |
 | Plan, implement, review and save deferred ideas | [byte-plan](skills/byte-plan/SKILL.md), [byte-build](skills/byte-build/SKILL.md), [byte-review](skills/byte-review/SKILL.md), [byte-future](skills/byte-future/SKILL.md) |
-| Inspect progress and maintain handoff records | [byte-status](skills/byte-status/SKILL.md), [byte-relay](skills/byte-relay/SKILL.md) |
+| Inspect progress and maintain handoff records | [byte-status](skills/byte-status/SKILL.md), [byte-relay](skills/byte-relay/SKILL.md), [byte-design-supervise](skills/byte-design-supervise/SKILL.md) (training preset) |
 
 ## Short waits and long jobs
 
@@ -124,9 +136,24 @@ work progresses; you do not need to invoke every intermediate step.
 
 Duration is a routing estimate. Delegation and model choice depend on runtime support and user authorization. Reassess the route when a short job takes longer than expected.
 
-For a long job, the main chat first verifies that it started, records the run identity, logs, acceptance criteria, and repair scope, then hands it over through `byte-relay`. The supervisor handles only the agreed scope, returns the terminal evidence, and disables that run's monitor. The main chat verifies the result and advances the next authorized stage.
+Cross-chat operations now go through `byte-bridge`, backed by the bundled SessionBridge.
+`byte-design-supervise` remains its training/ablation preset; `byte-relay` retains
+local evidence and legacy owner helpers. Byte owns the workflow and acceptance;
+Bridge owns transport and supervision records, not a second work baton.
+
+For a long job, the main chat first verifies that it started, records the run identity, logs, acceptance criteria, and repair scope, then commits the engine handoff and imports it through `byte-bridge`. The supervisor handles only the agreed scope, returns the terminal evidence, and disables that run's monitor. The main chat verifies the result and advances the next authorized stage.
 
 **A delivered cross-chat message does not prove that the main chat resumed.** Automatic continuation requires working wake paths in both directions and an observable acknowledgement. `run_event.py` records process exits and calls a configured notifier; waking an idle Codex chat still needs verification in the target environment. Without a tested event adapter, scheduled checks can take up to one check interval to detect a change. See the [supervision workflow](skills/byte-design-supervise/references/workflow.md) and [event bridge notes](skills/byte-relay/references/codex-event-bridge.md).
+
+### Supported agent routes
+
+The bundled runtime has version/mode-specific connectors for Codex, Claude Code,
+dsh, Hermes, Pi, ZCode, Kimi Code and OpenCode. New Byte workflow-v1 instances
+accept their exact owner references. Native-session attachment and managed
+sessions remain distinct; no arbitrary GUI/TUI or idle-wake guarantee is implied.
+Existing projects require explicit source binding and committed-handoff import;
+installing an update does not migrate an active job. See the
+[Byte integration contract](skills/byte-bridge/references/byte-workflow.md).
 
 ## Recoverable handoffs
 
@@ -147,7 +174,7 @@ Each coordination state has one write owner. Messages notify participants; proje
 $byte-relay Initialize handoff state for this project
 ```
 
-Relay includes local session-digest readers for Codex, Claude Code, DSH, and ZCode. Digest access does not imply live messaging support. A full ZCode conversation summary still needs its native tools. See the [coordination schema](skills/byte-relay/references/coordination-schema.md) for details.
+Legacy Relay includes local session-digest readers for Codex, Claude Code, DSH, and ZCode. Digest access does not imply live messaging support. A full ZCode conversation summary still needs its native tools. See the [coordination schema](skills/byte-relay/references/coordination-schema.md) for details.
 
 ## Reusable local workflows
 

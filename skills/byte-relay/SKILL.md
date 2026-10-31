@@ -1,9 +1,15 @@
 ---
 name: byte-relay
-description: Coordinate work across AI coding harnesses or Codex tasks through durable state, exact session ownership, handoffs, and supervision. Use when the user invokes $byte-relay, asks to run a relay stage, or wants one conversation to hand work to another.
+description: Maintain local Byte identity, ownership, handoff records and evidence, including legacy relay projects. Use byte-bridge for live cross-chat connection, delegation, supervision and result delivery.
 ---
 
 # Byte Relay
+
+Live cross-chat cooperation now uses [$byte-bridge](../byte-bridge/SKILL.md).
+Relay retains local state, session digests, receipts and legacy owner helpers.
+For a request to send, delegate, supervise or return across chats, load Bridge
+first and use its single delivery route. Existing state is preserved; this is
+not authorization to migrate a running project.
 
 Act as the coordination relay between harnesses that share one repository. Your
 job in a relay invocation is to perform the owned work and safely transfer any

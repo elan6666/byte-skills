@@ -30,9 +30,12 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    appropriate Byte capability. Record real output/source hashes in a step
    receipt, then `advance` using the observed revision and a stable event ID.
    A status message, empty reply or saved plan cannot advance a required step.
-4. Main launches jobs within authority. `start-run` persists launch and exact
-   handoff, then transfers an explicitly unarmed waiting baton. Notify the
-   target; supervisor acknowledges and uses `arm-run` with monitor/return-wake
+4. Use [$byte-bridge](../byte-bridge/SKILL.md) for cross-chat transport, with its
+   committed-handoff metadata and explicitly pinned source. The engine alone
+   changes workflow ownership; Bridge imports the exact transfer without a
+   second owner ledger. Main launches jobs within authority. `start-run` persists
+   launch and exact handoff, then transfers an explicitly unarmed waiting baton. Notify the
+   target through Bridge; supervisor acknowledges and uses `arm-run` with monitor/return-wake
    evidence. Only then is an unattended wait justified. Use these commands
    and `return-run` instead of bypassing the engine with direct relay writes.
    Supervisor observes only its owned run and explicitly allowed repairs.

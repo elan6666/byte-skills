@@ -7,7 +7,7 @@
 <p align="center"><strong>让 AI 编码助手按任务选择工作方式，从想法推进到经过验证的结果。</strong><br />讨论、研究、构建、评审与长任务交接，按实际需要组合。</p>
 
 <p align="center">
-  <a href="#skills"><img src="https://img.shields.io/badge/skills-13-8b5cf6?style=flat-square" alt="13 个可组合技能" /></a>
+  <a href="#skills"><img src="https://img.shields.io/badge/skills-14-8b5cf6?style=flat-square" alt="14 个可组合技能" /></a>
   <a href="#quick-start"><img src="https://img.shields.io/badge/scripts-Python_3_%2B_Bash-3776ab?style=flat-square" alt="Python 3 和 Bash 脚本" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-0f766e?style=flat-square" alt="MIT 许可" /></a>
   <a href="README.md"><img src="https://img.shields.io/badge/docs-English-2563eb?style=flat-square" alt="English documentation" /></a>
@@ -36,7 +36,7 @@
 
 ## 技能总览
 
-<img src="assets/overview.zh-CN.svg" alt="五个常用入口：byte-do、byte-auto、byte-discuss、byte-design-supervise、byte-workflow；其余中间能力合并展示" width="100%" />
+<img src="assets/overview.zh-CN.svg" alt="五个常用入口：byte-do、byte-auto、byte-discuss、byte-bridge、byte-workflow；其余中间能力合并展示" width="100%" />
 
 <a id="quick-start"></a>
 
@@ -51,19 +51,29 @@ cd byte-skills
 ./install.sh --all
 ```
 
-这会安装到 `~/.agents/skills` 和 `~/.codex/skills`。安装后刷新技能列表或重新打开会话；按客户端要求操作。
+这会把 14 个技能安装到 `~/.agents/skills` 和 `~/.codex/skills`。安装后刷新技能列表或重新打开会话；按客户端要求操作。
 
 ```text
 $byte-do 用自然语言描述需求，自动选择合适技能并验证结果
 $byte-auto 按默认完整流程完成这个功能，直到验收通过
 $byte-discuss 比较几个方向，帮我明确需求和取舍
-$byte-design-supervise 将确认启动的长任务交给我指定的监督会话
+$byte-bridge 将确认启动的长任务交给我指定的监督会话
 $byte-workflow 保存我的研究循环，包括步骤、条件、验收和会话分工
 ```
 
 `byte-do` 根据自然语言请求自动组合对应技能；`byte-auto` 自动推进默认完整交付流程，
 按任务调整深度。也可以先讨论、交接长任务，或保存自己的可复用流程。
 以上是 Codex 风格的调用示例，实际触发语法由客户端决定。
+
+需要跨会话协作时，显式安装内置 Bridge 运行时依赖：
+
+```bash
+./install.sh --all --bridge
+```
+
+Bridge 需要 Node.js 24.15–24.x；其他 Byte 技能仍按 Python/Bash 要求使用。
+这个命令只安装固定版本的 npm 依赖，不启动模型、服务或新会话。
+随后用 `$byte-bridge` 连接指定的原会话并核实能力，详见 [Bridge 指南](skills/byte-bridge/references/setup.md)。
 
 其他安装方式：
 
@@ -81,13 +91,13 @@ $byte-workflow 保存我的研究循环，包括步骤、条件、验收和会�
 
 **GraD-Pert：从实验问题，到代码实现与跨对话监督衔接。**
 真实研究项目中，我们用 Byte 比较消融方案、实现限定范围的改动、验证代码，
-再将就绪证据交给既有监督会话，不重启正在运行的实验。以下提示词为方便复用而改写，并非逐字会话记录。
+再将就绪证据交给既有监督会话，不重启正在运行的实验。以下提示词按当前入口名称改写，方便复用；历史项目记录早于 `byte-bridge`，不是新入口已经执行过这些实验的声明。
 
 ```text
 $byte-discuss 这个结果可能说明什么？基于已有基线比较几个消融方案。
 $byte-do 实现选定改动，保持基线行为不变，并运行相关检查。
 $byte-auto 持续推进已授权的实验流程，区分代码就绪与实验结果通过验收。
-$byte-design-supervise 确认启动后交接准确的长任务；监督者回传证据，主会话核验并继续。
+$byte-bridge 确认启动后交接准确的长任务；监督者回传证据，主会话核验并继续。
 ```
 
 **2026 年 10 月 31 日记录快照：** 已有方案、实现、本地检查和原生跨对话就绪消息；
@@ -106,14 +116,14 @@ $byte-design-supervise 确认启动后交接准确的长任务；监督者回传
 | [byte-do](skills/byte-do/SKILL.md) | 自然语言描述任务，自动选择并组合对应技能。 |
 | [byte-auto](skills/byte-auto/SKILL.md) | 自动推进默认完整流程：明确目标、规划、实现、核验、修复，直到整体验收。 |
 | [byte-discuss](skills/byte-discuss/SKILL.md) | 讨论想法、比较方案，先明确需求、范围和取舍。 |
-| [byte-design-supervise](skills/byte-design-supervise/SKILL.md) | Codex 主会话确认启动，将长任务交给监督会话，回传后核验并继续推进。 |
+| [byte-bridge](skills/byte-bridge/SKILL.md) | 连接会话或不同 Agent 应用，设置角色、派发任务、监督准确运行并回传结果；自带 SessionBridge 运行时。 |
 | [byte-workflow](skills/byte-workflow/SKILL.md) | 自定义步骤、分支、循环、验收和分工，保存到本地并跨项目复用。 |
 
 | 中间能力 | 对应技能 |
 | --- | --- |
 | 探索备选方案、查证外部证据 | [byte-brainstorm](skills/byte-brainstorm/SKILL.md)、[byte-research](skills/byte-research/SKILL.md) |
 | 规划、实现、评审与保存后续想法 | [byte-plan](skills/byte-plan/SKILL.md)、[byte-build](skills/byte-build/SKILL.md)、[byte-review](skills/byte-review/SKILL.md)、[byte-future](skills/byte-future/SKILL.md) |
-| 查看进度、维护交接记录 | [byte-status](skills/byte-status/SKILL.md)、[byte-relay](skills/byte-relay/SKILL.md) |
+| 查看进度、维护交接记录 | [byte-status](skills/byte-status/SKILL.md)、[byte-relay](skills/byte-relay/SKILL.md)、[byte-design-supervise](skills/byte-design-supervise/SKILL.md)（训练预设） |
 
 <a id="supervision"></a>
 
@@ -129,9 +139,20 @@ $byte-design-supervise 确认启动后交接准确的长任务；监督者回传
 
 时长是选择方式的参考。子代理和模型选择受运行环境及用户授权约束；等待时间超出预期时，应重新评估监督方式。
 
-长任务由主会话先确认真实启动，记录运行身份、日志、验收标准和修复范围，再通过 `byte-relay` 交接。监督会话只处理约定范围内的问题，任务结束后交回证据，并停用本次运行的监控。主会话核实结果后推进已授权的下一阶段。
+跨会话操作统一使用内置 SessionBridge 支持的 `byte-bridge`。
+`byte-design-supervise` 保留为训练／消融预设，`byte-relay` 保留本地证据和旧版权限辅助工具。
+Byte 管工作流与验收，Bridge 管投递、监督和回执，不再建立第二套工作所有者。
+
+长任务由主会话先确认真实启动，记录运行身份、日志、验收标准和修复范围，先通过引擎提交交接，再由 `byte-bridge` 导入并投递。监督会话只处理约定范围内的问题，任务结束后交回证据，并停用本次运行的监控。主会话核实结果后推进已授权的下一阶段。
 
 **跨会话消息送达不代表主会话已经恢复执行。** 自动续跑需要双向唤醒路径和实际接手确认。`run_event.py` 可以记录进程退出事件并调用配置的通知器；空闲 Codex 会话能否被唤醒，仍需在目标环境中验证。没有经过验证的事件适配器时，定时检查有一个检查周期的发现延迟。详见[监督流程](skills/byte-design-supervise/references/workflow.md)和[事件桥接说明](skills/byte-relay/references/codex-event-bridge.md)。
+
+### Agent 接入范围
+
+内置运行时包含 Codex、Claude Code、dsh、Hermes、Pi、ZCode、Kimi Code 和 OpenCode 的版本／模式限定连接器，
+新版 Byte workflow-v1 支持它们的准确所有者引用。原会话接入与新建受控会话仍有区别，不能承诺任意 GUI/TUI 或空闲唤醒。
+既有项目需要显式绑定源码、导入已提交交接；安装更新不会迁移活动任务。
+详见 [Byte 接入契约](skills/byte-bridge/references/byte-workflow.md)。
 
 ## 可恢复的交接
 

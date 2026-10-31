@@ -1,0 +1,2 @@
+# Keep the pinned upstream runtime byte-for-byte; its own lint/typecheck apply.
+skills/byte-bridge/runtime/** -whitespace

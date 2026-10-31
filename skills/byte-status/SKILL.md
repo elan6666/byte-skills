@@ -5,6 +5,10 @@ description: "Inspect progress, blockers, and remaining work in a Byte project."
 
 # Byte Status
 
+For connected cross-chat tasks, use `byte-bridge` status and the existing
+project state. A status request does not connect a new chat, delegate work,
+create a timer or transfer ownership.
+
 Report status from live evidence, not from narrative claims alone.
 
 Apply the shared [evidence contract](references/evidence-contract.md) when

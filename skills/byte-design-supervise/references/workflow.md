@@ -1,5 +1,11 @@
 # Design and supervise workflow (Codex-only)
 
+Current cross-chat operations use [$byte-bridge](../../byte-bridge/SKILL.md),
+its source pin and a single transport journal. The rules below preserve the
+launch/evidence/monitoring contract. Legacy direct-message examples are for
+existing Relay recovery only; new managed workflows commit engine handoffs
+and import them through Bridge. Do not run both routes.
+
 This is the detailed workflow for `$byte-design-supervise`, with `$byte-relay`
 handling session identity, ownership, and handoffs.
 

@@ -5,7 +5,10 @@ description: Coordinate a Codex main chat and separate supervisor chat for train
 
 # Byte Design and Supervise
 
-This is an independently callable Byte skill. Use it for the Codex-only
+This is the independently callable training/ablation preset of
+[$byte-bridge](../byte-bridge/SKILL.md). Use Bridge for all cross-chat connection,
+notification, supervision and return operations; do not send another manual
+message or create a parallel delivery queue. Use this preset for the Codex
 main-chat → supervisor-chat → main-chat workflow. The main chat owns design,
 core code, launch, and final acceptance; the supervisor owns long-run checks
 and only explicitly bounded repairs. Use ordinary chat turns rather than Goal
@@ -14,7 +17,8 @@ mode unless the user requests a Goal.
 For the launch gate, durable handoff, event-plus-periodic supervision, and
 handback rules, follow the [workflow](references/workflow.md). Use
 [$byte-relay](../byte-relay/SKILL.md) for exact session identity, owner gates,
-receipts, and handoffs. Prefer an authorized same-task subagent for a bounded
+receipts, and legacy handoffs; Bridge imports engine-managed transfers.
+Prefer an authorized same-task subagent for a bounded
 wait expected under about one hour; it keeps the main chat's ownership. Use
 this cross-chat route when the job is longer or the main turn must end.
 

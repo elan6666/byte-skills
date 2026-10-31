@@ -29,6 +29,10 @@ Act directly when ordinary reasoning is enough. Do not load another Byte skill
 merely because it exists, announce an internal route by default, or force named
 stages. Combine capabilities naturally when the outcome genuinely needs them.
 
+For collaboration across agent chats, role assignment, delegation or long-job
+supervision, use [$byte-bridge](../byte-bridge/SKILL.md). It provides the shared
+SessionBridge transport; do not construct a second ad hoc message route.
+
 For a reusable local workflow with custom steps, loops, acceptance and role
 bindings, use [$byte-workflow](../byte-workflow/SKILL.md). Its pinned definition
 and engine-managed state take precedence over ad hoc phase descriptions.
@@ -84,8 +88,9 @@ For the requested combined workflow, use
 [adaptive execution](references/long-running-work.md): one overall outcome,
 ordinary core-work turns by default, and evolving scheduled checks for
 authorized routine follow-up. Use a Goal only when explicitly requested. For
-a Codex main chat plus separate long-run supervisor, use the independently
-callable [$byte-design-supervise](../byte-design-supervise/SKILL.md) skill.
+a main chat plus separate long-run supervisor, use
+[$byte-bridge](../byte-bridge/SKILL.md). The older `byte-design-supervise` name
+remains a compatible training preset.
 Prefer an authorized same-task subagent for a bounded wait expected within
 about one hour and the current turn; use cross-chat supervision for longer or
 unattended work, not merely because a test needs waiting. A duration estimate

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Your Byte Bridge"
+  short_description: "Connect chats, delegate work, supervise and return results"
+  default_prompt: "Use $byte-bridge to connect the selected chats, delegate scoped work or supervise a verified run, then return evidence for verification."

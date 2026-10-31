@@ -224,7 +224,8 @@ def validate(template):
 
 def session(value):
     harness, separator, native = value.partition(":")
-    require(separator and harness in ("codex", "claude", "dsh", "zcode") and native, "session must be harness:native-id")
+    require(separator and harness in ("codex", "claude", "dsh", "zcode", "pi", "hermes", "kimi", "opencode") and native,
+            "session must use a supported harness and exact native-id")
     return value
 
 

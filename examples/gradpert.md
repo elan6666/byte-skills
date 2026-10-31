@@ -3,13 +3,14 @@
 [Back to examples](README.md) · [简体中文](gradpert.zh-CN.md) · [Repository home](../README.md#example)
 
 GraD-Pert is a machine-learning research project with iterative experiments and
-long-running training. The useful question is not “how do we call all 13 skills?”
+long-running training. The useful question is not “how do we call all the skills?”
 It is “how do we move from a result to the next justified experiment, while
 keeping the code, evidence and ownership clear?”
 
 This walkthrough is based on owner-provided local Codex records from
 29–31 October 2026. **Prompts are adapted examples, not a verbatim transcript
-or proof that every named entry was explicitly invoked.**
+or proof that every named entry was explicitly invoked.** The current prompts
+use `byte-bridge`; the historical records predate that integration.
 
 ## 1. Discuss the next experiment
 
@@ -72,7 +73,7 @@ follow-up work. A later native message carried readiness evidence and remaining
 preflight dependencies without restarting the active experiment.
 
 ```text
-$byte-design-supervise For this authorized long experiment, the main chat owns
+$byte-bridge For this authorized long experiment, the main chat owns
 design, core code, tests and launch. Confirm a durable run ID and real startup
 before handoff. Use my designated supervisor and the existing approved monitor;
 do not create a duplicate. Verify supervisor acknowledgement, monitoring and

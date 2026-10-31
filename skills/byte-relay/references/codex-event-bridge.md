@@ -1,5 +1,11 @@
 # Codex desktop event bridge: required proof
 
+Current cross-chat operations use [$byte-bridge](../../byte-bridge/SKILL.md),
+its source pin and a single transport journal. The rules below preserve the
+launch/evidence/monitoring contract. Legacy direct-message examples are for
+existing Relay recovery only; new managed workflows commit engine handoffs
+and import them through Bridge. Do not run both routes.
+
 This reference applies when a main Codex chat launches a job, ends its turn,
 and an idle supervisor chat must wake on job failure/completion. It is not the
 same as a supervisor chat running a short blocking command and receiving its

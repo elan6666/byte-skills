@@ -115,13 +115,14 @@ the main turn must end, and independence—not just by model price:
   failure, completion, or required decision. Coalesce repeated unchanged
   events instead of starting a fresh model turn for every tick.
 
-For cross-session or cross-harness ownership, follow `$byte-relay`; a subagent
-doing a bounded read or check does not acquire its own relay baton. Never
+For cross-session or cross-harness cooperation, follow [$byte-bridge](../byte-bridge/SKILL.md).
+Byte remains the sole work authority; SessionBridge handles delivery and
+supervision. A subagent doing a bounded read or check does not acquire its own relay baton. Never
 create a Goal, new task, automation, or paid job solely because this skill was
 invoked; the user or environment must authorize that operation.
-For the Codex-only pattern where the main chat launches and an independent chat
-supervises with event plus periodic checks, use the independently callable
-[$byte-design-supervise](../byte-design-supervise/SKILL.md) skill.
+For main-launch / supervisor-check / main-resume work, use Bridge
+with verified event/periodic and return routes. `byte-design-supervise` remains
+a compatible training preset, not a separate transport.
 
 ## Completion
 
