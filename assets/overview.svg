@@ -21,11 +21,11 @@
 <text x="878" y="237" class="name">byte-discuss</text>
 <text x="878" y="270" class="caption">Think it through together.</text>
 <text x="878" y="297" class="note">Clarify scope · compare · decide</text>
-<rect x="48" y="348" width="578" height="142" rx="16" fill="#1a2e47" stroke="#3a5774"/>
-<rect x="70" y="370" width="28" height="4" rx="2" fill="#67e0d2"/>
-<text x="70" y="407" class="name">byte-bridge</text>
+<rect x="48" y="348" width="578" height="142" rx="16" fill="#26304c" stroke="#a9a0ff" stroke-width="2"/>
+<rect x="70" y="370" width="28" height="4" rx="2" fill="#b8b1ff"/>
+<text x="70" y="407" class="name">byte-bridge</text><text x="598" y="381" text-anchor="end" fill="#c1bbff" font-size="12" font-weight="700">CHAT + AGENT</text>
 <text x="70" y="440" class="caption">Connect chats. Delegate. Supervise. Return.</text>
-<text x="70" y="467" class="note">Verified launch → supervisor → main verifies &amp; resumes</text>
+<text x="70" y="467" class="note">Connect → delegate / supervise → verify &amp; continue</text>
 <rect x="654" y="348" width="578" height="142" rx="16" fill="#1a2e47" stroke="#3a5774"/>
 <rect x="676" y="370" width="28" height="4" rx="2" fill="#67e0d2"/>
 <text x="676" y="407" class="name">byte-workflow</text>

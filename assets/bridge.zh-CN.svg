@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="590" viewBox="0 0 1280 590" role="img" aria-labelledby="title desc">
+<title id="title">Byte Bridge — 把工作交出去，让结果回到主会话。</title><desc id="desc">主会话通过 Byte Bridge 派发任务给执行会话或监督会话，证据返回主会话核验并继续。</desc>
+<defs><style>text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,"PingFang SC","Microsoft YaHei",sans-serif}</style><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M1 1L6 4L1 7" fill="none" stroke="#b0a8ff" stroke-width="1.5"/></marker></defs>
+<rect width="1280" height="590" rx="24" fill="#101d31"/>
+<text x="48" y="49" font-size="13" fill="#b8b1ff" font-weight="700" text-anchor="start">BYTE BRIDGE</text>
+<text x="48" y="102" font-size="36" fill="#f3f7ff" font-weight="700" text-anchor="start">把工作交出去，让结果回到主会话。</text>
+<text x="48" y="140" font-size="19" fill="#b7c8dc" font-weight="400" text-anchor="start">连接原会话 · 设置分工 · 按范围派发 · 核验证据后继续</text>
+<rect x="48" y="233" width="326" height="160" rx="18" fill="#1a2e47" stroke="#41617d"/>
+<text x="74" y="277" font-size="26" fill="#f3f7ff" font-weight="700" text-anchor="start">主会话</text>
+<text x="74" y="318" font-size="18" fill="#b7c8dc" font-weight="400" text-anchor="start">设计 · 核心代码 · 测试</text>
+<text x="74" y="352" font-size="16" fill="#b7c8dc" font-weight="400" text-anchor="start">启动运行，确认真实就绪</text>
+<rect x="435" y="233" width="352" height="160" rx="18" fill="#29304e" stroke="#b0a8ff" stroke-width="2"/>
+<text x="461" y="277" font-size="27" fill="#eeeaff" font-weight="700" text-anchor="start">byte-bridge</text>
+<text x="461" y="318" font-size="18" fill="#b7c8dc" font-weight="400" text-anchor="start">连接 · 投递 · 监督 · 回执</text>
+<text x="461" y="352" font-size="16" fill="#b7c8dc" font-weight="400" text-anchor="start">准确身份 / 任务范围 / 回传路径</text>
+<rect x="850" y="191" width="382" height="109" rx="16" fill="#1a2e47" stroke="#41617d"/>
+<text x="876" y="233" font-size="23" fill="#f3f7ff" font-weight="700" text-anchor="start">执行会话</text>
+<text x="876" y="268" font-size="17" fill="#b7c8dc" font-weight="400" text-anchor="start">限定范围的实现与测试</text>
+<rect x="850" y="326" width="382" height="109" rx="16" fill="#17363e" stroke="#4a9189"/>
+<text x="876" y="368" font-size="23" fill="#8aebdb" font-weight="700" text-anchor="start">监督会话</text>
+<text x="876" y="403" font-size="17" fill="#b7c8dc" font-weight="400" text-anchor="start">长运行 · 失败 / 完成 · 周期兜底</text>
+<g fill="none" stroke="#b0a8ff" stroke-width="2" marker-end="url(#arrow)"><path d="M374 313H425"/><path d="M787 285H816V245H840"/><path d="M787 341H816V380H840"/><path d="M1232 245H1250V474H1040"/><path d="M1040 435V474H211V403"/></g>
+<rect x="300" y="451" width="720" height="49" rx="12" fill="#101d31" stroke="#3d536f"/>
+<text x="660" y="482" font-size="17" fill="#ded8ff" font-weight="500" text-anchor="middle">回传日志、指标与产物 → 主会话独立核验 → 执行下一步</text>
+<text x="48" y="552" font-size="16" fill="#b7c8dc" font-weight="400" text-anchor="start">同应用 / 跨应用 · 激活方式、事件与空闲唤醒能力以各客户端支持为准</text>
+</svg>

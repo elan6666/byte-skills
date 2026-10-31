@@ -14,7 +14,7 @@
   <rect x="600" y="180" width="546" height="417" rx="18" fill="#252c46" stroke="#50577f"/>
   <text x="80" y="217" fill="#77ecde" class="tag">短等待 · 当前任务内</text>
   <text x="80" y="250" class="note">通常约一小时以内，能在当前回合完成</text>
-  <text x="626" y="217" fill="#b1baff" class="tag">长运行 · 独立监督会话</text>
+  <text x="626" y="217" fill="#b1baff" class="tag">长运行 · byte-bridge</text>
   <text x="626" y="250" class="note">通常约一小时以上，或需要无人值守</text>
   <rect x="80" y="279" width="466" height="66" rx="12" fill="#244759"/>
   <text x="313" y="306" class="step" text-anchor="middle">主会话启动范围明确的检查</text>

@@ -14,7 +14,7 @@
   <rect x="600" y="180" width="546" height="417" rx="18" fill="#252c46" stroke="#50577f"/>
   <text x="80" y="217" fill="#77ecde" class="tag">SHORT WAIT · SAME TASK</text>
   <text x="80" y="250" class="note">Usually under ~1 hour, within the current turn</text>
-  <text x="626" y="217" fill="#b1baff" class="tag">LONG JOB · SEPARATE CHAT</text>
+  <text x="626" y="217" fill="#b1baff" class="tag">LONG JOB · BYTE BRIDGE</text>
   <text x="626" y="250" class="note">Usually ~1 hour or more, or needs unattended work</text>
   <rect x="80" y="279" width="466" height="66" rx="12" fill="#244759"/>
   <text x="313" y="306" class="step" text-anchor="middle">Main launches the bounded check</text>

@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="README.zh-CN.md">简体中文</a> · <strong>English</strong><br />
-  <a href="#overview">Overview</a> · <a href="#quick-start">Quick start</a> · <a href="#example">Example</a> · <a href="#choose-a-skill">Skills</a> · <a href="#short-waits-and-long-jobs">Supervision</a> · <a href="#outcome-continuity">Outcome continuity</a>
+  <a href="#overview">Overview</a> · <a href="#quick-start">Quick start</a> · <a href="#byte-bridge">Byte Bridge</a> · <a href="#example">Example</a> · <a href="#choose-a-skill">Skills</a> · <a href="#short-waits-and-long-jobs">Supervision</a> · <a href="#outcome-continuity">Outcome continuity</a>
 </p>
 
 ---
@@ -29,7 +29,7 @@ Your client keeps its models and tools. Skills guide the procedure, and local he
 | **Compose what is useful** | Start mixed requests with `byte-do`, or invoke a focused skill directly. There is no required fixed pipeline. |
 | **Preserve the overall outcome** | `byte-auto` distinguishes a completed stage from an accepted overall result and advances authorized next steps. |
 | **Evidence before claims** | Assess progress using actual code, tests, runtime receipts, and sources. |
-| **Recoverable collaboration** | Relay records exact session identity, ownership, handoffs, and artifact evidence. |
+| **Recoverable collaboration** | Byte Bridge connects chats, delegates work and returns evidence; Byte workflows retain ownership and acceptance. |
 | **Explicit authority boundaries** | Long-running checks, cross-chat actions, paid resources, and destructive operations each retain their authorization requirements. |
 
 ## Overview
@@ -82,6 +82,67 @@ Other installation options:
 ```
 
 The installer replaces Byte skill directories with matching names. Save any local customizations first. Compatibility depends on the client's skill format and available tools; cross-conversation messaging and automation require runtime support. Install `zstd` separately only if you need to read compressed DSH sessions.
+
+## Byte Bridge
+
+**Keep your original chats. Share the work. Bring the result back.**
+`byte-bridge` is Byte's built-in collaboration layer: connect selected conversations
+in the same agent app or across apps, give them roles, and delegate work with an
+explicit scope. A worker can implement a bounded change; a supervisor can watch a
+long training run while the main chat waits. Your apps retain their context,
+models, accounts and tool permissions. The bridge core makes no model API calls.
+
+<img src="assets/bridge.svg" alt="Main chat delegates through Byte Bridge to a worker or supervisor; evidence returns to main for independent verification and continuation" width="100%" />
+
+| What you want | What to ask |
+| --- | --- |
+| Connect conversations | “This chat is main; connect my selected review chat in the same project.” Connecting and assigning roles alone starts no task or monitor. |
+| Delegate a task | “Ask that worker to implement this module; limit edits to these paths, run these tests, and return the artifacts.” |
+| Supervise a long run | “Watch this verified run, report failure or completion, check every 30 minutes as fallback, and repair only within the agreed scope.” |
+| Return and continue | “Return the logs, metrics and artifact hashes; have main verify them and execute the next authorized step.” |
+
+### Try a two-chat experiment workflow
+
+After `./install.sh --all --bridge`, invoke the skill in the **original main
+chat**, naming the project and the supervisor you want to use:
+
+```text
+$byte-bridge Use this chat as main and my selected experiment-supervisor chat as
+supervisor for this project. First verify both native identities and connections.
+After I authorize the experiment, confirm the training really started, then hand
+over its exact run ID, logs, acceptance criteria and permitted repair scope.
+Use failure/completion events where verified, plus a 30-minute fallback check.
+When it ends, return evidence, stop this run's monitor, and have main independently
+verify the result and continue the agreed experiment workflow.
+```
+
+1. **Connect and confirm roles.** Each original chat enrolls from its own native
+   app; inspect the project, session and supported delivery mode.
+2. **Launch and hand off.** Main designs the experiment, builds and tests the code,
+   confirms actual startup, and hands over the identified run. Wait only after
+   supervisor acknowledgement and the check/return paths are verified.
+3. **Supervise within scope.** The supervisor checks the owned run, performs only
+   authorized repairs, and returns terminal evidence. Event notification and idle-chat
+   wakeup depend on the app and adapter; a periodic check provides a bounded fallback.
+4. **Verify and continue.** Main checks the artifacts and acceptance criteria,
+   then executes the next authorized action. Per-run monitoring ends at handback;
+   an explicitly requested overall research-loop monitor follows its own stop condition.
+
+`byte-do` selects this capability when needed; `byte-auto` uses it for collaboration
+inside the default delivery workflow. `byte-workflow` saves your own steps, loops,
+acceptance criteria and main/supervisor roles. `byte-design-supervise` supplies the
+training/ablation preset. Short same-task helpers can stay native subagents.
+
+Connectors cover **Codex, Claude Code, dsh, Hermes, Pi, ZCode, Kimi Code and
+OpenCode**, with app-specific version, activation and session-mode boundaries.
+Existing-chat attachment and a new managed session are different modes. See
+[setup](skills/byte-bridge/references/setup.md),
+[the compatibility matrix](packages/byte-bridge/docs/support.en.md) and
+[the Byte workflow contract](skills/byte-bridge/references/byte-workflow.md).
+
+The full Bridge project is maintained inside this repository at
+[`packages/byte-bridge`](packages/byte-bridge/README.md); installation payloads are
+generated from it. No separate SessionBridge project is needed.
 
 ## Example
 
@@ -157,7 +218,7 @@ installing an update does not migrate an active job. See the
 
 ## Recoverable handoffs
 
-Ordinary work does not require `.byte-os/`. When a project needs resumable cross-chat work or explicit handoffs, Relay keeps its records inside the project:
+Ordinary work does not require `.byte-os/`. When a project needs resumable work or explicit handoffs, Byte keeps workflow records inside the project:
 
 ```text
 .byte-os/coordination/
@@ -171,7 +232,7 @@ Ordinary work does not require `.byte-os/`. When a project needs resumable cross
 Each coordination state has one write owner. Messages notify participants; project files, code, and runtime evidence establish the facts. Model identity is verified only when supported by native runtime evidence. The skills do not select or switch models themselves.
 
 ```text
-$byte-relay Initialize handoff state for this project
+$byte-status Inspect this project's owner, current stage and handoff evidence
 ```
 
 Legacy Relay includes local session-digest readers for Codex, Claude Code, DSH, and ZCode. Digest access does not imply live messaging support. A full ZCode conversation summary still needs its native tools. See the [coordination schema](skills/byte-relay/references/coordination-schema.md) for details.
