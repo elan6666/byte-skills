@@ -32,6 +32,11 @@
 | **可恢复协作** | Byte Bridge 连接会话、派发任务并回传证据；Byte 工作流管理所有者和验收。 |
 | **明确授权边界** | 长运行检查、跨会话操作、付费资源及破坏性动作各自遵守实际授权。 |
 
+<p align="center"><strong>Byte Bridge 连接你正在使用的 Agent 应用</strong></p>
+<img src="assets/agents.zh-CN.svg" alt="Byte Bridge 接入应用：Codex、ZCode、Claude Code、OpenCode、dsh、Hermes、Pi、Kimi Code" width="100%" />
+
+[接入模式与支持版本](packages/byte-bridge/docs/support.md) · [图标来源](assets/agents/README.md)
+
 <a id="overview"></a>
 
 ## 技能总览

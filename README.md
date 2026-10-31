@@ -32,6 +32,11 @@ Your client keeps its models and tools. Skills guide the procedure, and local he
 | **Recoverable collaboration** | Byte Bridge connects chats, delegates work and returns evidence; Byte workflows retain ownership and acceptance. |
 | **Explicit authority boundaries** | Long-running checks, cross-chat actions, paid resources, and destructive operations each retain their authorization requirements. |
 
+<p align="center"><strong>Byte Bridge connects your agent apps</strong></p>
+<img src="assets/agents.svg" alt="Byte Bridge connectors: Codex, ZCode, Claude Code, OpenCode, dsh, Hermes, Pi and Kimi Code" width="100%" />
+
+[Connection modes and supported versions](packages/byte-bridge/docs/support.en.md) · [Icon sources](assets/agents/README.md)
+
 ## Overview
 
 <img src="assets/overview.svg" alt="Five common entries: byte-do, byte-auto, byte-discuss, byte-bridge and byte-workflow; intermediate capabilities are grouped below" width="100%" />

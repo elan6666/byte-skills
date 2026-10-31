@@ -1,0 +1,37 @@
+{
+  "zcode.png": {
+    "source": "https://raw.githubusercontent.com/zai-org/ZCode/HEAD/public/logo/icons/128x128.png",
+    "sha256": "1ec553f7eaeae4492c673e9d636692a3898d11800d912628d8c1e667222d6d19"
+  },
+  "claude-code.svg": {
+    "source": "https://www.agensi.io/logos/claude.svg",
+    "sha256": "5119ef950a0d648b3fd62865791e73f07f32e18ddab84e4f21160f8c641c0f5f"
+  },
+  "opencode.svg": {
+    "source": "https://raw.githubusercontent.com/anomalyco/opencode/HEAD/packages/ui/src/assets/favicon/favicon.svg",
+    "sha256": "e29bbe33380ad1c1ada9134b52f229d30e9776d60481512c9d81f2bb6f37def9"
+  },
+  "dsh.svg": {
+    "source": "https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/HEAD/apps/desktop/resources/icon.svg",
+    "sha256": "0458ed5e4825846a6560e90d3e4de767cd75842f7eb53539dc87a5db380d9146"
+  },
+  "hermes.svg": {
+    "source": "https://raw.githubusercontent.com/NousResearch/hermes-agent/HEAD/website/static/img/favicon.svg",
+    "sha256": "6c4968c1a46f104559684826ed8061fad6052711ff0af9c6b36a6ce674536684"
+  },
+  "kimi-code.svg": {
+    "source": "https://raw.githubusercontent.com/MoonshotAI/kimi-code/HEAD/apps/vscode/resources/kimi-icon.svg",
+    "sha256": "60685e25b2db869030290485a35eed8ca77e535d2c6b7731374df49edbfa98c8"
+  },
+  "codex.png": {
+    "source": "OpenAI Codex macOS application icon, installed app bundle com.openai.codex",
+    "reference": "https://openai.com/codex/",
+    "sha256": "3724f6ef090109e5dc6f14c103ff5fbec43fa78953aa049ef2af122ad9b482e1",
+    "transformation": "Resized to 128px for documentation"
+  },
+  "pi.svg": {
+    "source": "Typographic pi identifier, not an official logo",
+    "reference": "https://github.com/earendil-works/pi",
+    "sha256": "a23e2c172fbe0b716ae2a3056f8ba89de3867eb69d16f5998b38107838787e49"
+  }
+}
