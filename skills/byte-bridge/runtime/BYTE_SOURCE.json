@@ -4,7 +4,7 @@
   "canonical_repository": "https://github.com/elan6666/byte-skills",
   "origin_repository": "https://github.com/elan6666/Session-bridge",
   "origin_commit": "7d60a11efafb55f33fe6e932927921cc9a184177",
-  "source_tree_sha256": "1573b44668e9ac126b236894f49dec9c2b0ffee7a2de446b68fc7527d3b40e0b",
+  "source_tree_sha256": "004d43a0ccf531e3fb041d388235e714a212bf511222c500a65b51d3389693b4",
   "files": {
     ".agents/plugins/marketplace.json": "838c29a25dd8197e86e63e4aeed7818c2900a912cfcb98a05f8720a2d4517e76",
     "LICENSE": "c91baea7e85bcd8e3433b03d99474130fdb055366c65defbed82ddb0da26f8cd",
@@ -23,7 +23,7 @@
     "dist/src/adapters/claude/hook.js": "ccb8cd6afaa5dc3abfed113c0965311763dc37bd3a5c5145abbc4f404ebcf425",
     "dist/src/adapters/claude/inbox.js": "b3ef9bf2df1a30c4f1fe3ed52cf4a0156eff819b059f2c439c25df8ca286ae4b",
     "dist/src/adapters/claude/startup.js": "f4bfa0294b5c61ecb2436b1ec1a9d2b6e7d6656d5b3999afc005b7dc5684cead",
-    "dist/src/adapters/codex/adapter.js": "e2aa2ac9e2622200ef328c4bbc8c9ff1869365be80acfd35dd5285f785b0dd60",
+    "dist/src/adapters/codex/adapter.js": "21292c37fcc0412b9a8a1e52404d1e9723e7bec5b779d9e44bc8e1af35798c39",
     "dist/src/adapters/codex/connect.js": "240da7e9002282f0fabe5a7c8b517ace658dfac34d1bf4caf6702f020a1e7fdd",
     "dist/src/adapters/codex/stdio.js": "3807923e2e76a2b4f1cc1c602692cbbe42a0cd8803b60db696dec7c1269f798c",
     "dist/src/adapters/codex/version.js": "524c4f23471b94ea1323975fc8c48195489f99b308736fad45347cf241ccb622",

@@ -86,6 +86,23 @@ Other installation options:
 ./install.sh --all --check                # Verify installed-copy parity
 ```
 
+### Install through skills.sh
+
+The skills CLI can also install the 14 Byte entries into a project. This route
+was tested with `skills@1.7.4` and Node.js 24.15.0; use the following from your
+project directory for Codex:
+
+```bash
+npx skills@1.7.4 add elan6666/byte-skills --skill '*' --agent codex --yes --copy
+python3 .agents/skills/byte-bridge/scripts/bridge.py bootstrap
+```
+
+This installs project-local copies under `.agents/skills/`. The second command
+is only needed for Bridge's npm dependencies; the skills CLI does not install
+those dependencies automatically. Refresh your client's skills after installation.
+Neither command launches agent chats, model jobs or monitoring. Use the repository
+installer above for the global skill directories.
+
 The installer replaces Byte skill directories with matching names. Save any local customizations first. Compatibility depends on the client's skill format and available tools; cross-conversation messaging and automation require runtime support. Install `zstd` separately only if you need to read compressed DSH sessions.
 
 ## Byte Bridge

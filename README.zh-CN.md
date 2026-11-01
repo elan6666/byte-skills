@@ -88,6 +88,20 @@ Bridge 需要 Node.js 24.15–24.x；其他 Byte 技能仍按 Python/Bash 要求
 ./install.sh --all --check                # 检查已安装副本是否一致
 ```
 
+### 通过 skills.sh 安装
+
+也可以用 skills CLI 把 14 个 Byte 入口安装到项目。此方式已用
+`skills@1.7.4`、Node.js 24.15.0 验证；在项目目录中为 Codex 执行：
+
+```bash
+npx skills@1.7.4 add elan6666/byte-skills --skill '*' --agent codex --yes --copy
+python3 .agents/skills/byte-bridge/scripts/bridge.py bootstrap
+```
+
+这里安装的是 `.agents/skills/` 下的项目副本。第二条命令仅用于 Bridge 的 npm
+依赖；skills CLI 不会自动安装这些依赖。安装后刷新客户端技能列表。
+这两条命令不会启动 Agent 会话、模型作业或监控。全局安装仍使用上方的仓库安装器。
+
 安装器会替换目标目录中同名的 Byte 技能；请先保存自行修改的版本。支持程度取决于客户端的技能格式和工具能力，跨会话通信与自动化需要相应的运行环境。只有读取 DSH 压缩会话时才需要额外安装 `zstd`。
 
 <a id="byte-bridge"></a>
