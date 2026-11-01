@@ -1043,5 +1043,187 @@ class WorkflowEngineTests(unittest.TestCase):
         self.assertEqual(self.state_path.read_bytes(), original + b" ")
 
 
+    def state_source_return(self):
+        run_id = self.long_wait()
+        snapshot = self.project / '.byte-os/coordination/receipts/pre-return-state.json'
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        snapshot.write_bytes(self.state_path.read_bytes())
+        strict = self.artifact({'independent': 'must remain hash checked'})
+        nested = self.proof('run_terminal', run_id=run_id, attempt=1, exit_code=0,
+                            status='training_complete_postfit_pending',
+                            sources=[hashref(self.state_path), hashref(strict)])
+        terminal = self.proof('run_terminal', run_id=run_id, attempt=1, exit_code=0,
+                              sources=[hashref(self.state_path), hashref(nested)])
+        handoff = self.project / '.byte-os/coordination/handoffs/state-return.md'
+        handoff.write_text('# Returned exact job; science remains pending\n')
+        result = self.change('return-run', evidence=terminal, extra=('--handoff', str(handoff)))
+        self.assertEqual(result[0], 0, result)
+        self.assertEqual(self.call('status')[0], 1)
+        self.rebind_snapshot, self.rebind_nested, self.rebind_terminal, self.rebind_strict = snapshot, nested, terminal, strict
+        targets = [dict(receipt=ref, source=json.loads(Path(ref['path']).read_text())['sources'][0],
+                        replacement=hashref(snapshot))
+                   for ref in (self.workflow()['returned_run']['receipt'], dict(hashref(nested), path=str(nested.resolve())))]
+        return self.proof('workflow_source_rebind', owner_session='codex:main',
+                          revision=self.workflow()['revision'], state_sha256=hashref(self.state_path)['sha256'],
+                          authority_ref='user:exact-rebind', run_id=run_id, attempt=1,
+                          targets=targets, sources=[hashref(snapshot)])
+
+    def source_rebind(self, proof, check_only=False, **kwargs):
+        value = json.loads(proof.read_text())
+        return self.change('repair-source-locations', evidence=proof,
+                           extra=('--expect-state-sha256', value['state_sha256'], '--authority-ref', value['authority_ref'])
+                           + (('--check-only',) if check_only else ()), **kwargs)
+
+    def test_source_rebind_exact_nested_sources_preview_commit_and_ack(self):
+        proof = self.state_source_return()
+        before = self.state()
+        receipts = {p: p.read_bytes() for p in (self.rebind_nested, self.rebind_terminal)}
+        files = {str(p): p.read_bytes() for p in self.project.rglob('*') if p.is_file()}
+        result = self.source_rebind(proof, check_only=True)
+        self.assertEqual(result[0], 0, result)
+        self.assertEqual(len(result[1]['targets']), 2)
+        self.assertFalse(result[1]['changed'])
+        self.assertEqual(files, {str(p): p.read_bytes() for p in self.project.rglob('*') if p.is_file()})
+        result = self.source_rebind(proof, event='rebind-exact')
+        self.assertEqual(result[0], 0, result)
+        self.assertEqual(self.source_rebind(proof, event='rebind-exact')[1]['idempotent'], True)
+        after = self.state()
+        self.assertEqual(after['owner_session'], before['owner_session'])
+        self.assertEqual(after['overall_outcome']['acceptance'], before['overall_outcome']['acceptance'])
+        self.assertTrue(self.workflow()['return_pending'])
+        self.assertEqual(self.workflow()['returned_run'], before['overall_outcome']['workflow']['returned_run'])
+        self.assertEqual(self.call('status')[0], 0)
+        entries = self.workflow()['source_location_rebindings']
+        self.assertEqual(len(entries), 2)
+        audit = json.loads(Path(entries[0]['audit']['path']).read_text())
+        self.assertEqual(Path(audit['previous_state']['path']).read_bytes(), files[str(self.state_path)])
+        for path, data in receipts.items():
+            self.assertEqual(path.read_bytes(), data)
+        empty = self.proof('main_continuation', run_id='long-test', attempt=1)
+        self.assertEqual(self.change('ack-return', evidence=empty)[0], 1)
+        _, output, command = self.real_trial(0)
+        ack = self.proof('main_continuation', run_id='long-test', attempt=1, sources=[hashref(output)],
+                         executed_action=dict(command=command, exit_code=0, result_ref=hashref(output)))
+        self.assertEqual(self.change('ack-return', evidence=ack)[0], 0)
+        self.assertFalse(self.workflow()['return_pending'])
+        self.assertEqual(self.outcome()['acceptance'], before['overall_outcome']['acceptance'])
+        self.assertEqual(self.call('status')[0], 0)
+        for path in (self.rebind_snapshot, self.rebind_nested, self.rebind_strict, proof, Path(entries[0]['audit']['path'])):
+            original = path.read_bytes()
+            path.write_bytes(original + b' ')
+            self.assertEqual(self.call('status')[0], 1, str(path))
+            path.write_bytes(original)
+
+    def test_source_rebind_rejects_bad_identity_guards_and_incomplete_edges(self):
+        proof = self.state_source_return()
+        original = proof.read_bytes()
+        before = self.state_path.read_bytes()
+        mutations = [('owner_session', 'codex:supervisor'), ('revision', -1), ('state_sha256', '0'*64),
+                     ('run_id', 'other-run'), ('attempt', 2), ('outcome_id', 'wrong'),
+                     ('targets', json.loads(original)['targets'][:1]),
+                     ('targets', list(reversed(json.loads(original)['targets'])))]
+        for field, value in mutations:
+            with self.subTest(field=field, value=value):
+                changed = json.loads(original)
+                changed[field] = value
+                proof.write_text(json.dumps(changed))
+                result = self.source_rebind(proof)
+                self.assertEqual(result[0], 1, result)
+                self.assertEqual(self.state_path.read_bytes(), before)
+        proof.write_bytes(original)
+        for extra in ({'actor': 'codex:supervisor'}, {'revision': -1}):
+            self.assertEqual(self.source_rebind(proof, **extra)[0], 1)
+            self.assertEqual(self.state_path.read_bytes(), before)
+        for section, field, value in [('execution', 'mode', 'waiting'), ('workflow', 'return_pending', False)]:
+            state = json.loads(before)
+            state['overall_outcome'][section][field] = value
+            self.state_path.write_text(json.dumps(state))
+            changed = json.loads(original)
+            changed['state_sha256'] = hashref(self.state_path)['sha256']
+            proof.write_text(json.dumps(changed))
+            modified = self.state_path.read_bytes()
+            self.assertEqual(self.source_rebind(proof)[0], 1)
+            self.assertEqual(self.state_path.read_bytes(), modified)
+            self.state_path.write_bytes(before)
+        proof.write_bytes(original)
+
+    def test_source_rebind_rejects_replacement_receipt_and_unrelated_source_tamper(self):
+        proof = self.state_source_return()
+        original = proof.read_bytes()
+        before = self.state_path.read_bytes()
+        for path in (self.rebind_snapshot, self.rebind_terminal, self.rebind_nested, self.rebind_strict):
+            contents = path.read_bytes()
+            path.write_bytes(contents + b' ')
+            self.assertEqual(self.source_rebind(proof)[0], 1)
+            self.assertEqual(self.state_path.read_bytes(), before)
+            path.write_bytes(contents)
+        changed = json.loads(original)
+        changed['targets'][0]['replacement'] = hashref(self.rebind_strict)
+        changed['sources'].append(hashref(self.rebind_strict))
+        proof.write_text(json.dumps(changed))
+        self.assertEqual(self.source_rebind(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+        outside = self.artifact(json.loads(self.rebind_snapshot.read_text()))
+        outside.write_bytes(self.rebind_snapshot.read_bytes())
+        changed = json.loads(original)
+        changed['targets'][0]['replacement'] = hashref(outside)
+        changed['sources'].append(hashref(outside))
+        proof.write_text(json.dumps(changed))
+        self.assertEqual(self.source_rebind(proof)[0], 1)
+        self.assertEqual(self.state_path.read_bytes(), before)
+
+    def test_source_rebind_checks_identical_relative_refs_in_distinct_directories(self):
+        import importlib.util
+        sys.path.insert(0, str(CLI.parent))
+        try:
+            spec = importlib.util.spec_from_file_location('source_rebind_relative', CLI)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        finally:
+            sys.path.pop(0)
+        wrappers = []
+        expected = hashlib.sha256(b'expected').hexdigest()
+        for name, contents in (('first', b'expected'), ('second', b'changed')):
+            directory = self.root / name
+            directory.mkdir()
+            (directory / 'leaf.txt').write_bytes(contents)
+            child = directory / 'child.json'
+            child.write_text(json.dumps({'sources': [{'path': 'leaf.txt', 'sha256': expected}]}))
+            wrapper = directory / 'wrapper.json'
+            wrapper.write_text(json.dumps({'sources': [dict(hashref(child), path='child.json')]}))
+            wrappers.append(hashref(wrapper))
+        terminal = self.artifact({'sources': wrappers})
+        with self.assertRaises(module.Invalid):
+            module.terminal_source_tree(hashref(terminal), self.project.resolve(), 'outcome', 'run', 1, collect=True)
+
+    def test_source_rebind_double_cas_preserves_concurrent_state(self):
+        import contextlib
+        import importlib.util
+        import io
+        proof = self.state_source_return()
+        original = self.state_path.read_bytes()
+        sys.path.insert(0, str(CLI.parent))
+        try:
+            spec = importlib.util.spec_from_file_location('source_rebind_cas', CLI)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+        finally:
+            sys.path.pop(0)
+        write = module.write_immutable
+        def concurrent(path, data):
+            write(path, data)
+            if path.name == 'AUDIT.json':
+                self.state_path.write_bytes(original + b' ')
+        value = json.loads(proof.read_text())
+        argv = ['repair-source-locations', '--project', str(self.project), '--session', 'codex:main',
+                '--expect-revision', str(self.workflow()['revision']), '--event-id', 'rebind-cas',
+                '--expect-state-sha256', value['state_sha256'], '--authority-ref', value['authority_ref'], '--evidence', str(proof)]
+        with patch.object(module, 'write_immutable', concurrent), contextlib.redirect_stdout(io.StringIO()) as output:
+            code = module.main(argv)
+        self.assertEqual(code, 1, output.getvalue())
+        self.assertIn('state changed before rebind commit', output.getvalue())
+        self.assertEqual(self.state_path.read_bytes(), original + b' ')
+
+
 if __name__ == "__main__":
     unittest.main()

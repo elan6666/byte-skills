@@ -364,6 +364,67 @@ pre-fix state's mirrors to its already hash-verified root return handoff. It doe
 not acknowledge continuation, change acceptance/facts, or execute/stop/retry jobs.
 Main must still run and prove the independent action required by `ack-return`.
 
+
+### Identical state-source location rebind after return
+
+A terminal receipt can accidentally attach the authority's live `state.json`.
+`return-run` then changes those bytes. When an existing immutable snapshot has
+**exactly the originally declared SHA256**, active main can rebind that exact
+source location without rewriting the receipt or restoring old authority state:
+
+```bash
+python3 <skill>/scripts/workflow.py repair-source-locations \
+  --project <authority-project> --session <exact-main-ref> \
+  --expect-revision <fresh-revision> --expect-state-sha256 <fresh-state-hash> \
+  --event-id <stable-id> --authority-ref <explicit-repair-authority> \
+  --evidence <immutable-owner-rebind-receipt.json> --check-only
+```
+
+The evidence uses the normal current outcome/step/iteration/visit identity,
+`kind: workflow_source_rebind`, `status: verified`, and these fields:
+
+```json
+{
+  "owner_session": "codex:<main-id>",
+  "revision": 10,
+  "state_sha256": "<fresh-authority-state-SHA256>",
+  "authority_ref": "<same-authority-as-CLI>",
+  "run_id": "<exact-current-returned-run>",
+  "attempt": 1,
+  "sources": [{"path": "/authority/.byte-os/coordination/receipts/old-state-snapshot.json", "sha256": "<original-state-hash>"}],
+  "targets": [{
+    "receipt": {"path": "/absolute/original-terminal.json", "sha256": "<unchanged-receipt-hash>"},
+    "source": {"path": "/authority/.byte-os/coordination/state.json", "sha256": "<original-state-hash>"},
+    "replacement": {"path": "/authority/.byte-os/coordination/receipts/old-state-snapshot.json", "sha256": "<original-state-hash>"}
+  }]
+}
+```
+
+`targets` must list every failing state-source edge in depth-first source order,
+starting from the current returned terminal, including nested terminal receipts.
+Each target parent must be an unchanged `run_terminal` with that exact outcome,
+run and integer attempt. A nested original terminal need not have the normalized
+current terminal's `verified` status. Only the authority `state.json` source can
+be rebound; all other source hashes, including nested sources, must pass. The
+replacement must be a nonsymlink file within the authority's receipts directory,
+carry the identical expected SHA256, and be attached to the repair evidence.
+Never reconstruct bytes from receipt fields, substitute a new hash, or restore
+the old snapshot over active state.
+
+Preview writes no repair artifacts or state. After reviewing it, remove only
+`--check-only`. The engine rechecks the revision/state identity, saves exact
+pre-repair state and a hash-pinned audit in a new
+`workflow-source-rebind-<request-hash>/` directory, and records one revision.
+`source_location_rebindings` retains the original receipt/source refs alongside
+the replacement and audit; subsequent history reads verify the audit, original
+receipts, all replacement bytes and the nested terminal source tree. A changed
+source or audit fails closed. Exact successful event replay is idempotent.
+Concurrent state changes reject the write and preserve forensic artifacts.
+
+This operation changes evidence location only. It preserves run identity,
+ownership, `return_pending`, workflow facts and scientific acceptance. Main must
+independently verify the result and execute the action required by `ack-return`.
+
 ## Native scheduler integration and recovery
 
 `monitor-prompt --project <path>` emits a stable prompt and requested monitor

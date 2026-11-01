@@ -308,8 +308,189 @@ def source_path(source, root):
     return (path if path.is_absolute() else root / path).resolve()
 
 
-def verify_history(workflow, root):
+def immutable_state_replacement(target, root):
+    """A location change never changes the expected bytes or the original ref."""
+    source, replacement = target["source"], target["replacement"]
+    require(set(source) == set(replacement) == {"path", "sha256"}
+            and source_path(source, Path(target["receipt"]["path"]).parent)
+            == root / ".byte-os/coordination/state.json"
+            and replacement["sha256"] == source["sha256"],
+            "rebind requires the exact state source and identical SHA256")
+    path = Path(replacement["path"])
+    require(path.is_absolute() and not path.is_symlink() and path.is_file()
+            and path.resolve().is_relative_to(root / ".byte-os/coordination/receipts"),
+            "replacement must be an immutable receipt snapshot")
+    return evidence_bytes(replacement, root, "immutable state replacement")
+
+
+def terminal_source_tree(terminal_ref, root, outcome_id, run_id, attempt, bindings=None, collect=False):
+    """Walk nested source receipts, retaining each exact parent/source edge."""
+    bindings = bindings or {}
+    targets, seen = [], set()
+    def walk(ref, base):
+        parent = dict(path=str(source_path(ref, base)), sha256=ref["sha256"])
+        key = digest(encoded(parent))
+        if key in seen:
+            return
+        seen.add(key)
+        data = evidence_bytes(ref, base, "terminal receipt tree")
+        try:
+            saved = json.loads(data)
+        except (ValueError, UnicodeError):
+            return
+        if not isinstance(saved, dict):
+            return
+        sources = saved.get("sources", [])
+        require(isinstance(sources, list), "nested receipt sources must be a list")
+        for source in sources:
+            edge = dict(receipt=parent, source=source)
+            binding = bindings.get(digest(encoded(edge)))
+            if binding:
+                require(saved.get("kind") == "run_terminal" and saved.get("outcome_id") == outcome_id
+                        and saved.get("run_id") == run_id and type(saved.get("attempt")) is int
+                        and saved["attempt"] == attempt, "rebound receipt run identity mismatch")
+                immutable_state_replacement(binding, root)
+                if not collect:
+                    targets.append(edge)
+                continue
+            try:
+                evidence_bytes(source, source_path(ref, base).parent, "terminal nested source")
+            except Invalid:
+                require(collect and saved.get("kind") == "run_terminal"
+                        and saved.get("outcome_id") == outcome_id
+                        and saved.get("run_id") == run_id
+                        and type(saved.get("attempt")) is int and saved["attempt"] == attempt
+                        and source_path(source, source_path(ref, base).parent)
+                        == root / ".byte-os/coordination/state.json",
+                        "only exact returned-run terminal state sources may be rebound")
+                targets.append(edge)
+                continue
+            walk(source, source_path(ref, base).parent)
+    walk(terminal_ref, root)
+    return targets
+
+
+def rebound_sources(workflow, root):
+    entries = workflow.get("source_location_rebindings", [])
+    require(isinstance(entries, list), "invalid source rebind ledger")
+    bindings, audits = {}, {}
+    for entry in entries:
+        require(isinstance(entry, dict) and set(entry) == {"receipt", "source", "replacement", "audit"},
+                "invalid source rebind marker")
+        audit_key = digest(encoded(entry["audit"]))
+        if audit_key not in audits:
+            audit = json.loads(evidence_bytes(entry["audit"], root, "source rebind audit"))
+            require(audit.get("kind") == "identical_source_location_rebind"
+                    and audit.get("project") == str(root)
+                    and audit.get("instance_sha256") == workflow["instance_sha256"],
+                    "source rebind audit identity mismatch")
+            before = json.loads(evidence_bytes(audit["previous_state"], root, "source rebind previous state"))
+            old, oldflow = before["overall_outcome"], before["overall_outcome"]["workflow"]
+            proof = json.loads(evidence_bytes(audit["repair_evidence"], root, "source rebind evidence"))
+            require(oldflow.get("return_pending") is True and old["execution"]["mode"] == "active"
+                    and oldflow["returned_run"] == audit["returned_run"]
+                    and old["id"] == audit["outcome_id"]
+                    and oldflow["instance_sha256"] == workflow["instance_sha256"]
+                    and before["owner_session"] == audit["main_session"]
+                    and audit["main_session"] == load(root / ".byte-os/workflow.yaml")["roles"]["main"]
+                    and proof.get("step_id") == oldflow["step"]
+                    and proof.get("iteration") == oldflow["iteration"] and proof.get("visit") == oldflow["visit"]
+                    and proof.get("kind") == "workflow_source_rebind" and proof.get("status") == "verified"
+                    and proof.get("outcome_id") == old["id"]
+                    and proof.get("owner_session") == before["owner_session"]
+                    and proof.get("revision") == oldflow["revision"]
+                    and proof.get("state_sha256") == audit["previous_state"]["sha256"]
+                    and proof.get("run_id") == audit["returned_run"]["run_id"]
+                    and type(proof.get("attempt")) is int and proof["attempt"] == audit["returned_run"]["attempt"]
+                    and proof.get("authority_ref") == audit["authority_ref"]
+                    and proof.get("targets") == audit["targets"], "source rebind differs from owner evidence")
+            require(isinstance(proof.get("sources"), list) and bool(proof["sources"]), "rebind needs immutable sources")
+            for source in proof["sources"]:
+                require(source_path(source, Path(audit["repair_evidence"]["path"]).parent)
+                        != root / ".byte-os/coordination/state.json", "rebind proof cannot reference live state")
+                evidence_bytes(source, Path(audit["repair_evidence"]["path"]).parent, "rebind proof source")
+            audits[audit_key] = audit
+        target = {k: entry[k] for k in ("receipt", "source", "replacement")}
+        require(target in audits[audit_key]["targets"], "source rebind marker differs from audit")
+        saved = json.loads(evidence_bytes(entry["receipt"], root, "source rebind original receipt"))
+        require(entry["source"] in saved.get("sources", []), "original source is absent from receipt")
+        immutable_state_replacement(target, root)
+        key = digest(encoded(dict(receipt=entry["receipt"], source=entry["source"])))
+        require(key not in bindings, "duplicate source rebind")
+        bindings[key] = target
+    for key, audit in audits.items():
+        declared = [{k: e[k] for k in ("receipt", "source", "replacement")} for e in entries
+                    if digest(encoded(e["audit"])) == key]
+        require(declared == audit["targets"], "source rebind audit targets differ from ledger")
+        returned = audit["returned_run"]
+        reached = terminal_source_tree(returned["receipt"], root, audit["outcome_id"],
+                                       returned["run_id"], returned["attempt"], bindings)
+        require(all(dict(receipt=t["receipt"], source=t["source"]) in reached for t in audit["targets"]),
+                "rebound receipt is outside returned terminal sources")
+    return bindings
+
+
+def repair_source_locations(args, root, manifest, state, outcome, workflow, state_bytes):
+    require(args.session == manifest["roles"]["main"] and outcome["execution"]["mode"] == "active"
+            and workflow.get("return_pending") is True, "rebind requires active main with a pending returned run")
+    require(digest(state_bytes) == args.expect_state_sha256, "rebind state SHA256 mismatch")
+    nonempty(args.authority_ref, "rebind authority reference")
+    proof, ref = receipt(args.evidence, "workflow_source_rebind", outcome, workflow)
+    returned = workflow["returned_run"]
+    require(proof.get("owner_session") == args.session
+            and type(proof.get("revision")) is int and proof["revision"] == workflow["revision"]
+            and proof.get("state_sha256") == args.expect_state_sha256
+            and proof.get("authority_ref") == args.authority_ref
+            and proof.get("run_id") == returned["run_id"]
+            and type(proof.get("attempt")) is int and proof["attempt"] == returned["attempt"],
+            "rebind evidence owner/revision/state/run mismatch")
+    terminal = json.loads(evidence_bytes(returned["receipt"], root, "rebind terminal receipt"))
+    require(returned["receipt"] in workflow["evidence"] and terminal.get("kind") == "run_terminal"
+            and terminal.get("status") == "verified" and terminal.get("outcome_id") == outcome["id"]
+            and terminal.get("run_id") == returned["run_id"]
+            and type(terminal.get("attempt")) is int and terminal["attempt"] == returned["attempt"]
+            and terminal.get("exit_code") == returned["exit_code"], "rebind terminal identity mismatch")
+    bindings = rebound_sources(workflow, root)
+    failed = terminal_source_tree(returned["receipt"], root, outcome["id"], returned["run_id"], returned["attempt"], bindings, collect=True)
+    targets = proof.get("targets")
+    require(isinstance(targets, list) and bool(targets)
+            and all(isinstance(t, dict) and set(t) == {"receipt", "source", "replacement"} for t in targets)
+            and [{k: t[k] for k in ("receipt", "source")} for t in targets] == failed,
+            "rebind needs the exact complete ordered failing-source list")
+    for target in targets:
+        immutable_state_replacement(target, root)
+        require(target["replacement"] in proof["sources"], "replacement must be attached to rebind evidence")
+    for source in proof["sources"]:
+        require(source_path(source, Path(args.evidence).resolve().parent) != paths(args.project)[2],
+                "rebind proof cannot reference live state")
+    # Validate the entire existing history with only the proposed exact bindings.
+    for target in targets:
+        bindings[digest(encoded(dict(receipt=target["receipt"], source=target["source"])))] = target
+    verify_history(workflow, root, bindings=bindings)
+    terminal_source_tree(returned["receipt"], root, outcome["id"], returned["run_id"], returned["attempt"], bindings)
+    return dict(proof=ref, targets=targets)
+
+
+def commit_source_rebind(args, prepared, root, state, workflow, request_hash, state_bytes, manifest):
+    directory = root / ".byte-os/coordination/receipts" / ("workflow-source-rebind-" + request_hash)
+    require(not directory.exists(), "rebind artifact directory already exists; inspect prior attempt")
+    directory.mkdir(parents=True)
+    previous, audit_path = directory / "previous-state.json", directory / "AUDIT.json"
+    write_immutable(previous, state_bytes)
+    audit = dict(kind="identical_source_location_rebind", project=str(root),
+                 outcome_id=state["overall_outcome"]["id"], instance_sha256=workflow["instance_sha256"],
+                 main_session=manifest["roles"]["main"], checked_at=now(), authority_ref=args.authority_ref,
+                 repair_evidence=prepared["proof"], previous_state=reference(previous),
+                 returned_run=copy.deepcopy(workflow["returned_run"]), targets=prepared["targets"])
+    write_immutable(audit_path, encoded(audit))
+    workflow.setdefault("source_location_rebindings", []).extend(dict(**t, audit=reference(audit_path)) for t in prepared["targets"])
+    workflow["evidence"].append(reference(audit_path))
+    return state
+
+
+def verify_history(workflow, root, bindings=None):
     retired = retired_sources(workflow, root)
+    bindings = rebound_sources(workflow, root) if bindings is None else bindings
     for ref in workflow["evidence"]:
         data = evidence_bytes(ref, root, "workflow.evidence")
         try:
@@ -318,7 +499,10 @@ def verify_history(workflow, root):
             continue
         if isinstance(saved, dict):
             for source in saved.get("sources", []):
-                if digest(encoded(dict(receipt=ref, source=source))) not in retired:
+                key = digest(encoded(dict(receipt=ref, source=source)))
+                if key in bindings:
+                    immutable_state_replacement(bindings[key], root)
+                elif key not in retired:
                     evidence_bytes(source, Path(ref["path"]).parent, "workflow.evidence.sources")
 
 
@@ -662,7 +846,8 @@ def mutate(args):
         state_bytes = state_path.read_bytes()
         repairing = args.command == "repair-expired-monitor-sources"
         mirror_repair = args.command == "repair-run-mirrors"
-        root, manifest, state, outcome, workflow = opened(args.project, verify_evidence=args.command not in ("pause", "repair-expired-monitor-sources"))
+        source_rebind = args.command == "repair-source-locations"
+        root, manifest, state, outcome, workflow = opened(args.project, verify_evidence=args.command not in ("pause", "repair-expired-monitor-sources", "repair-source-locations"))
         require(args.session in manifest["roles"].values(), "actor is not in this workflow")
         payload = {k: str(v) if isinstance(v, Path) else v for k, v in vars(args).items()
                    if k not in ("expect_revision", "event_id", "project", "check_only")}
@@ -695,6 +880,12 @@ def mutate(args):
                 return dict(preview, changed=False)
             state = commit_monitor_repair(args, prepared, root, state, workflow, request_hash, state_bytes)
             outcome, workflow = state["overall_outcome"], state["overall_outcome"]["workflow"]
+        elif source_rebind:
+            prepared = repair_source_locations(args, root, manifest, state, outcome, workflow, state_bytes)
+            require(state_path.read_bytes() == state_bytes, "state changed during rebind inspection")
+            if args.check_only:
+                return dict(check_only=True, changed=False, revision=workflow["revision"], targets=prepared["targets"])
+            state = commit_source_rebind(args, prepared, root, state, workflow, request_hash, state_bytes, manifest)
         elif mirror_repair:
             prepared = repair_run_mirrors(args, root, state, outcome, workflow, state_bytes)
             require(state_path.read_bytes() == state_bytes, "state changed during repair inspection")
@@ -896,6 +1087,9 @@ def mutate(args):
             verify_history(workflow, root)
             require(state_path.read_bytes() == state_bytes, "state changed before repair commit")
             require(prepared["automation"].read_bytes() == prepared["current"], "automation changed before repair commit")
+        if source_rebind:
+            verify_history(workflow, root)
+            require(state_path.read_bytes() == state_bytes, "state changed before rebind commit")
         if mirror_repair:
             verify_history(workflow, root)
             require(state_path.read_bytes() == state_bytes, "state changed before repair commit")
@@ -1093,17 +1287,17 @@ def main(argv=None):
     commands.choices["route"].add_argument("--caller-session", required=True)
     commands.choices["route"].add_argument("--main-status", choices=("active", "idle", "unknown"), default="unknown")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
-    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors"):
+    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
         sub = commands.add_parser(name)
         sub.add_argument("--session", required=True)
         sub.add_argument("--expect-revision", type=int, required=True)
         sub.add_argument("--event-id", required=True)
-        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "repair-expired-monitor-sources", "repair-run-mirrors"):
+        if name in ("advance", "accept", "start-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
             sub.add_argument("--evidence", required=True, type=Path)
-        if name in ("repair-expired-monitor-sources", "repair-run-mirrors"):
+        if name in ("repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
             sub.add_argument("--expect-state-sha256", required=True)
             sub.add_argument("--check-only", action="store_true")
-        if name == "repair-expired-monitor-sources":
+        if name in ("repair-expired-monitor-sources", "repair-source-locations"):
             sub.add_argument("--authority-ref", required=True)
         if name in ("start-run", "return-run"):
             sub.add_argument("--handoff", required=True, type=Path)
