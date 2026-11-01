@@ -4,6 +4,7 @@
 
 | Project | Workflow | Walkthrough |
 | --- | --- | --- |
+| Bridge acceptance | Fresh install, real two-chat execution, independent verification and main continuation | [English](bridge-smoke.md) · [简体中文](bridge-smoke.zh-CN.md) |
 | GraD-Pert | Discuss an experiment, implement scoped changes, continue toward acceptance, and coordinate long jobs across Codex chats | [English](gradpert.md) · [简体中文](gradpert.zh-CN.md) |
 
 The walkthrough separates observed project records from reusable example prompts.

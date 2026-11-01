@@ -175,6 +175,9 @@ $byte-bridge 确认启动后交接准确的长任务；监督者回传证据，�
 
 [阅读完整案例 →](examples/gradpert.zh-CN.md) · [English walkthrough →](examples/gradpert.md) · [案例目录 →](examples/README.md)
 
+**真实双对话验收：** [全新安装 → 辅助会话执行 → 主会话独立核验 → 实际继续](examples/bridge-smoke.zh-CN.md)，
+包含测试中发现并修复的问题，以及本次客户端验证范围。
+
 <a id="skills"></a>
 
 ## 常用入口

@@ -66,6 +66,24 @@ export async function executeNativeAction(store, actor, raw, actionId) {
     return { evidence, file, marker };
 }
 export function matchesNativeAction(items, evidence, marker) { return items.find(i => i.type === 'commandExecution' && i.status === 'completed' && i.exitCode === 0 && Boolean(i.command?.includes('--action-id ' + evidence.native_receipt.action_id)) && /\baction\b/.test(i.command) && Boolean(i.aggregatedOutput?.includes(marker))); }
+export async function findNativeAction(readPage, evidence, marker) {
+    let cursor = null;
+    // Long-lived chats can exceed the native frame limit with 100 full turns.
+    // Read one intact turn at a time; never truncate the command or its output.
+    for (let n = 0; n < 2000; n++) {
+        const page = await readPage({ itemsView: 'full', limit: 1, cursor });
+        for (const turn of page.data) {
+            const match = matchesNativeAction(turn.items, evidence, marker);
+            if (match)
+                return { turn_id: turn.id, native_call_id: match.id };
+        }
+        const next = page.nextCursor ?? null;
+        if (!next || next === cursor)
+            break;
+        cursor = next;
+    }
+    return undefined;
+}
 export async function verifyRecordedAction(store, actor, evidence, purpose) {
     try {
         if (actor.session.harness !== 'codex' || sessionKey(evidence.native_receipt.session) !== sessionKey(actor.session))
@@ -84,19 +102,10 @@ export async function verifyRecordedAction(store, actor, evidence, purpose) {
         await validateCodexBinary(config.desktopBinary, config.expectedVersion);
         const c = new CodexStdio({ binary: config.desktopBinary, codexHome: config.codexHome, cwd: store.root });
         try {
-            let cursor = null;
-            for (let n = 0; n < 20; n++) {
-                const page = await c.request('thread/turns/list', { threadId: actor.session.native_session_id, itemsView: 'full', limit: 100, cursor });
-                for (const turn of page.data) {
-                    const match = matchesNativeAction(turn.items, evidence, record.marker);
-                    if (match) {
-                        writeFileSync(join(dir, 'native-proof.json'), JSON.stringify({ session: actor.session, turn_id: turn.id, native_call_id: match.id, evidence_sha256: digest(evidence) }), { mode: 0o600 });
-                        return true;
-                    }
-                }
-                cursor = page.nextCursor ?? null;
-                if (!cursor)
-                    break;
+            const match = await findNativeAction(async (params) => await c.request('thread/turns/list', { threadId: actor.session.native_session_id, ...params }), evidence, record.marker);
+            if (match) {
+                writeFileSync(join(dir, 'native-proof.json'), JSON.stringify({ session: actor.session, ...match, evidence_sha256: digest(evidence) }), { mode: 0o600 });
+                return true;
             }
             return false;
         }

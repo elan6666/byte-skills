@@ -49,6 +49,18 @@ export async function executeNativeAction(store:BridgeStore,actor:Actor,raw:unkn
 }
 interface CommandItem {type:string;id:string;command?:string;status?:string;exitCode?:number;aggregatedOutput?:string}
 export function matchesNativeAction(items:CommandItem[],evidence:ActionEvidence,marker:string):CommandItem|undefined{return items.find(i=>i.type==='commandExecution' && i.status==='completed' && i.exitCode===0 && Boolean(i.command?.includes('--action-id '+evidence.native_receipt.action_id)) && /\baction\b/.test(i.command!) && Boolean(i.aggregatedOutput?.includes(marker)));}
+interface ActionPage {data:{id:string;items:CommandItem[]}[];nextCursor?:string|null}
+export async function findNativeAction(readPage:(params:{itemsView:'full';limit:1;cursor:string|null})=>Promise<ActionPage>,evidence:ActionEvidence,marker:string):Promise<{turn_id:string;native_call_id:string}|undefined>{
+ let cursor:string|null=null;
+ // Long-lived chats can exceed the native frame limit with 100 full turns.
+ // Read one intact turn at a time; never truncate the command or its output.
+ for(let n=0;n<2000;n++){
+  const page=await readPage({itemsView:'full',limit:1,cursor});
+  for(const turn of page.data){const match=matchesNativeAction(turn.items,evidence,marker);if(match)return {turn_id:turn.id,native_call_id:match.id};}
+  const next=page.nextCursor??null;if(!next || next===cursor)break;cursor=next;
+ }
+ return undefined;
+}
 export async function verifyRecordedAction(store:BridgeStore,actor:Actor,evidence:ActionEvidence,purpose:'verification'|'continuation'):Promise<boolean>{
  try{
   if(actor.session.harness!=='codex' || sessionKey(evidence.native_receipt.session)!==sessionKey(actor.session))return false;
@@ -57,12 +69,8 @@ export async function verifyRecordedAction(store:BridgeStore,actor:Actor,evidenc
   const proofPath=join(dir,'native-proof.json');try{const proof=JSON.parse(readFileSync(proofPath,'utf8'));if(proof.evidence_sha256===digest(evidence) && sessionKey(proof.session)===sessionKey(actor.session))return true;}catch{/* No earlier native observation. */}
   const config=codexConfigSchema.parse(JSON.parse(readFileSync(join(store.root,'.session-bridge','connectors','codex',digest(actor.binding_id)+'.json'),'utf8')));await validateCodexBinary(config.desktopBinary,config.expectedVersion);
   const c=new CodexStdio({binary:config.desktopBinary,codexHome:config.codexHome,cwd:store.root});try{
-   let cursor:string|null=null;
-   for(let n=0;n<20;n++){
-    const page=await c.request('thread/turns/list',{threadId:actor.session.native_session_id,itemsView:'full',limit:100,cursor}) as {data:{id:string;items:CommandItem[]}[];nextCursor?:string|null};
-    for(const turn of page.data){const match=matchesNativeAction(turn.items,evidence,record.marker);if(match){writeFileSync(join(dir,'native-proof.json'),JSON.stringify({session:actor.session,turn_id:turn.id,native_call_id:match.id,evidence_sha256:digest(evidence)}),{mode:0o600});return true;}}
-    cursor=page.nextCursor??null;if(!cursor)break;
-   }
+   const match=await findNativeAction(async params=>await c.request('thread/turns/list',{threadId:actor.session.native_session_id,...params}) as ActionPage,evidence,record.marker);
+   if(match){writeFileSync(join(dir,'native-proof.json'),JSON.stringify({session:actor.session,...match,evidence_sha256:digest(evidence)}),{mode:0o600});return true;}
    return false;
   }finally{await c.close();}
  }catch{return false;}

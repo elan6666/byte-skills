@@ -10,7 +10,7 @@ import { BridgeClient } from '../../src/transport/client.js';
 import { supervisionWaker } from '../../src/supervision/waker.js';
 import { SupervisionService } from '../../src/supervision/leases.js';
 import { StandaloneWorkflow } from '../../src/workflows/standalone.js';
-import { matchesNativeAction } from '../../src/return/native-action.js';
+import { matchesNativeAction,findNativeAction } from '../../src/return/native-action.js';
 import { digest } from '../../src/protocol/canonical.js';
 import { runtimeWorkflow } from '../../src/core/runtime.js';
 import type { ActionEvidence } from '../../src/return/service.js';
@@ -38,6 +38,17 @@ test('native_action_proof_rejects_model_claims_and_requires_actual_completed_com
  assert.equal(matchesNativeAction([{type:'commandExecution',id:'a',command,status:'inProgress',exitCode:0,aggregatedOutput:marker}],evidence,marker),undefined);
  assert.equal(matchesNativeAction([{type:'commandExecution',id:'a',command,status:'completed',exitCode:0,aggregatedOutput:'done'}],evidence,marker),undefined);
  assert.equal(matchesNativeAction([{type:'commandExecution',id:'a',command,status:'completed',exitCode:0,aggregatedOutput:marker}],evidence,marker)?.id,'a');
+});
+test('native_action_history_uses_intact_single_turn_pages_and_stops_at_the_actual_receipt',async()=>{
+ const evidence={native_receipt:{action_id:'history-123456'}} as ActionEvidence,marker='SESSIONBRIDGE_ACTION:history-123456:'+digest('evidence');
+ const calls:(string|null)[]=[];
+ const match=await findNativeAction(async p=>{
+  assert.equal(p.limit,1);assert.equal(p.itemsView,'full');calls.push(p.cursor);
+  if(!p.cursor)return {data:[{id:'new',items:[{type:'agentMessage',id:'claim',aggregatedOutput:marker}]}],nextCursor:'older'};
+  assert.equal(p.cursor,'older');return {data:[{id:'original',items:[{type:'commandExecution',id:'actual',command:'bridge.py exec action --action-id history-123456',status:'completed',exitCode:0,aggregatedOutput:marker}]}],nextCursor:'unneeded'};
+ },evidence,marker);
+ assert.deepEqual(calls,[null,'older']);assert.deepEqual(match,{turn_id:'original',native_call_id:'actual'});
+ let count=0;assert.equal(await findNativeAction(async()=>{count++;return {data:[],nextCursor:'same'};},evidence,marker),undefined);assert.equal(count,2);
 });
 test('existing_byte_state_never_silently_falls_back_to_standalone',async t=>{
  const f=await deliveryLab(t);mkdirSync(join(f.root,'.byte-os/coordination'),{recursive:true});writeFileSync(join(f.root,'.byte-os/coordination/state.json'),'{}');assert.throws(()=>runtimeWorkflow(f.store),/pin is missing/i);

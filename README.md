@@ -188,6 +188,10 @@ of improved model quality or a completed research outcome.
 
 [Read the walkthrough →](examples/gradpert.md) · [中文案例 →](examples/gradpert.zh-CN.md) · [All examples →](examples/README.md)
 
+**Real two-chat acceptance:** [fresh install → worker execution → independent main
+verification → actual continuation](examples/bridge-smoke.md). Includes the failures
+found and fixed during the test, plus its client-specific limits.
+
 ## Choose a skill
 
 Start with one of these five common entries. Supporting skills can be selected as the
