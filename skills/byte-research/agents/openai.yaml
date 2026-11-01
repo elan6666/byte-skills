@@ -1,4 +1,4 @@
 interface:
-  display_name: "Your ByteDance Research"
+  display_name: "Byte Research"
   short_description: "Research decision-relevant current evidence."
   default_prompt: "Use $byte-research to find current evidence that can materially inform this product decision."

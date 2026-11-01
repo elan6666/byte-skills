@@ -1,4 +1,4 @@
 interface:
-  display_name: "Your ByteDance Relay"
+  display_name: "Byte Relay"
   short_description: "Cross-harness and Codex-task relay with supervised handoffs."
   default_prompt: "Use $byte-relay to run the next relay turn: verify exact session authority, register this conversation, gather durable handoffs and receipts, execute and verify the stage, then atomically hand off and notify the next Codex task when direct task messaging is available."

@@ -58,6 +58,9 @@ cd byte-skills
 
 这会把 14 个技能安装到 `~/.agents/skills` 和 `~/.codex/skills`。安装后刷新技能列表或重新打开会话；按客户端要求操作。
 
+Codex 中的显示名统一为 **Byte Do**、**Byte Bridge**、**Byte Auto** 等。
+调用名仍为 `$byte-do`、`$byte-bridge`、`$byte-auto` 等。
+
 ```text
 $byte-do 用自然语言描述需求，自动选择合适技能并验证结果
 $byte-auto 按默认完整流程完成这个功能，直到验收通过

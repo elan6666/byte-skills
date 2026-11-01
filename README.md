@@ -54,6 +54,9 @@ cd byte-skills
 
 This installs 14 skills into `~/.agents/skills` and `~/.codex/skills`. Refresh the skill list or reopen the conversation as required by your client.
 
+Codex displays the skills as **Byte Do**, **Byte Bridge**, **Byte Auto**, and so on.
+Invocation names remain `$byte-do`, `$byte-bridge`, `$byte-auto`, etc.
+
 ```text
 $byte-do Describe the change you need; choose the relevant skills and verify the result
 $byte-auto Complete this feature through the default workflow until acceptance passes

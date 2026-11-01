@@ -1,4 +1,4 @@
 interface:
-  display_name: "Your ByteDance Brainstorm"
+  display_name: "Byte Brainstorm"
   short_description: "Explore substantially different product directions."
   default_prompt: "Use $byte-brainstorm to generate and compare distinct directions for this idea without committing to implementation."
