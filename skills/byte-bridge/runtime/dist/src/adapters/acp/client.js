@@ -93,7 +93,12 @@ export class AcpClient {
         });
         this.child.stderr.resume();
         this.child.stdin.on('error', () => { this.fail(); void this.close(); });
-        return this.request('initialize', { protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'SessionBridge', version: '0.1.0' } });
+        const info = await this.request('initialize', { protocolVersion: 1, clientCapabilities: {}, clientInfo: { name: 'SessionBridge', version: '0.1.0' } });
+        if (info.protocolVersion !== 1) {
+            await this.close();
+            throw new Error('Native ACP initialize did not negotiate supported protocolVersion 1');
+        }
+        return info;
     }
     async request(method, params) {
         if (!methods.has(method))

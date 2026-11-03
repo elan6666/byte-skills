@@ -1,7 +1,7 @@
-import { invokeSourceTool, sourceToolJsonSchema } from '../source-tool.js';
 import { hostname } from 'node:os';
 import { realpathSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { invokeSourceTool, sourceToolJsonSchema } from '../source-tool.js';
 import { openStore } from '../../core/database.js';
 import { issueEnrollment } from '../../core/bindings.js';
 import { digest } from '../../protocol/canonical.js';
@@ -11,45 +11,88 @@ export async function installDsh(ctx, config, makeMessage) {
     const profile = ctx.get('profileContext');
     if (!profile || profile.startedBundles.some(name => /sdk|headless/.test(name)) || !profile.startedBundles.some(name => /web-app|desktop/.test(name)))
         throw new Error('Native Web/Desktop profile proof required; a new SDK is managed');
-    const handles = [], byAgent = new Map();
-    const definition = { name: 'sessionbridge_request', description: '调用当前原生会话的会桥接口。先 context/sessions，角色设置 configure_roles；只接受业务参数，不接受来源身份。', parameters: sourceToolJsonSchema, output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] }, execute: async (raw, exec) => { const handle = byAgent.get(exec.agent); if (!handle)
-            throw new Error('This original native Agent is not connected'); return invokeSourceTool(handle.connection_file, config.sessions.find(s => s.session_id === handle.binding.identity.native_session_id).root, raw, () => ctx.agents.get(handle.binding.identity.native_session_id) === exec.agent); } };
-    const disposeTool = ctx.tools?.register(definition);
-    for (const selected of config.sessions) {
-        const sessionId = selected.session_id, agent = ctx.agents.get(sessionId);
-        if (!agent)
-            continue;
-        const root = realpathSync(selected.root);
-        if (!agent.session.header.cwd || realpathSync(agent.session.header.cwd) !== root || !ctx.remoteAccess.allows({ kind: 'session', id: sessionId }))
-            continue;
-        const store = openStore(root), generation = randomUUID(), setup = issueEnrollment(store), identity = { harness: 'dsh', host_id: hostname(), profile_id: digest(realpathSync(profile.dir)), native_session_id: String(sessionId), project_id: store.project_id, runtime_generation: generation };
-        store.close();
-        const handle = await startPluginSession({ setup, native_proof: { binding_id: randomUUID(), identity, challenge_id: randomUUID(), response: randomUUID(), expires_at: new Date(Date.now() + 30000).toISOString() } }, { root, alias: selected.alias ?? 'dsh', validateCurrent: () => ctx.agents.get(sessionId) === agent, deliver: async (envelope) => enqueueOnOriginalAgent({ ctx, agent, sessionId, generation, makeMessage }, envelope) });
-        handles.push(handle);
-        byAgent.set(agent, handle);
-        ctx.on('agent/disposed', async (payload) => { if (payload.agent === agent) {
-            byAgent.delete(agent);
-            await handle.close();
-        } });
-        ctx.on('session/event', (session, event) => {
-            if (session !== agent.session || event.type !== 'user/message' || event.data.source.kind !== 'sessionbridge')
+    if (!Array.isArray(config.sessions) || new Set(config.sessions.map(s => s.session_id)).size !== config.sessions.length)
+        throw new Error('Configure unique original DSH sessions explicitly');
+    const selected = new Map(config.sessions.map(s => [s.session_id, { ...s, root: realpathSync(s.root), cwd: realpathSync(s.cwd ?? s.root) }]));
+    const byAgent = new Map(), pending = new Map();
+    let closed = false;
+    const current = (agent, cwd) => !closed && ctx.agents.get(agent.id) === agent && Boolean(agent.session.header.cwd) && realpathSync(agent.session.header.cwd) === cwd && ctx.remoteAccess.allows({ kind: 'session', id: agent.id });
+    const connect = async (agent) => {
+        const s = selected.get(String(agent.id));
+        if (!s || byAgent.has(agent) || !current(agent, s.cwd))
+            return;
+        if (pending.has(agent))
+            return pending.get(agent);
+        const operation = (async () => {
+            const store = openStore(s.root), generation = randomUUID(), setup = issueEnrollment(store), identity = { harness: 'dsh', host_id: hostname(), profile_id: digest(realpathSync(profile.dir)), native_session_id: String(agent.id), project_id: store.project_id, runtime_generation: generation };
+            store.close();
+            const handle = await startPluginSession({ setup, native_proof: { binding_id: randomUUID(), identity, challenge_id: randomUUID(), response: randomUUID(), expires_at: new Date(Date.now() + 30000).toISOString() } }, { root: s.root, alias: s.alias ?? 'dsh', validateCurrent: () => current(agent, s.cwd), deliver: async (envelope) => enqueueOnOriginalAgent({ ctx, agent, sessionId: agent.id, generation, makeMessage }, envelope) });
+            if (!current(agent, s.cwd)) {
+                await handle.close();
                 return;
-            const messageId = event.data.source.message_id;
-            const store = openStore(root);
-            try {
-                const row = store.db.prepare('SELECT envelope_json FROM deliveries WHERE message_id=?').get(messageId);
-                if (row) {
-                    const e = JSON.parse(String(row.envelope_json));
-                    if (e.target.runtime_generation === generation && event.data.content.length === 1 && event.data.content[0]?.type === 'text' && event.data.content[0].text === pluginWireText(e))
-                        void handle.publish(e, 'accepted').catch(() => { });
-                }
             }
-            finally {
-                store.close();
+            byAgent.set(agent, { handle, root: s.root });
+        })();
+        pending.set(agent, operation);
+        try {
+            await operation;
+        }
+        finally {
+            pending.delete(agent);
+        }
+    };
+    const disposeCreated = ctx.on('agent/created', async ({ agent }) => { await connect(agent); });
+    const disposeAgent = ctx.on('agent/disposed', async ({ agent }) => { const entry = byAgent.get(agent); byAgent.delete(agent); await entry?.handle.close(); });
+    const disposeEvents = ctx.on('session/event', (session, event) => {
+        if (event.type !== 'user/message' || event.data.source.kind !== 'sessionbridge')
+            return;
+        const agent = ctx.agents.get(session.id), entry = agent && byAgent.get(agent);
+        if (!entry)
+            return;
+        const messageId = event.data.source.message_id, store = openStore(entry.root);
+        try {
+            const row = store.db.prepare('SELECT envelope_json FROM deliveries WHERE message_id=?').get(messageId);
+            if (row) {
+                const e = JSON.parse(String(row.envelope_json));
+                if (e.target.runtime_generation === entry.handle.binding.identity.runtime_generation && event.data.content.length === 1 && event.data.content[0]?.type === 'text' && event.data.content[0].text === pluginWireText(e))
+                    void entry.handle.publish(e, 'accepted').catch(() => { });
             }
-        });
+        }
+        finally {
+            store.close();
+        }
+    });
+    const call = async (agent, raw) => {
+        if (!agent)
+            throw new Error('An original native Agent is required');
+        const entry = byAgent.get(agent), s = selected.get(String(agent.id));
+        if (!entry || !s || !current(agent, s.cwd))
+            throw new Error('This original native Agent is not connected');
+        return invokeSourceTool(entry.handle.connection_file, entry.root, raw, () => current(agent, s.cwd));
+    };
+    const definition = { name: 'sessionbridge_request', description: '调用当前原生会话的会桥接口。先 context/sessions，角色设置 configure_roles；只接受业务参数，不接受来源身份。', parameters: sourceToolJsonSchema, output: { schema: { type: 'object', additionalProperties: true }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] }, execute: async (raw, exec) => call(exec.agent, raw) };
+    const disposeTool = ctx.tools.register(definition);
+    const dispose = async () => {
+        closed = true;
+        disposeTool();
+        disposeCreated();
+        disposeAgent();
+        disposeEvents();
+        await Promise.allSettled(pending.values());
+        await Promise.all([...byAgent.values()].map(e => e.handle.close()));
+        byAgent.clear();
+    };
+    try {
+        for (const id of selected.keys()) {
+            const agent = ctx.agents.get(id);
+            if (agent)
+                await connect(agent);
+        }
+        return dispose;
     }
-    return async () => { disposeTool?.(); byAgent.clear(); for (const handle of handles)
-        await handle.close(); };
+    catch (error) {
+        await dispose();
+        throw error;
+    }
 }
 //# sourceMappingURL=extension.js.map

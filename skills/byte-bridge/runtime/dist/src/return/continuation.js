@@ -16,5 +16,5 @@ export async function artifactBaseline(root, paths) {
     }
     return result;
 }
-export function withinPaths(path, scopes) { return Boolean(path && !isAbsolute(path) && !path.split(/[\\/]/).includes('..') && !path.startsWith('.session-bridge/') && !path.startsWith('.git/') && scopes.some(scope => scope === '.' || path === scope || path.startsWith(scope + '/'))); }
+export function withinPaths(path, scopes) { return Boolean(path && !isAbsolute(path) && !path.split(/[\\/]/).includes('..') && !path.startsWith('.session-bridge/') && !path.startsWith('.git/') && scopes.some(raw => { const scope = raw.replace(/\/+$/, ''); return Boolean(scope && (scope === '.' || path === scope || path.startsWith(scope + '/'))); })); }
 //# sourceMappingURL=continuation.js.map

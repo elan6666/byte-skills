@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { acpHostInputSchema } from '../../protocol/command-inputs.js';
 import { startAcpHost, isolatedAcpProfile } from './host.js';
+import { requireMinimumVersion } from '../version-policy.js';
 const exec = promisify(execFile);
 export async function runAcpHost(root, harness, raw, print) {
     const c = acpHostInputSchema.parse(raw), profile = isolatedAcpProfile(c.profile_dir), binary = realpathSync(c.binary), env = {};
@@ -22,8 +23,7 @@ export async function runAcpHost(root, harness, raw, print) {
     else
         Object.assign(env, { XDG_CONFIG_HOME: join(profile, '.config'), XDG_DATA_HOME: join(profile, '.local/share'), XDG_STATE_HOME: join(profile, '.local/state'), XDG_CACHE_HOME: join(profile, '.cache'), OPENCODE_DISABLE_AUTOUPDATE: 'true', OPENCODE_DISABLE_DEFAULT_PLUGINS: 'true', OPENCODE_DISABLE_SHARE: 'true' });
     const version = (await exec(binary, ['--version'], { cwd: root, env, timeout: 10000 })).stdout.trim();
-    if (version !== c.expected_version)
-        throw new Error('Native version changed; verify exact binary before starting');
+    requireMinimumVersion(harness, version, c.expected_version);
     const host = await startAcpHost({ binary, args: ['acp'], root, profile, env, harness, lifetime_seconds: c.lifetime_seconds });
     let closed = false;
     const stop = async () => { if (closed)

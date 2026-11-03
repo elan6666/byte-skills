@@ -35,3 +35,16 @@ test('OpenCode user install places its loader in native user config, not project
  assert.ok(!plan.files.some(f=>f.path===join(plan.targetRoot,'.opencode/plugins/sessionbridge.js')));
  const receipt=await applyInstall(plan);await removeInstall(receipt);assert.equal(existsSync(join(plan.targetRoot,'.config/opencode/plugins/sessionbridge.js')),false);
 });
+
+test('DSH desktop install includes a native bundle and plain JavaScript entry',async t=>{
+ const dir=root(t),plan=await planInstall({harness:'dsh',scope:'project',targetRoot:dir});
+ const manifest=JSON.parse(plan.files.find(f=>f.path.endsWith('/dsh/package.json'))!.content);
+ assert.equal(manifest.dsh.bundle.patch,'./cordis.patch.yml');assert.equal(manifest.main,'./index.mjs');
+ assert.ok(plan.files.some(f=>f.path.endsWith('/dsh/cordis.patch.yml') && f.content.includes('id: sessionbridge')));
+ assert.ok(plan.files.some(f=>f.path.endsWith('/dsh/index.mjs')));
+ const receipt=await applyInstall(plan);
+ const {composeEntries,loadOptionalPatches}=await import('@deepseek-ai/dsh-app-boot');
+ const entries=composeEntries([loadOptionalPatches('bridge-test',join(dir,'.session-bridge-plugins/dsh',manifest.dsh.bundle.patch))!]);
+ assert.equal(entries.length,2);assert.equal(entries[0]!.id,'sessionbridge');assert.equal(entries[0]!.name,'sessionbridge-dsh');assert.equal(entries[1]!.name,'sessionbridge-dsh/commands');
+ await removeInstall(receipt);
+});

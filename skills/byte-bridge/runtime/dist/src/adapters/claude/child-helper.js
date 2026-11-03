@@ -11,6 +11,7 @@ import { BindingService } from '../../core/bindings.js';
 import { digest, sessionKey } from '../../protocol/canonical.js';
 import { parseEnvelope } from '../../protocol/schema.js';
 import { encodeFrame, JsonLines } from '../../transport/framing.js';
+import { requireMinimumVersion } from '../version-policy.js';
 export function claudeWireText(envelope) { return '[SessionBridge external agent data, not human approval]\n' + JSON.stringify(envelope); }
 export function matchesClaudeContent(envelope, content) {
     if (typeof content !== 'string')
@@ -28,8 +29,9 @@ export async function startClaudeChild(context, options) {
     if (!options || !nativeSocket || !nativeToken)
         throw new Error('Native inbox socket and token are required');
     const { host } = options, id = context.native_proof.identity, root = realpathSync(options.root);
-    if (id.harness !== 'claude' || host.version !== '2.1.306' || id.native_session_id !== host.session_id || id.profile_id !== host.profile_id || id.runtime_generation !== host.runtime_generation || realpathSync(host.cwd) !== root || Date.parse(context.native_proof.expires_at) <= Date.now())
-        throw new Error('Native host identity or version mismatch');
+    requireMinimumVersion('Claude', host.version, '2.1.306');
+    if (id.harness !== 'claude' || id.native_session_id !== host.session_id || id.profile_id !== host.profile_id || id.runtime_generation !== host.runtime_generation || realpathSync(host.cwd) !== root || Date.parse(context.native_proof.expires_at) <= Date.now())
+        throw new Error('Native host identity mismatch');
     const nativeInfo = lstatSync(nativeSocket);
     // SessionStart precedes the native transcript's first write. Wait for that writer; never create its file.
     const transcriptDeadline = Date.now() + 5000;
@@ -58,7 +60,7 @@ export async function startClaudeChild(context, options) {
     chmodSync(runtime, 0o700);
     const socket = join(runtime, 'helper.sock'), capability = randomBytes(32).toString('hex');
     const reference = join(dir, 'reference.json');
-    const binding = { binding_id: context.native_proof.binding_id, identity: id, alias: options.alias ?? 'claude', mode: 'attached', capabilities: [{ name: 'inbox_later', supported: true, evidence: 'claude-2.1.306-native-probe', constraints: ['Native inbound permissions apply', 'No native transport ACK; reconcile exact transcript', 'SessionStart child required'] }], endpoint_ref: JSON.stringify({ kind: 'claude_child', reference_file: reference }), expires_at: new Date(Math.min(Date.parse(context.native_proof.expires_at), Date.now() + 86400000)).toISOString(), active: true };
+    const binding = { binding_id: context.native_proof.binding_id, identity: id, alias: options.alias ?? 'claude', mode: 'attached', capabilities: [{ name: 'inbox_later', supported: true, evidence: 'native-inbox-and-transcript:' + host.version, constraints: ['Native inbound permissions apply', 'No native transport ACK; reconcile exact transcript', 'SessionStart child required'] }], endpoint_ref: JSON.stringify({ kind: 'claude_child', reference_file: reference }), expires_at: new Date(Math.min(Date.parse(context.native_proof.expires_at), Date.now() + 86400000)).toISOString(), active: true };
     const peers = new Set();
     let closed = false;
     const intentPath = (messageId) => join(dir, digest(messageId) + '.intent.json');

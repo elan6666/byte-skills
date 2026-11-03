@@ -14,6 +14,26 @@ from pathlib import Path
 RUNTIME = Path(__file__).resolve().parents[1] / "runtime"
 
 
+def selected_runtime() -> Path:
+    """Allow an atomic upgrade without replacing a running service's files."""
+    skill = Path(__file__).resolve().parents[1]
+    pointer = skill / "runtime-active.json"
+    if pointer.is_symlink():
+        raise ValueError("Runtime selection must be a local regular file")
+    if not pointer.exists():
+        return RUNTIME
+    value = json.loads(pointer.read_text())
+    if not isinstance(value, dict):
+        raise ValueError("Invalid runtime selection")
+    release = value.get("source_tree_sha256", "")
+    if value.get("schema") != "byte-bridge-runtime-selection/v1" or not isinstance(release, str) or len(release) != 64 or any(c not in "0123456789abcdef" for c in release):
+        raise ValueError("Invalid runtime selection; preserve the existing release and reinstall")
+    runtime = skill / "runtime-releases" / release
+    if runtime.resolve() != runtime:
+        raise ValueError("Selected runtime must be a local directory")
+    return runtime
+
+
 def verify_bundle(root: Path) -> dict:
     manifest = json.loads((root / "BYTE_SOURCE.json").read_text())
     if manifest.get("schema") not in ("byte-sessionbridge-source/v1", "byte-bridge-runtime/v2"):
@@ -57,18 +77,19 @@ def main(argv: list[str] | None = None) -> int:
                         help="exec: original SessionBridge CLI arguments; stdin passes through unchanged")
     args = parser.parse_args(argv)
     try:
-        manifest = verify_bundle(RUNTIME)
+        runtime = selected_runtime()
+        manifest = verify_bundle(runtime)
         node = node_path()
         if args.command == "doctor":
             if args.arguments:
                 parser.error("doctor takes no project argument; use exec doctor --project PATH --json")
-            print(json.dumps({"state": "ready" if dependency_ready(RUNTIME) else "needs_bootstrap",
+            print(json.dumps({"state": "ready" if dependency_ready(runtime) else "needs_bootstrap",
                               "source_commit": manifest.get("source_commit", manifest.get("origin_commit")),
                               "maintained_in": manifest.get("maintained_in"),
-                              "source_tree_sha256": manifest.get("source_tree_sha256"), "runtime": str(RUNTIME),
+                              "source_tree_sha256": manifest.get("source_tree_sha256"), "runtime": str(runtime),
                               "node": node, "files_verified": len(manifest["files"]),
                               "models_started": 0, "project_modified": False}))
-            return 0 if dependency_ready(RUNTIME) else 3
+            return 0 if dependency_ready(runtime) else 3
         if args.command == "bootstrap":
             if args.arguments:
                 parser.error("bootstrap takes no extra arguments")
@@ -76,19 +97,19 @@ def main(argv: list[str] | None = None) -> int:
             if not npm:
                 raise ValueError("npm is required to install the pinned Bridge runtime dependencies")
             subprocess.run([npm, "ci", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund"],
-                           cwd=RUNTIME, check=True)
-            verify_bundle(RUNTIME)
-            if not dependency_ready(RUNTIME):
+                           cwd=runtime, check=True)
+            verify_bundle(runtime)
+            if not dependency_ready(runtime):
                 raise ValueError("Runtime dependency installation is incomplete")
             print(json.dumps({"state": "ready", "models_started": 0, "services_started": 0}))
             return 0
         if not args.arguments:
             parser.error("exec needs a SessionBridge command, such as describe --query request --json")
-        if not dependency_ready(RUNTIME):
+        if not dependency_ready(runtime):
             raise ValueError("Run bridge.py bootstrap first; no global session-bridge fallback is used")
         # Inherit native identity and stdin. No shell, JSON interpolation, model call,
         # impersonated session variable, or alternate global binary is involved.
-        result = subprocess.run([node, str(RUNTIME / "dist/src/cli/main.js"), *args.arguments])
+        result = subprocess.run([node, str(runtime / "dist/src/cli/main.js"), *args.arguments])
         return result.returncode
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError) as error:
         print(json.dumps({"state": "blocked", "error": str(error)}), file=sys.stderr)

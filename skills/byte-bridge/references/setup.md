@@ -12,6 +12,21 @@ editable project. `BYTE_SOURCE.json` records the canonical source-tree hash and
 payload hashes. Historical origin metadata does not select a runtime source.
 Node.js 24.15–24.x is required only for Bridge.
 
+Application versions in the compatibility guide are regression history, not
+exclusive allowlists. Prefer actual native schema/capability/protocol checks
+for newer releases and development labels. Report a concrete missing interface
+instead of asking for approval merely because the version changed. Preserve
+original-session identity, existing native permissions and immutable message
+IDs; an executable upgrade can require reconnecting its changed generation.
+Use this bundled launcher rather than a retired global `session-bridge` release.
+
+For upgrades while another project has an active service, install the generated
+payload beside the old one under `runtime-releases/<source_tree_sha256>` and
+atomically select it with `runtime-active.json` (`schema:
+byte-bridge-runtime-selection/v1`, `source_tree_sha256: <hash>`). The launcher
+verifies the selected payload. Keep the old `runtime/` and its running processes
+intact until their own work finishes; do not restart experiments to update a CLI.
+
 Install all Byte skills and explicitly install production Bridge dependencies:
 
 ```bash

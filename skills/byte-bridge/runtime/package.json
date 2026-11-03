@@ -29,7 +29,8 @@
     "docs/acp.zh-CN.md",
     "docs/byte.md",
     "docs/byte.zh-CN.md",
-    "LICENSE"
+    "LICENSE",
+    "docs/dsh.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",

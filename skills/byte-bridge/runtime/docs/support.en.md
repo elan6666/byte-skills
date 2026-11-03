@@ -4,6 +4,16 @@
 
 Byte Bridge 0.1 is a local session-integration prototype. Connection, delivery, model execution, and task acceptance are separate states. Check the app version, session mode, and actual task requirements independently.
 
+Version lists below record past regressions, not exclusive allowlists. Newer
+releases and development labels reach the native interface checks: Codex checks
+its exported queue/history schema; ZCode checks runtime capabilities; Claude
+requires the real inbox and transcript; Kimi/OpenCode negotiate ACP protocol 1;
+DSH, Pi and Hermes use their actual native plugin services. A known obsolete
+version or a missing required interface is refused with its specific reason.
+An upgraded executable still requires a new connection generation when an old
+binding pins different process/artifact identity. This preserves original-chat
+ownership without treating every application update as unsupported.
+
 ## Runtime requirements
 
 - The core requires Node.js ≥24.15.0 and <25. The local transport targets macOS/Linux; Windows integration is unverified.
@@ -24,9 +34,9 @@ The observation does not establish native permissions, task execution or wakeup.
 | Codex | Original-chat connect, matching desktop native queue and read-only history | Exact versions 0.163.0-alpha.11, 0.163.0-alpha.11.2 0.164.0-alpha.11.1, and 0.166.0-alpha.5.1. The desktop remains the only executor. Archived, unloaded, or closed chats are not guaranteed to wake. Revalidate after upgrades. |
 | Claude Code | Native plugin lifecycle and later inbox | Adapted to 2.1.306. Activate the plugin in the original app; Claude controls tool permissions. |
 | Pi | Native extension and followUp | Adapted to 1.3.0. Switching or reloading a session invalidates the old connection. Delivery does not interrupt execution. |
-| dsh | Web/Desktop Cordis plugin bound to the original Agent | Adapted to 0.2.1-rc.2. Web mode has the clearer integration scope; individual desktop instances need separate checks. Entry syntax follows the original app. |
+| dsh | Web/Desktop Cordis plugin bound to the original Agent | Adapted to 0.2.1-rc.2; Desktop 0.2.1-rc.5 locally checked for bundle installation, hot activation, original-chat task execution and artifact return. Exact selected Agents must be loaded; independent native-action certification is separate. See [DSH setup](dsh.md). |
 | Hermes | Native plugin and canonical gateway TUI queue | Busy injection in the ordinary CLI is restricted. Desktop GUI attachment is unverified. |
-| ZCode | Original-session MCP active intake + dedicated App Server | Exact 0.17.0 and 0.17.1 artifacts; `attached/native_tool_pull` requires an enabled native plugin and bounded active wait, without idle-chat wake. `managed` needs a separate profile. Native permissions apply. See [setup](zcode.md). |
+| ZCode | Original-session MCP active intake + dedicated App Server | Exact 0.17.0 and 0.17.1 regression artifacts; newer builds use native capability checks; `attached/native_tool_pull` requires an enabled native plugin and bounded active wait, without idle-chat wake. `managed` needs a separate profile. Native permissions apply. See [setup](zcode.md). |
 | Kimi Code | Dedicated native ACP process | 2.4.1; managed, one session per process and isolated profile. Existing TUI attachment unsupported; old0.28.1 custom-GLM ACP failed. See [guide](acp.md). |
 | OpenCode | Dedicated ACP + native project-plugin intake | 1.19.5; one session per ACP process. Original sessions require an enabled plugin and active wait. No arbitrary idle wake; GUI support is not inferred from CLI tests. See [guide](acp.md). |
 

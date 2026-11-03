@@ -1,0 +1,7 @@
+- insert:
+    - id: sessionbridge
+      name: sessionbridge-dsh
+      config:
+        sessions: []
+    - id: sessionbridge-command
+      name: sessionbridge-dsh/commands

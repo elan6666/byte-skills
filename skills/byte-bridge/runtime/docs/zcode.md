@@ -2,6 +2,26 @@
 
 [简体中文](zcode.zh-CN.md) · [Back to README](../README.md)
 
+## Runtime compatibility
+
+Use Byte's bundled launcher, not a retired global `session-bridge` executable.
+An old project plugin can still point to an older release through its
+`.sessionbridge-runtime.json`; installing newer Skills alone does not change
+that pointer or an already running MCP process.
+
+The minimum reference version is 0.17.0. Newer releases, prereleases, development
+labels and changed builds are eligible for an isolated `runtime/capabilities`
+probe. It checks workspace lifecycle/routing, history-first reads and session
+directory source support before any session is created. Missing capabilities,
+Known older versions and missing capabilities are rejected with a specific
+reason; unknown version labels reach the actual protocol check. The probe creates no chat and calls no model.
+
+`verified_build` identifies an exact previously validated version/artifact;
+`capability_checked` means only that the compatibility probe passed. It does
+not certify task execution or idle wake. Original-session attachment still
+requires the actual native owner and fresh per-tool history challenge; unknown
+builds are probed only after that owner is established. Permissions are unchanged.
+
 ## Attach an already-open original ZCode conversation
 
 From the original Codex main chat:

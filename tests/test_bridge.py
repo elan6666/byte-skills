@@ -81,6 +81,47 @@ class BridgeTests(unittest.TestCase):
             self.assertEqual(bridge.main(["exec", "request", "--stdin"]), 3)
             run.assert_not_called()
 
+    def test_selected_release_forwards_without_replacing_legacy_runtime(self):
+        self.bundle()
+        manifest = json.loads((self.root / "BYTE_SOURCE.json").read_text())
+        release = "a" * 64
+        skill = self.root / "skill"
+        selected = skill / "runtime-releases" / release
+        selected.mkdir(parents=True)
+        for name in [*manifest["files"], "BYTE_SOURCE.json"]:
+            target = selected / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes((self.root / name).read_bytes())
+        legacy = skill / "runtime"
+        legacy.mkdir()
+        sentinel = legacy / "running-service.txt"
+        sentinel.write_text("keep this running service's files")
+        (skill / "runtime-active.json").write_text(json.dumps({
+            "schema": "byte-bridge-runtime-selection/v1", "source_tree_sha256": release}))
+        with patch.object(bridge, "__file__", str(skill / "scripts/bridge.py")), \
+             patch.object(bridge, "node_path", return_value="/node"), \
+             patch.object(bridge, "dependency_ready", return_value=True), \
+             patch.object(bridge.subprocess, "run") as run:
+            run.return_value.returncode = 0
+            self.assertEqual(bridge.main(["exec", "describe"]), 0)
+            run.assert_called_once_with(["/node", str(selected / "dist/src/cli/main.js"), "describe"])
+        self.assertEqual(sentinel.read_text(), "keep this running service's files")
+
+    def test_runtime_selection_rejects_bad_values_and_symlinks(self):
+        skill = self.root / "skill"
+        skill.mkdir()
+        pointer = skill / "runtime-active.json"
+        with patch.object(bridge, "__file__", str(skill / "scripts/bridge.py")):
+            for release in [123, None, "../outside", "g" * 64]:
+                pointer.write_text(json.dumps({"schema": "byte-bridge-runtime-selection/v1",
+                                               "source_tree_sha256": release}))
+                with self.assertRaisesRegex(ValueError, "Invalid runtime selection"):
+                    bridge.selected_runtime()
+            pointer.unlink()
+            pointer.symlink_to(skill / "missing.json")
+            with self.assertRaisesRegex(ValueError, "regular file"):
+                bridge.selected_runtime()
+
     def workflow(self):
         coord = self.root / ".byte-os/coordination"
         coord.mkdir(parents=True)

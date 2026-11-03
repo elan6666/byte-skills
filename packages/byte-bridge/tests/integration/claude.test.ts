@@ -21,7 +21,7 @@ test('token_stays_in_child_and_native_delivery_requires_durable_intent',async t=
  t.after(async()=>{await holder.handle?.close();await new Promise<void>(resolve=>native.close(()=>resolve()));rmSync(dir,{recursive:true,force:true});});
  const principal=issueEnrollment(lab.store),context={setup:principal,native_proof:{binding_id:randomUUID(),challenge_id:'trusted-fixture',response:'native-host-proof',identity:id,expires_at:'2099-01-01T00:00:00Z'}};
  const firstWrite=setTimeout(()=>writeFileSync(transcript,''),50);t.after(()=>clearTimeout(firstWrite));
- const handle=holder.handle=await startClaudeChild(context,{root:lab.root,host:{session_id:id.native_session_id,profile_id:id.profile_id,runtime_generation:id.runtime_generation,transcript_path:transcript,cwd:lab.root,version:'2.1.306'},env:{CLAUDE_CODE_MESSAGING_SOCKET:socket,CLAUDE_CODE_MESSAGING_TOKEN:token}});
+ const handle=holder.handle=await startClaudeChild(context,{root:lab.root,host:{session_id:id.native_session_id,profile_id:id.profile_id,runtime_generation:id.runtime_generation,transcript_path:transcript,cwd:lab.root,version:'2.2.0'},env:{CLAUDE_CODE_MESSAGING_SOCKET:socket,CLAUDE_CODE_MESSAGING_TOKEN:token}});
  await new BindingService(lab.store).enroll(principal,handle.binding);
  assert.equal(JSON.stringify(handle.binding).includes(token),false);const reference=JSON.parse(handle.binding.endpoint_ref);assert.equal(readFileSync(reference.reference_file,'utf8').includes(token),false);
  const helper=createRegisteredHelperClient(lab.store),adapter=createClaudeAdapter({helper});

@@ -35,11 +35,11 @@ import {zcodeModel} from '../helpers/zcode-model.js';
 import {openStore} from '../../src/core/database.js';
 const binary='/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs';
 const certifiedDesktop=existsSync(binary) && isKnownZCodeArtifact(createHash('sha256').update(readFileSync(binary)).digest('hex'));
-test('unadapted_desktop_artifact_is_rejected_before_original_intake',{skip:!existsSync(binary)||certifiedDesktop},async()=>{
+test('unknown_desktop_artifact_does_not_allow_an_external_caller_to_attach',{skip:!existsSync(binary)||certifiedDesktop},async()=>{
  const {originalZCodeOwner}=await import(modulePath);
- await assert.rejects(()=>originalZCodeOwner(),/Uncertified native ZCode artifact/);
+ await assert.rejects(()=>originalZCodeOwner(),/Original native ZCode runtime required/);
 });
-test('zcode_warm_existing_native_session_attaches_via_its_own_tool_history',{skip:!certifiedDesktop?'Requires an exact adapted ZCode desktop artifact; unknown binaries must remain blocked':false,timeout:45000},async t=>{
+test('zcode_warm_existing_native_session_attaches_via_its_own_tool_history',{skip:!existsSync(binary)?'Requires the desktop runtime; unknown builds must pass capability checks':false,timeout:45000},async t=>{
  const root=realpathSync(mkdtempSync('/tmp/sb-zcode-existing-')),profile=join(root,'home');mkdirSync(profile);await initProject(root,{dryRun:false});const model=await zcodeModel(profile,'attached'),rpc=new ZCodeRpc({root,profile,binary});let core=await runDaemon(root);
  t.after(async()=>{await rpc.close();await core.close();await model.close();rmSync(root,{recursive:true,force:true,maxRetries:5,retryDelay:100});});
  const id='sess_'+randomUUID(),mcp=fileURLToPath(new URL('../../src/adapters/zcode/attached-mcp.js',import.meta.url));

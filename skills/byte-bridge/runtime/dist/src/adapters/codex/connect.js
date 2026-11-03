@@ -11,12 +11,12 @@ import { createSourceConnection, codexSignal } from '../../core/connections.js';
 import { privateDirectory } from '../../core/private-paths.js';
 import { digest } from '../../protocol/canonical.js';
 import { BridgeError } from '../../protocol/errors.js';
-import { readCodexOwner, validateSupportedCodexBinary, CURRENT_CODEX_VERSION, SUPPORTED_CODEX_VERSIONS } from './version.js';
+import { readCodexOwner, validateSupportedCodexBinary, CURRENT_CODEX_VERSION } from './version.js';
 import { createCodexAdapter } from './adapter.js';
 const exec = promisify(execFile);
 export const DESKTOP_CODEX = '/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex';
 export const CODEX_VERSION = CURRENT_CODEX_VERSION;
-export const codexConfigSchema = z.strictObject({ desktopBinary: z.string(), codexHome: z.string(), expectedVersion: z.enum(SUPPORTED_CODEX_VERSIONS), projectRoot: z.string(), nativeCwd: z.string(), owner: z.strictObject({ pid: z.number().int().positive(), started_at: z.string(), executable: z.string() }) });
+export const codexConfigSchema = z.strictObject({ desktopBinary: z.string(), codexHome: z.string(), expectedVersion: z.string().min(1).max(128), projectRoot: z.string(), nativeCwd: z.string(), owner: z.strictObject({ pid: z.number().int().positive(), started_at: z.string(), executable: z.string() }) });
 export async function originalCodexOwner(binary = DESKTOP_CODEX) {
     let pid = process.ppid;
     const exact = realpathSync(binary);

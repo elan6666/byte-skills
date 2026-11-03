@@ -1,0 +1,35 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { installDsh, type DshPluginConfig } from '../../src/adapters/dsh/extension.js';
+import { initProject } from '../../src/cli/init.js';
+import { openStore } from '../../src/core/database.js';
+import { tempRoot } from '../helpers/fixtures.js';
+import { createUserMessage } from '@deepseek-ai/dsh-llm/message';
+import type { Context } from '@deepseek-ai/cordis';
+
+test('DSH late original sessions enroll, dispose, and reopen with a new generation', async t => {
+ const { root, cleanup } = tempRoot();
+ t.after(cleanup);
+ const project=join(root,'project');mkdirSync(project);await initProject(project,{dryRun:false});
+ const listeners=new Map<string,Set<(payload:unknown)=>unknown>>(),agents=new Map<string,unknown>();
+ let registered=false,allowed=true;
+ const ctx={get:()=>({dir:root,startedBundles:['@deepseek-ai/dsh-web-app']}),agents:{get:(id:string)=>agents.get(id)},remoteAccess:{allows:()=>allowed},tools:{register:()=>{registered=true;return ()=>{registered=false;};}},on:(name:string,cb:(payload:unknown)=>unknown)=>{if(!listeners.has(name))listeners.set(name,new Set());listeners.get(name)!.add(cb);return ()=>{listeners.get(name)!.delete(cb);};}} as unknown as Context;
+ const emit=async(name:string,payload:unknown)=>{for(const cb of listeners.get(name)??[])await cb(payload);};
+ const config:DshPluginConfig={sessions:[{session_id:'selected',root:project,cwd:root,alias:'main'},{session_id:'strict',root:project}]};
+ const dispose=await installDsh(ctx,config,(_envelope,text)=>createUserMessage({content:[{type:'text',text}],source:{kind:'user'}}));
+ t.after(dispose);assert.equal(registered,true);
+ const bindings=()=>{const store=openStore(project);try{return store.db.prepare('SELECT identity_json,active FROM bindings').all();}finally{store.close();}};
+ assert.equal(bindings().length,0);
+ const strict={id:'strict',session:{header:{cwd:root}}};agents.set('strict',strict);await emit('agent/created',{agent:strict});assert.equal(bindings().length,0);
+ const unselected={id:'unselected',session:{header:{cwd:root}}};agents.set('unselected',unselected);await emit('agent/created',{agent:unselected});assert.equal(bindings().length,0);
+ const agent={id:'selected',session:{header:{cwd:root}}};agents.set('selected',agent);
+ allowed=false;await emit('agent/created',{agent});assert.equal(bindings().length,0);
+ allowed=true;await emit('agent/created',{agent});const first=bindings();assert.equal(first.length,1);assert.equal(first[0]!.active,1);
+ await emit('agent/created',{agent});assert.equal(bindings().length,1);
+ agents.delete('selected');await emit('agent/disposed',{agent});assert.equal(bindings()[0]!.active,0);
+ const replacement={id:'selected',session:{header:{cwd:root}}};agents.set('selected',replacement);await emit('agent/created',{agent:replacement});
+ const rows=bindings();assert.equal(rows.length,2);assert.equal(rows[1]!.active,1);assert.notEqual(JSON.parse(String(rows[0]!.identity_json)).runtime_generation,JSON.parse(String(rows[1]!.identity_json)).runtime_generation);
+ await dispose();assert.equal(registered,false);assert.equal(bindings().filter(r=>r.active===1).length,0);
+});

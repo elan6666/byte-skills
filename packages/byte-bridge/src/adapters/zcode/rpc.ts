@@ -6,7 +6,7 @@ import { dirname,join } from 'node:path';
 import { homedir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { BridgeError } from '../../protocol/errors.js';
-import {SUPPORTED_ZCODE_VERSIONS} from './version.js';
+import {checkZCodeVersion,checkZCodeCapabilities,type ZCodeCompatibility} from './version.js';
 const exec=promisify(execFile);
 export const DEFAULT_ZCODE_BINARY='/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs';
 export const ZCODE_METHODS=new Set(['runtime/capabilities','session/create','session/read','session/send','session/messages','session/events','session/subscribe']);
@@ -17,6 +17,8 @@ export class ZCodeRpc {
  readonly trace:string[]=[];readonly notifications:unknown[]=[];
  // Names only: never retain permission payloads, tool arguments or credentials.
  readonly deniedPermissionRequests:string[]=[];version='';binarySha256='';
+ compatibility:ZCodeCompatibility|null=null;
+ private capabilities:unknown;
  constructor(private options:ZCodeRpcOptions){}
  get pid():number{return this.child?.pid??0;}
  get alive():boolean{return !this.closed && Boolean(this.child && this.child.exitCode===null && this.child.signalCode===null);}
@@ -33,7 +35,7 @@ export class ZCodeRpc {
    const env:NodeJS.ProcessEnv={};for(const k of ['PATH','LANG','TMPDIR','USER','LOGNAME'])if(process.env[k])env[k]=process.env[k];
    Object.assign(env,{HOME:profile,USERPROFILE:profile,ZCODE_DATA_BASE_DIR:profile,ZCODE_BUILTIN_PROVIDER_CONFIG_FILE:realpathSync(builtin),ZCODE_PERSONAL_PROVIDER_CONFIG_FILE:join(profile,'.zcode/v2/provider_config.json'),ZCODE_STORAGE_DIR:join(profile,'.zcode/cli'),ZCODE_LOG_DIR:join(profile,'.zcode/cli/logs')});
    const version=(await exec(process.execPath,[binary,'--version'],{timeout:10000,env,cwd:this.options.root})).stdout.trim();
-   if(!SUPPORTED_ZCODE_VERSIONS.some(v=>v===version))throw new BridgeError('zcode_version_drift','Uncertified ZCode version: '+version,'Retest this exact native runtime in isolated sessions',3);
+   checkZCodeVersion(version);
    this.version=version;this.binarySha256=createHash('sha256').update(readFileSync(binary)).digest('hex');
    if(this.closed)throw new Error('ZCode runtime closed');
    this.child=spawn(process.execPath,[binary,'app-server','--stdio'],{cwd:this.options.root,env,stdio:'pipe',detached:true});
@@ -50,11 +52,19 @@ export class ZCodeRpc {
    });
    this.child.stderr.resume();this.child.stdin.on('error',()=>this.fail(new Error('ZCode input closed; reconcile uncertain writes')));
    this.child.once('error',()=>this.fail(new Error('ZCode runtime failed to start')));this.child.once('exit',()=>this.fail(new Error('ZCode runtime exited; reconnect a new generation')));
+   this.capabilities=await this.send('runtime/capabilities',{});
+   this.compatibility=checkZCodeCapabilities(this.version,this.binarySha256,this.capabilities);
   })();return this.ready;
  }
  async request(method:string,params:unknown):Promise<unknown>{
   if(!ZCODE_METHODS.has(method))throw new Error('ZCode method forbidden: '+method);
-  if(this.closed)throw new Error('ZCode runtime closed');await this.start();if(!this.alive)throw new Error('ZCode original runtime unavailable');
+  if(this.closed)throw new Error('ZCode runtime closed');
+  try{await this.start();}catch(error){await this.close();throw error;}
+  if(!this.alive)throw new Error('ZCode original runtime unavailable');
+  if(method==='runtime/capabilities')return this.capabilities;
+  return this.send(method,params);
+ }
+ private send(method:string,params:unknown):Promise<unknown>{
   this.trace.push(method);const id=++this.serial,line=JSON.stringify({id,method,params})+'\n';if(Buffer.byteLength(line)>1024*1024)throw new Error('ZCode request too large');
   return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.pending.delete(id);reject(new BridgeError('zcode_timeout','Native ZCode outcome uncertain','Reconcile the original message ID; do not resend',5));},20000);this.pending.set(id,{resolve,reject,timer});this.child!.stdin.write(line);});
  }

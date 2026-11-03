@@ -3,7 +3,9 @@ export function createDshAdapter({ hostClient }) {
     let pin;
     const proof = async (permission, session) => {
         const p = await hostClient.identify();
-        if (p.mode !== 'attached' || p.version !== '0.2.1-rc.2' || !p.native_host_id || !p.owner.pid || !p.owner.started_at || !p.permissions.includes(permission))
+        // Version is diagnostic metadata. The original Host identity, native route,
+        // permissions and exact live binding establish whether this interface works.
+        if (p.mode !== 'attached' || !p.host_id || !p.native_host_id || !p.owner.pid || !p.owner.started_at || !p.owner.executable || !p.permissions.includes(permission))
             return null;
         const fingerprint = digest({ native_host_id: p.native_host_id, owner: p.owner, version: p.version });
         if (pin && pin !== fingerprint)

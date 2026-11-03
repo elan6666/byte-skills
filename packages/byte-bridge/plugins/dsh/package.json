@@ -1,1 +1,16 @@
-{"name":"sessionbridge-dsh","version":"0.1.0","type":"module","main":"./index.ts","peerDependencies":{"@deepseek-ai/cordis":"4.0.5","@deepseek-ai/dsh-agent":"0.2.1-rc.2","@deepseek-ai/dsh-llm":"0.2.1-rc.2","@deepseek-ai/dsh-api-session-controller":"0.2.1-rc.2","@deepseek-ai/dsh-skill-filesystem":"0.1.5-rc.2"}}
+{
+  "name": "sessionbridge-dsh",
+  "version": "0.1.1",
+  "type": "module",
+  "main": "./index.mjs",
+  "exports": { ".": "./index.mjs", "./commands": "./commands.mjs" },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-llm": "*",
+    "@deepseek-ai/dsh-skill-filesystem": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-llm": { "optional": true },
+    "@deepseek-ai/dsh-skill-filesystem": { "optional": true }
+  }
+}

@@ -6,6 +6,16 @@ import { binding } from '../helpers/bindings.js';
 async function fixture(t:Parameters<typeof deliveryLab>[0]){const lab=await deliveryLab(t),target={...lab.envelope.target,harness:'dsh'};const b={...binding(lab.store),identity:target};let calls=0;const proof:HostProof={host_id:target.host_id,native_host_id:'original-native-host',version:'0.2.1-rc.2',mode:'attached',owner:{pid:process.pid,started_at:'native-start',executable:'native-dsh'},permissions:['enqueue','observe'],bindings:[b]};const hostClient:DshHostClient={identify:async()=>proof,enqueue:async()=>{calls++;return {state:'confirmed',native_receipt:'native-durable-queue'};},follow:async function*(session){yield {state:'queued',message_id:lab.envelope.message_id,session,native_receipt:'native-durable-queue',artifacts:[]};}};return {lab,proof,hostClient,target,adapter:createDshAdapter({hostClient}),calls:()=>calls};}
 test('new_sdk_is_not_attached',async t=>{const f=await fixture(t);f.proof.mode='managed';assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'refused');assert.equal(f.calls(),0);});
 test('host_scope_denied',async t=>{const f=await fixture(t);f.proof.permissions=[];assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'refused');assert.equal(f.calls(),0);});
+test('native_dsh_capabilities_work_without_an_exact_version_allowlist',async t=>{
+ const f=await fixture(t);f.proof.version='0.2.1-rc.5';assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'confirmed');
+ const future=await fixture(t);future.proof.version='future-custom-build';assert.equal((await future.adapter.deliver({...future.lab.envelope,target:future.target})).state,'confirmed');
+});
+test('a_host_generation_change_still_requires_reconnection',async t=>{
+ const f=await fixture(t);assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'confirmed');f.proof.owner.started_at='another-process-birth';assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'refused');assert.equal(f.calls(),1);
+});
+test('a_version_label_cannot_replace_native_host_proof',async t=>{
+ const f=await fixture(t);f.proof.owner.executable='';assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'refused');assert.equal(f.calls(),0);
+});
 test('queue_receipt_is_not_completion',async t=>{const f=await fixture(t);const e={...f.lab.envelope,target:f.target};assert.equal((await f.adapter.deliver(e)).state,'confirmed');assert.deepEqual((await f.adapter.reconcile(e)).map(o=>o.state),['queued']);});
 test('occupied_session_not_resumed',async t=>{const f=await fixture(t);await f.adapter.deliver({...f.lab.envelope,target:f.target});assert.equal(f.calls(),1);f.proof.bindings=[];assert.equal((await f.adapter.deliver({...f.lab.envelope,target:f.target})).state,'refused');assert.equal(f.calls(),1);});
 test('native_followup_borrows_exact_agent_without_resume_or_user_impersonation',async t=>{

@@ -13,6 +13,7 @@ import { readCodexOwner } from '../codex/version.js';
 import { startClaudeChild } from './child-helper.js';
 import { setTimeout as delay } from 'node:timers/promises';
 import { assertClaudeStartup, endClaudeStartup, reserveClaudeStartup, withClaudeStartup } from './startup.js';
+import { requireMinimumVersion } from '../version-policy.js';
 function diagnostic(input, state, reason) { try {
     const root = realpathSync(input.cwd), dir = privateDirectory(root, ['.session-bridge', 'native-diagnostics']);
     writeFileSync(join(dir, 'claude-' + digest(input.session_id) + '.json'), JSON.stringify({ state, reason, session_id_sha256: digest(input.session_id), at: new Date().toISOString() }), { mode: 0o600 });
@@ -36,8 +37,7 @@ async function child(input) {
         if (digest(original) !== digest(input.owner))
             throw new Error('Native owner changed');
         const version = execFileSync(original.executable, ['--version'], { encoding: 'utf8', timeout: 5000 }).trim().split(' ')[0];
-        if (version !== '2.1.306')
-            throw new Error('Claude version requires revalidation');
+        requireMinimumVersion('Claude', version, '2.1.306');
         const profile = realpathSync(process.env.CLAUDE_CONFIG_DIR ?? join(process.env.HOME, '.claude')), signal = claudeSignal(socket), generation = digest({ signal, session_id: input.session_id, owner: original });
         const identity = { harness: 'claude', host_id: hostname(), profile_id: digest(profile), native_session_id: input.session_id, project_id: store.project_id, runtime_generation: generation };
         assertClaudeStartup(store, signal, token);

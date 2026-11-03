@@ -39,7 +39,7 @@ test('ACP declines native permission requests instead of approving tools',async 
  assert.deepEqual(seen?.params,{outcome:{outcome:'cancelled'}});await client.close();await prompt;
 });
 test('ACP timeout is uncertain and never automatically resubmits a prompt',async t=>{
- const client=fixture(t,150);await client.initialize();await client.request('session/new',{cwd:'/tmp',mcpServers:[]});
+ const client=fixture(t,1000);await client.initialize();await client.request('session/new',{cwd:'/tmp',mcpServers:[]});
  await assert.rejects(client.request('session/prompt',{sessionId:'original-1',prompt:[{type:'text',text:'hang'}]}),/uncertain/);
  assert.equal(client.trace.filter(m=>m==='session/prompt').length,1);
 });
@@ -74,4 +74,11 @@ test('ACP group stops when its connector owner exits without close',async t=>{
  writeFileSync(owner,`import{AcpClient}from ${JSON.stringify(pathToFileURL(resolve('dist/src/adapters/acp/client.js')).href)};const c=new AcpClient({binary:process.execPath,args:[${JSON.stringify(agent)}],root:${JSON.stringify(root)},env:{PATH:process.env.PATH}});const init=await c.initialize();console.log(JSON.stringify({group:c.pid,descendant:init.descendant}));process.exit(0);`);
  const {spawn}=await import('node:child_process');const child=spawn(process.execPath,[owner],{stdio:['ignore','pipe','ignore']});let output='';child.stdout.on('data',c=>output+=c);await new Promise<void>(r=>child.once('exit',()=>r()));const ids=JSON.parse(output.trim()),group=ids.group as number,descendant=ids.descendant as number;assert.ok(Number.isSafeInteger(descendant) && descendant>1);
  t.after(()=>{try{process.kill(-group,'SIGKILL');}catch{/* cleaned */}});await new Promise(r=>setTimeout(r,1000));let alive=true;try{process.kill(group,0);}catch{alive=false;}assert.equal(alive,false,'private runner remained after connector exit');let descendantAlive=true;try{process.kill(descendant,0);}catch{descendantAlive=false;}assert.equal(descendantAlive,false,'native descendant survived stderr EPIPE after connector exit');
+});
+
+test('ACP rejects a broken protocol handshake before creating any session',async t=>{
+ const root=mkdtempSync('/tmp/sb-acp-protocol-');t.after(()=>rmSync(root,{recursive:true,force:true}));const script=join(root,'agent.mjs');
+ writeFileSync(script,`import readline from 'node:readline';for await(const l of readline.createInterface({input:process.stdin})){const m=JSON.parse(l);console.log(JSON.stringify({jsonrpc:'2.0',id:m.id,result:{protocolVersion:99}}));}`);
+ const client=new AcpClient({binary:process.execPath,args:[script],root,env:{PATH:process.env.PATH},timeoutMs:1000});t.after(()=>client.close());
+ await assert.rejects(client.initialize(),/protocolVersion 1/);assert.deepEqual(client.trace,['initialize']);assert.equal(client.alive,false);
 });

@@ -8,6 +8,7 @@ import {createHash} from 'node:crypto';
 import {processBirth} from '../../cli/service.js';
 import {DEFAULT_ZCODE_BINARY} from './rpc.js';
 import {isKnownZCodeArtifact} from './version.js';
+import {probeZCodeRuntime} from './compatibility.js';
 const exec=promisify(execFile);
 export interface NativeZCodeOwner {pid:number;started_at:string;binary:string;sha256:string}
 // Read only the exact current tool challenge. No session ID is accepted from
@@ -26,12 +27,21 @@ export function nativeSessionExists(file:string,root:string,id:string):boolean{
 }
 export async function originalZCodeOwner():Promise<NativeZCodeOwner>{
  if(!existsSync(DEFAULT_ZCODE_BINARY))throw new Error('Original native ZCode runtime unavailable');
- const binary=realpathSync(DEFAULT_ZCODE_BINARY),sha256=createHash('sha256').update(readFileSync(binary)).digest('hex');if(!isKnownZCodeArtifact(sha256))throw new Error('Uncertified native ZCode artifact; retest before attaching');let pid=process.ppid;
+ const binary=realpathSync(DEFAULT_ZCODE_BINARY),sha256=createHash('sha256').update(readFileSync(binary)).digest('hex');let pid=process.ppid;
  for(let n=0;n<16 && pid>1;n++){
   const command=(await exec('ps',['-p',String(pid),'-o','command='],{timeout:2000,maxBuffer:16384})).stdout.trim();
   const nativeDb=join(homedir(),'.zcode','cli','db','db.sqlite');let ownsNativeDatabase=false;
   if(existsSync(nativeDb)){try{const files=(await exec('lsof',['-a','-p',String(pid),'-Ffan','--',nativeDb],{timeout:2000,maxBuffer:16384})).stdout;ownsNativeDatabase=files.split(/\nf/).some(record=>/\na[uw]\n/.test(record) && record.includes('n'+realpathSync(nativeDb)));}catch{/* Not an owner of this exact native database. */}}
-  if((command.includes(binary) && /\bapp-server\b/.test(command)) || ownsNativeDatabase){const started_at=await processBirth(pid);if(!started_at)break;return {pid,started_at,binary,sha256};}
+  if((command.includes(binary) && /\bapp-server\b/.test(command)) || ownsNativeDatabase){
+   const started_at=await processBirth(pid);if(!started_at)break;
+   // Native ownership is required before probing; the probe never replaces this
+   // owner or supplies another chat's identity. Per-tool history challenges remain.
+   if(!isKnownZCodeArtifact(sha256)){
+    const compatibility=await probeZCodeRuntime(binary);
+    if(compatibility.binary_sha256!==sha256 || await processBirth(pid)!==started_at)throw new Error('Original native ZCode owner or artifact changed during compatibility probe');
+   }
+   return {pid,started_at,binary,sha256};
+  }
   pid=Number((await exec('ps',['-p',String(pid),'-o','ppid='],{timeout:2000})).stdout.trim());
  }
  throw new Error('Original native ZCode runtime required; external callers cannot attach');
