@@ -1,0 +1,21 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync,symlinkSync,mkdirSync} from 'node:fs';
+import {join} from 'node:path';
+import {fixture} from './fixtures.mjs';
+import {readBoard,writeBoard,changeBoard,planProgress} from '../../../skills/byte-plan/scripts/workboard.mjs';
+import {displaySnapshot} from '../lib/workboard.mjs';
+import {projectSnapshot} from '../lib/projection.mjs';
+import {createWorkbench} from '../server.mjs';
+const catalog={sessions:()=>({sessions:[],warnings:[]})};
+const participants=f=>[f.main,f.worker].map(i=>({harness:i.harness,nativeId:i.native_session_id}));
+function plan(f){return {id:'plan',title:'实验核验',objective:'按保存的方案处理结果',status:'todo',participants:participants(f),acceptance:['独立核验产物'],steps:[{id:'a',title:'分析',status:'todo',evidence:[]},{id:'b',title:'核验',status:'todo',evidence:[]}]};}
+test('default display is empty; only explicitly registered project chats enter the office',t=>{const f=fixture();t.after(()=>f.cleanup());const raw=projectSnapshot({id:'p',root:f.root,name:'p'},catalog);assert.equal(displaySnapshot(raw).sessions.length,0);assert.equal(displaySnapshot(raw).sessionCatalog.length,2);writeBoard(f.root,0,b=>changeBoard(b,'display',participants(f)));const next=displaySnapshot(raw);assert.equal(next.sessions.length,2);assert.equal(next.tasks.length,1);});
+test('plans persist with CAS, require completion evidence and do not change Bridge state',t=>{const f=fixture();t.after(()=>f.cleanup());const before=readFileSync(f.path);let b=writeBoard(f.root,0,b=>changeBoard(b,'task',plan(f)));assert.equal(b.items.length,1);assert.throws(()=>writeBoard(f.root,0,()=>{}),/changed/);const p=plan(f);p.steps[0].status='done';assert.throws(()=>writeBoard(f.root,1,b=>changeBoard(b,'task',p)),/evidence/);p.steps[0].evidence=['reports/analysis.json'];b=writeBoard(f.root,1,b=>changeBoard(b,'task',p));assert.equal(planProgress(b.items).percent,50);assert.deepEqual(readFileSync(f.path),before);assert.equal(readBoard(f.other).items.length,0);});
+test('duplicate members, invalid roles, future schema, linked sources and fake complete plans fail closed',t=>{const f=fixture();t.after(()=>f.cleanup());const c={id:'c',title:'合作',members:participants(f).map(s=>({...s,role:'执行'})),taskIds:[],bridgeTaskIds:[]};writeBoard(f.root,0,b=>changeBoard(b,'collaboration',c));assert.throws(()=>writeBoard(f.root,1,b=>{b.collaborations[0].members[1]=b.collaborations[0].members[0];}),/Duplicate/);const p=plan(f);p.status='done';assert.throws(()=>writeBoard(f.root,1,b=>changeBoard(b,'task',p)),/Finish/);assert.throws(()=>writeBoard(f.root,1,b=>b.schema=99),/schema/);mkdirSync(join(f.other,'.byte-os'));symlinkSync(join(f.root,'.byte-os/workboard.json'),join(f.other,'.byte-os/workboard.json'));assert.throws(()=>readBoard(f.other),/Linked/);});
+test('HTTP display selection validates known participants and stale writes, and changes SSE revision',async t=>{const f=fixture();t.after(()=>f.cleanup());const s=createWorkbench({roots:[f.root],discover:false,config:join(f.base,'config.json')});await new Promise(r=>s.listen(0,'127.0.0.1',r));t.after(()=>s.closeWorkbench());const base='http://127.0.0.1:'+s.address().port,list=await(await fetch(base+'/api/projects')).json(),id=list.projects[0].id;
+ const get=async()=>await(await fetch(base+'/api/snapshot?project='+id)).json();const initial=await get();assert.equal(initial.sessions.length,0);
+ const post=async(revision,value)=>await fetch(base+'/api/workboard?project='+id,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({revision,action:'display',value})});
+ assert.equal((await post(0,[{harness:'codex',nativeId:'foreign'}])).status,400);assert.equal((await post(0,participants(f))).status,200);assert.equal((await post(0,participants(f))).status,409);const after=await get();assert.notEqual(after.revision,initial.revision);assert.equal(after.sessions.length,2);
+ assert.equal((await fetch(base+'/api/workboard?project='+id,{method:'POST',headers:{Origin:'https://outside.invalid'},body:'{}'})).status,403);
+});

@@ -6,6 +6,9 @@ description: Maintain local Byte identity, ownership, handoff records and eviden
 # Byte Relay
 
 Live cross-chat cooperation now uses [$byte-bridge](../byte-bridge/SKILL.md).
+Its native adapters are the only live delivery route. Missing connection or
+permission is repaired through Bridge's preflight/activation procedure, never
+CUA, typing, clipboard or a direct chat-message fallback.
 Relay retains local state, session digests, receipts and legacy owner helpers.
 For a request to send, delegate, supervise or return across chats, load Bridge
 first and use its single delivery route. Existing state is preserved; this is

@@ -5,6 +5,12 @@ description: "Use the Byte workflow for end-to-end completion of a multi-stage p
 
 # Byte Auto
 
+For projects with `.byte-os/workboard.json`, maintain the
+[task plan and step progress](../byte-plan/references/workboard.md) as work
+advances. Refine the same task ID and keep overall acceptance distinct from
+recorded step completion. Only explicitly registered chats enter the office;
+collaboration display records never grant Bridge execution authority.
+
 Own the requested outcome end to end. Adapt the method to the task instead of
 running every Byte skill or producing every Byte OS artifact.
 
@@ -116,6 +122,10 @@ the main turn must end, and independence—not just by model price:
   events instead of starting a fresh model turn for every tick.
 
 For cross-session or cross-harness cooperation, follow [$byte-bridge](../byte-bridge/SKILL.md).
+Keep activation, delivery, return and recovery in that one Bridge route. Use its
+preflight for a new pair or failure; never repair a blocked connection by CUA,
+typing into another app or a direct chat-message fallback. Preserve native
+permissions and the exact scope/lifetime of any already-authorized worker mode.
 Byte remains the sole work authority; SessionBridge handles delivery and
 supervision. A subagent doing a bounded read or check does not acquire its own relay baton. Never
 create a Goal, new task, automation, or paid job solely because this skill was

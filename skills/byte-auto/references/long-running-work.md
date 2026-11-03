@@ -58,6 +58,13 @@ Do not complete unfinished Goals to switch modes, and never invent budgets.
 
 ## Enter a verified wait
 
+Cross-chat connection, delegation, supervision delivery, handback and recovery
+use Byte Bridge and its app-specific native adapters. For a new pair or blocked
+connection, follow byte-bridge's preflight/native-activation procedure. Do not
+substitute CUA, typing, clipboard, direct chat messages or another delivery
+queue. A native permission grant remains scoped to its actual worker/task and
+lifetime; installation or a connected record alone proves no runnable handoff.
+
 Do independent useful work before yielding. For authorized long jobs, use the
 existing exact main/supervisor pair. Main owns scientific decisions, source,
 launch and independent acceptance; supervisor observes only its exact run and

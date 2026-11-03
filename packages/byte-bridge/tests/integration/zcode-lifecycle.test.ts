@@ -6,6 +6,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {ZCodeRpc} from '../../src/adapters/zcode/rpc.js';
 import {nativeDeliveryState,startZCodeHost} from '../../src/adapters/zcode/host.js';
 import {initProject} from '../../src/cli/init.js';
+import {runZCodeHost} from '../../src/adapters/zcode/command.js';
 function alive(pid:number){try{process.kill(pid,0);return true;}catch{return false;}}
 async function fixture(t:{after:(fn:()=>Promise<void>)=>void},behavior:string){
  const root=mkdtempSync('/tmp/sb-zcode-lifecycle-'),profile=join(root,'profile'),binary=join(root,'glm','zcode.cjs');
@@ -50,4 +51,21 @@ test('zcode_version_probe_uses_only_the_dedicated_profile',{timeout:10000},async
  const f=await fixture(t,`rl.createInterface({input:process.stdin}).on('line',line=>{const q=JSON.parse(line);console.log(JSON.stringify({id:q.id,result:{historyFirst:true}}));}).on('close',()=>process.exit(0));`);
  const content=readFileSync(f.binary,'utf8').replace("console.log('0.17.0');process.exit(0);","fs.writeFileSync('version-home',process.env.HOME);console.log('0.17.0');process.exit(0);");writeFileSync(f.binary,content);
  const rpc=new ZCodeRpc(f);t.after(()=>rpc.close());await rpc.request('runtime/capabilities',{});assert.equal(readFileSync(join(f.root,'version-home'),'utf8'),realpathSync(f.profile));await rpc.close();
+});
+test('zcode_records_native_permission_block_without_approving_or_retaining_payload',{timeout:10000},async t=>{
+ const f=await fixture(t,`rl.createInterface({input:process.stdin}).on('line',line=>{const q=JSON.parse(line);if(q.method){console.log(JSON.stringify({id:q.id,result:{historyFirst:true}}));console.log(JSON.stringify({id:901,method:'session/requestPermission',params:{private:'do-not-retain'}}));}else if(q.id===901)fs.writeFileSync('permission-response',JSON.stringify(q));}).on('close',()=>process.exit(0));`);
+ const rpc=new ZCodeRpc(f);t.after(()=>rpc.close());await rpc.request('runtime/capabilities',{});
+ for(let n=0;n<30 && !existsSync(join(f.root,'permission-response'));n++)await delay(20);
+ assert.deepEqual(rpc.deniedPermissionRequests,['session/requestPermission']);assert.ok(!JSON.stringify(rpc.deniedPermissionRequests).includes('do-not-retain'));
+ const response=JSON.parse(readFileSync(join(f.root,'permission-response'),'utf8'));assert.equal(response.error.code,-32601);assert.equal(response.result,undefined);await rpc.close();
+});
+test('zcode_unknown_version_stays_blocked_before_starting_a_native_session',{timeout:10000},async t=>{
+ const f=await fixture(t,'');writeFileSync(f.binary,readFileSync(f.binary,'utf8').replace("console.log('0.17.0')","console.log('0.18.0')"));
+ const rpc=new ZCodeRpc(f);t.after(()=>rpc.close());await assert.rejects(()=>rpc.request('runtime/capabilities',{}),/Uncertified ZCode version: 0.18.0/);assert.equal(rpc.pid,0);assert.equal(existsSync(join(f.root,'owned-parent')),false);
+});
+test('zcode_edit_worker_reports_permission_block_promptly_and_stops_owned_runtime',{timeout:15000},async t=>{
+ const f=await fixture(t,`let id;rl.createInterface({input:process.stdin}).on('line',line=>{const q=JSON.parse(line);if(!q.method)return;if(q.method==='session/create')id=q.params.sessionId;const result=q.method==='runtime/capabilities'?{historyFirst:true}:{session:{sessionId:id,workspace:{workspacePath:process.cwd()}},projection:{status:'idle'},messages:[]};console.log(JSON.stringify({id:q.id,result}));if(q.method==='session/send')console.log(JSON.stringify({id:901,method:'session/requestPermission',params:{tool:'sessionbridge_request'}}));}).on('close',()=>process.exit(0));`);
+ await initProject(f.root,{dryRun:false});const start=Date.now();
+ await assert.rejects(()=>runZCodeHost(f.root,{profile_dir:f.profile,binary:f.binary,alias:'test-writer',permission_mode:'edit',lifetime_seconds:30},()=>{}),(error:unknown)=>Boolean(error && typeof error==='object' && 'code' in error && error.code==='native_permission_required'));
+ assert.ok(Date.now()-start<10000,'must not wait for the 120-second generic enrollment timeout');const pid=Number(readFileSync(join(f.root,'owned-parent'),'utf8'));assert.equal(alive(pid),false);
 });

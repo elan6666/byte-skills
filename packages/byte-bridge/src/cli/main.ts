@@ -29,12 +29,14 @@ import {serviceStatus,stopService} from './service.js';
 import {pinByteSource} from '../workflows/byte-source.js';
 import {byteDoctor,byteImportRequest} from './byte.js';
 import { interactiveWizard } from './wizard.js';
+import {collaborationPreflight} from './preflight.js';
 const help=`会桥 / SessionBridge
   setup --harness codex --with zcode --project PATH  初始化、安装、启动有界服务并连接当前原会话
   service status|stop --project PATH   查看/关闭本工具拥有的服务
   init --project PATH                  初始化选定目录
   connect --harness codex --alias 名字 --project PATH
   context | sessions | status          查看来源、目标或任务状态
+  preflight --harness NAME --with NAME,... --project PATH  只读检查 Bridge 接入路线与缺项
   wizard                              中文角色选择向导（不派任务）
   request --stdin --json               Skill/脚本通用入口
   byte-source --stdin                  显式固定本项目 Byte 源码；升级需旧 pin SHA
@@ -60,7 +62,7 @@ export async function runCli(argv:string[],io:CliIO):Promise<number>{
   checkRuntime(process.version);const [command,...args]=argv;
   if(!command){if(io.isTTY)return interactiveWizard(process.cwd());io.stdout(help+'非交互环境需要明确命令。\n');return 4;}
   if(command==='--help' || command==='help'){io.stdout(help);return 0;}
-  const supported=['init','sessions','context','connect','daemon','request','delegate','supervise','return','recover','cancel','status','report','acknowledge','action','run','mcp','wizard','install','uninstall','doctor','host','describe','byte-source','byte-doctor','byte-import','setup','service'];
+  const supported=['init','sessions','context','connect','daemon','request','delegate','supervise','return','recover','cancel','status','report','acknowledge','action','run','mcp','wizard','install','uninstall','doctor','host','describe','byte-source','byte-doctor','byte-import','setup','service','preflight'];
   if(!supported.includes(command))throw new BridgeError('invalid_command','未知命令','运行 session-bridge --help',2);
   let root=process.env.SESSIONBRIDGE_PROJECT??process.cwd(),dryRun=false,query='',harness:string|undefined,profile:string|undefined,alias='codex',scope='project',receipt:string|undefined,actionId:string|undefined,taskId:string|undefined,withHarnesses:string[]=[];
   for(let i=0;i<args.length;i++){
@@ -68,6 +70,7 @@ export async function runCli(argv:string[],io:CliIO):Promise<number>{
   }
   root=resolve(root);
   const print=(v:unknown)=>io.stdout(JSON.stringify(v)+'\n');
+  if(command==='preflight'){if(args.includes('--stdin') || dryRun)throw new BridgeError('invalid_option','preflight is read-only and accepts no stdin or dry-run','Select --harness, --with, optional exact --query, and --project',4);print(await collaborationPreflight(root,{harness:harness??'codex',withHarnesses,query}));return 0;}
   if(command==='setup'){const result=await setupProject(root,{harness:harness??'codex',withHarnesses,dryRun,input:args.includes('--stdin')?inputJson(io,args):{}});print(result);return ['planned','ready'].includes(result.state)?0:3;}
   if(command==='service'){const actions=args.filter(a=>['status','stop'].includes(a));if(actions.length!==1)throw new BridgeError('service_action_required','需要唯一的 service status 或 service stop','运行 --help 核对用法',4);const state=await serviceStatus(root);print(actions[0]==='stop'?(dryRun?{state:'planned',action:'stop',service:state}:await stopService(root)):state);return 0;}
   if(command==='byte-source'){print(pinByteSource(root,inputJson(io,args),dryRun));return 0;}

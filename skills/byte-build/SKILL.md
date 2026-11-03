@@ -5,6 +5,11 @@ description: "Implement a requested deliverable within an existing Byte workflow
 
 # Byte Build
 
+When `.byte-os/workboard.json` is enabled, keep the existing
+[task plan](../byte-plan/references/workboard.md) current: mark owned work in
+progress, attach real evidence to finished steps, and preserve blocked/review
+states. Do not claim completion from an edited checklist alone.
+
 Implement the user's requested outcome with the smallest sound change set.
 
 ## Execution

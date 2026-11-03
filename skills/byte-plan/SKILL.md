@@ -19,6 +19,12 @@ plans unless the project actually needs them.
 
 ## Useful Plan Content
 
+For projects with `.byte-os/workboard.json`, save actionable plans and subsequent
+evidence-backed step progress through the bundled
+[workboard helper](references/workboard.md). Reuse existing task IDs so repeated
+planning refines a task instead of duplicating it. The board is a display/plan
+record and does not supersede an existing workflow engine or execution authority.
+
 Every plan should make three things understandable:
 
 - the result being pursued;

@@ -9,10 +9,12 @@ import {connectCodex} from '../adapters/codex/connect.js';
 import {openStore} from '../core/database.js';
 import {BindingService} from '../core/bindings.js';
 import {BridgeError} from '../protocol/errors.js';
+import {harnessGuidance} from '../adapters/guidance.js';
 export async function setupProject(root:string,options:{harness:string;withHarnesses:string[];dryRun:boolean;input:unknown}){
  const input=setupInputSchema.safeParse(options.input);if(!input.success)throw new BridgeError('invalid_setup_config','初始化配置不正确','仅支持 lifetime_seconds=1..86400；不会根据文本中的 actor 连接会话',4);
  const targets=[...new Set([options.harness,...options.withHarnesses])];if(targets.some(h=>!HARNESSES.includes(h as typeof HARNESSES[number])))throw new BridgeError('unsupported_harness','请选择支持的应用','使用 --harness codex --with zcode',4);
  root=realpathSync(root);const harnesses=Object.fromEntries(targets.map(h=>[h,{attached:h==='kimi'?'unsupported':(['zcode','opencode'].includes(h)?'requires_native_plugin':'native_connection_required'),managed:['zcode','kimi','opencode'].includes(h),activation:'explicit',next_step:h==='zcode'?'在原会话启用插件后连接；专用 App Server 是另一种模式':'在原应用选定会话执行 connect 或原生插件连接'}]));
+ for(const harness of targets)Object.assign(harnesses[harness]!,{native_route:harnessGuidance(harness),native_permissions:'not_proven_by_connection'});
  if(options.dryRun)return {state:'planned',project:root,harnesses,lifetime_seconds:input.data.lifetime_seconds,models_started:0};
  // Check every integration before any initialization/install mutation.
  const plans=await Promise.all(targets.map(harness=>planInstall({harness,scope:'project',targetRoot:root})));const conflicts=plans.flatMap(p=>p.conflicts);if(conflicts.length)throw new BridgeError('setup_conflict','安装文件存在用户修改','保留文件，使用 install --dry-run 核对冲突：'+conflicts.join(', '),4);

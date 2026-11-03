@@ -1,0 +1,25 @@
+.worklog { scroll-margin-top: 18px; }
+.worklog > :not(summary) { margin: 16px; }
+.worklog-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.worklog-tools input { flex: 1; min-width: 160px; }
+.worklog-tools input, .worklog-tools select { border: 1px solid #cbd2c4; border-radius: 8px; background: #fffdf5; color: #293c34; padding: 10px; font: inherit; }
+.worklog-tools button { border: 1px solid #98b5a4; background: #e1eddf; border-radius: 8px; padding: 9px 16px; cursor: pointer; }
+.task-board { display: grid; grid-template-columns: repeat(auto-fit,minmax(220px,1fr)); gap: 10px; max-height: 460px; overflow: auto; }
+.task-board .task-card { margin: 0; display: flex; align-items: start; flex-direction: column; gap: 10px; overflow-wrap: anywhere; }
+.task-board button { text-align: left; padding: 0; font-weight: 650; }
+.task-history-detail { border-top: 1px dashed #c2cbb9; padding-top: 12px; overflow-wrap: anywhere; }
+.task-history-detail:empty { display: none; }
+.task-history-detail > a { display: block; margin-bottom: 8px; }
+.task-history { max-height: 320px; overflow: auto; padding-left: 24px; font-size: 13px; line-height: 1.8; }
+.recall-hit { padding: 14px 0; border-bottom: 1px solid #dce1d3; overflow-wrap: anywhere; }
+.recall-hit button { font-weight: 650; text-align: left; padding: 0; }
+.recall-hit p { font-size: 13px; line-height: 1.65; }
+.recall-body { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 480px; overflow: auto; font-size: 13px; line-height: 1.7; background: #f2f2e8; padding: 16px; border-radius: 8px; }
+.worklog-warning { font-size: 12px; line-height: 1.65; background: #fff2d9; color: #725223; padding: 10px 12px; border-radius: 6px; }
+.scene-shortcuts { flex-wrap: wrap; }
+.full-roster { margin-bottom: 12px; scroll-margin-top: 16px; }
+.full-roster > p { padding: 0 16px; }
+#all-sessions { padding: 8px 16px 16px; max-height: 320px; overflow: auto; display: grid; gap: 6px; }
+.roster-entry { display: block; text-align: left; padding: 9px 12px; border: 1px solid #cbd2c4; border-radius: 7px; overflow-wrap: anywhere; background: #fffdf5; color: #293c34; font: inherit; cursor: pointer; }
+.roster-entry:hover, .roster-entry:focus-visible { background: #e1eddf; outline: 2px solid #789784; }
+@media(max-width:600px) { .task-board { grid-template-columns: 1fr; } .worklog-tools { align-items: stretch; } .worklog-tools input { width: 100%; } }

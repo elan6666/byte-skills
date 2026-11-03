@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="README.zh-CN.md">简体中文</a> · <strong>English</strong><br />
-  <a href="#overview">Overview</a> · <a href="#quick-start">Quick start</a> · <a href="#byte-bridge">Byte Bridge</a> · <a href="#example">Example</a> · <a href="#choose-a-skill">Skills</a> · <a href="#short-waits-and-long-jobs">Supervision</a> · <a href="#outcome-continuity">Outcome continuity</a>
+  <a href="#overview">Overview</a> · <a href="#quick-start">Quick start</a> · <a href="#byte-office">Byte Office</a> · <a href="#byte-bridge">Byte Bridge</a> · <a href="#example">Example</a> · <a href="#choose-a-skill">Skills</a> · <a href="#short-waits-and-long-jobs">Supervision</a> · <a href="#outcome-continuity">Outcome continuity</a>
 </p>
 
 ---
@@ -40,6 +40,27 @@ Your client keeps its models and tools. Skills guide the procedure, and local he
 ## Overview
 
 <img src="assets/overview.svg" alt="Five common entries: byte-do, byte-auto, byte-discuss, byte-bridge and byte-workflow; intermediate capabilities are grouped below" width="100%" />
+
+## Byte Office
+
+A living **2D pixel office**: one project is a map, one harness is a room, and one
+chat is a character. Partners work at desks, take breaks, water plants, and walk
+across rooms to exchange files after a newly confirmed Bridge handoff. Click a
+character to inspect its actual chat, tasks and evidence. Unknown states stay explicit.
+
+![Byte Office — synthetic example office](apps/byte-workbench/docs/office-preview.png)
+
+```bash
+bash scripts/workbench.sh
+# http://localhost:4317 — select a project first
+```
+
+Requires Node.js 24.15–24.x, with no additional npm dependencies or model calls.
+Native execution sources are read-only; display registration and local task plans are editable. It does not execute agents or create timers.
+The task desk provides state filters and paged task history. Project recall
+searches saved notes and Bridge task summaries, then opens selected details with
+their source and hash. [Use project recall](skills/byte-status/references/project-recall.md).
+[Run it, connect data sources and understand status](apps/byte-workbench/README.md).
 
 ## Quick start
 
@@ -116,6 +137,14 @@ in the same agent app or across apps, give them roles, and delegate work with an
 explicit scope. A worker can implement a bounded change; a supervisor can watch a
 long training run while the main chat waits. Your apps retain their context,
 models, accounts and tool permissions. The bridge core makes no model API calls.
+
+**One coordination route:** cross-chat setup, delegation, supervision, return and
+recovery stay in Bridge's native adapters. A blocked connection is reported with
+its exact native activation or permission step; it never falls back to GUI
+automation, typing or another chat-message channel. For a new pair, use the
+read-only `preflight` command and the [connection procedure](skills/byte-bridge/references/bridge-only.md).
+Installation, connection and a completed task are separate states. A one-time
+worker permission grant does not change other tasks or global defaults.
 
 <img src="assets/bridge.svg" alt="Main chat delegates through Byte Bridge to a worker or supervisor; evidence returns to main for independent verification and continuation" width="100%" />
 

@@ -28,10 +28,16 @@
 | `cancel --stdin` | 取消未来操作或监督。 |
 | `daemon start --project PATH` | 启动项目本地服务，Ctrl-C 关闭。 |
 | `doctor --project PATH` | 诊断接入，不重启应用。 |
+| `preflight --harness SOURCE --with TARGET,... --project PATH --json` | 只读检查所选宿主的 Bridge 连接、模式与原生激活缺项；可加精确 `--query` 别名或 binding ID。不初始化、不迁移、不启动模型或任务。 |
 | `host --harness zcode --project PATH --stdin` | 使用显式 profile、alias、permission_mode 和有限 lifetime_seconds 启动专用原生执行者；见 [配置](zcode.zh-CN.md)。 |
 | `host --harness kimi\|opencode --project PATH --stdin` | 独立原生 ACP 宿主，每进程一会话；显式 binary、expected_version、profile 与截止时间。见 [指南](acp.zh-CN.md)。 |
 
 下文示例默认已选择项目；需要时为每个命令加 `--project PATH`。`PATH`、`NAME`、`TASK_ID` 表示要替换的实际值。
+
+`preflight` 的 exit 0 仅表示检查完成，仍须看 state，不表示协作通过。
+`setup` 返回 needs_activation/exit 3 时可能已成功启动有界服务，应按
+[统一接入流程](../skills/sessionbridge-do/references/bridge-only.md)继续原生激活，
+不重复启动服务或改走其他消息渠道。
 
 ## 结构化请求
 

@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#eef1e5" />
+    <title>Byte Office · 工作台</title>
+    <link rel="icon" href="favicon.svg" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="game.css" />
+    <link rel="stylesheet" href="worklog.css" />
+    <link rel="stylesheet" href="mission.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <a class="brand" href="/"
+          ><img src="favicon.svg" width="38" height="38" alt="" /><span
+            >BYTE <b>OFFICE</b><small>每个想法，都有一间办公室。</small></span
+          ></a
+        >
+        <div class="nav-label">项目地图 <span id="project-count"></span></div>
+        <input
+          id="project-search"
+          aria-label="搜索项目"
+          placeholder="⌕  寻找一间办公室"
+        />
+        <div id="projects" class="projects"></div>
+        <button id="add-project" class="quiet">＋ 登记项目目录</button>
+        <div class="sidebar-bottom">
+          <button id="demo" class="demo-entry">
+            ✦ 参观示例办公室 <span>↗</span>
+          </button>
+          <p>一间会自己生活的办公室<br />本地场景 · 不调用语言模型</p>
+        </div>
+      </aside>
+      <div class="workspace">
+        <header class="topbar">
+          <div class="breadcrumbs">
+            工作台 <span>/</span> <b id="crumb">项目地图</b>
+          </div>
+          <div class="top-actions">
+            <span id="stream" class="connection"><i></i>等待选择</span
+            ><button
+              id="sound"
+              class="icon-btn"
+              aria-label="暂停或继续办公室人物的动作"
+              title="暂停或继续场景生活，仍继续同步任务记录"
+            >
+              ◈ 动画</button
+            ><button id="refresh" class="icon-btn" title="重新读取状态">
+              ↻ 刷新
+            </button>
+          </div>
+        </header>
+        <main id="welcome" class="welcome">
+          <div class="welcome-art">
+            <canvas id="welcome-house" width="360" height="240"></canvas>
+          </div>
+          <div class="eyebrow">A LITTLE SPACE FOR BIG IDEAS</div>
+          <h1>伙伴们，都在这里。</h1>
+          <p>
+            推开办公室的门。伙伴会工作、休息，也会碰面交接。<br />选择项目，看看今天发生了什么。
+          </p>
+          <button id="welcome-demo" class="primary">参观示例办公室 →</button>
+          <p class="small">真实项目从左侧选择。示例与真实状态始终分开。</p>
+        </main>
+        <main id="office" hidden>
+          <section class="office-title">
+            <div>
+              <div class="eyebrow">YOUR LITTLE AGENT WORLD</div>
+              <h1 id="office-name"></h1>
+              <div class="subtitle">
+                <span id="project-root"></span
+                ><button id="copy-root" class="text-btn">复制路径</button>
+              </div>
+            </div>
+            <div class="season">
+              <span class="sun">☀</span>
+              <div><strong id="clock"></strong><span>把等待交给时间</span></div>
+            </div>
+          </section>
+          <div id="demo-banner" class="demo-banner" hidden>
+            <span>✦ 示例办公室 · 所有任务与状态均为演示</span>
+            <div>
+              <button id="demo-play" title="仅推进虚构演示剧情，不推进真实任务">
+                Ⅱ 暂停剧情</button
+              ><button id="demo-next">下一幕 →</button>
+            </div>
+          </div>
+          <div id="warnings" class="warnings"></div>
+          <section class="summary">
+            <button id="goal-board" class="goal-board">
+              <span class="board-icon">▤</span>
+              <div>
+                <small>项目公告板</small><strong id="goal"></strong
+                ><span id="stage"></span>
+              </div>
+              <span class="board-arrow">↗</span>
+            </button>
+            <div class="stat">
+              <small>对话工位</small><strong id="session-count">0</strong
+              ><span id="connected-count">未接入 Bridge</span>
+            </div>
+            <button id="attention-stat" class="stat">
+              <small>需要关注</small><strong id="attention-count">0</strong
+              ><span>异常 · 输入 · 核验</span>
+            </button>
+            <div class="stat">
+              <small>任务核验</small><strong id="verified-count">—</strong
+              ><span id="verified-caption">按任务记录统计</span>
+            </div>
+          </section>
+          <div class="office-body">
+            <div class="office-main">
+              <div id="mission-root"></div>
+              <div class="room-toolbar">
+                <div class="tabs" role="group" aria-label="工位筛选">
+                  <button data-filter="all" class="active">所有工位</button
+                  ><button data-filter="connected">已接入</button
+                  ><button data-filter="attention">需要关注</button>
+                </div>
+                <div class="scene-shortcuts">
+                  <button id="tasks-toggle">▤ 任务台</button
+                  ><button id="recall-toggle">▥ 项目记忆</button
+                  >
+                  <button id="runs-toggle">▣ 实验设备</button
+                  ><button id="events-toggle">◷ 协作记录</button>
+                </div>
+              </div>
+              <details id="roster-panel" class="support-panel full-roster">
+                <summary>全部对话 <span id="roster-count"></span> · 点击定位到工位</summary>
+                <p class="small">包含其他页、其他楼层及子代理；名称与客户端同步。</p>
+                <div id="all-sessions"></div>
+              </details>
+              <section class="game-shell" aria-label="可以行走的二维像素办公室">
+                <div class="game-topline">
+                  <div class="floor-switch">
+                    <button id="floor-prev" aria-label="上一层">‹</button
+                    ><span id="floor-label">1F</span
+                    ><button id="floor-next" aria-label="下一层">›</button>
+                  </div>
+                  <span class="scene-weather">☀ 晴天 · 办公室营业中</span
+                  ><button id="fullscreen" aria-label="全屏查看办公室">
+                    ⛶
+                  </button>
+                </div>
+                <div id="rooms" class="game-viewport"></div>
+                <div class="game-tools">
+                  <span id="scene-count"></span>
+                  <div id="room-pages"></div>
+                  <div class="camera-tools">
+                    <button id="roster-toggle">☷ 名册</button
+                    ><button id="names-toggle" aria-pressed="true">名字</button
+                    ><button id="scene-speed">1× 生活</button
+                    ><button id="zoom-out" aria-label="缩小场景">−</button
+                    ><button id="fit-scene">全景</button
+                    ><button id="zoom-in" aria-label="放大场景">＋</button>
+                  </div>
+                </div>
+                <div class="game-story">
+                  <span class="story-seed">✦</span>
+                  <p id="scene-caption" aria-live="polite"></p>
+                  <span>点击人物 · 拖动画面 · 滚轮缩放</span>
+                </div>
+              </section>
+              <div class="behavior-key">
+                <span>▦ 工作：回工位</span><span>♧ 茶歇：浇花、阅读、咖啡</span
+                ><span>↔ 协作：走到长桌交接</span><span>! 需要关注</span
+                ><span>? 状态待同步</span>
+              </div>
+              <div id="worklog-root"></div>
+              <div id="todo-root"></div>
+              <details id="equipment-panel" class="support-panel">
+                <summary>▣ 实验设备与监督记录</summary>
+                <section class="equipment">
+                  <div class="section-head">
+                    <h2><span>♧</span> 实验设备区</h2>
+                    <span>进程与对话分开记录</span>
+                  </div>
+                  <div id="runs"></div>
+                </section>
+              </details>
+              <details id="activity-panel" class="support-panel">
+                <summary>◷ 查看协作时间线</summary>
+                <section class="activity">
+                  <div class="section-head">
+                    <h2><span>◷</span> 协作时间线</h2>
+                    <span id="event-caption">等待真实事件</span>
+                  </div>
+                  <div id="events"></div>
+                </section>
+              </details>
+            </div>
+            <aside class="inspector" id="inspector">
+              <div class="inspector-head">
+                <span>查看详情</span
+                ><button
+                  id="close-inspector"
+                  class="text-btn"
+                  aria-label="关闭详情"
+                >
+                  ×
+                </button>
+              </div>
+              <div id="detail"></div>
+            </aside>
+          </div>
+        </main>
+        <footer>
+          BYTE OFFICE <span>·</span> 用真实记录，照亮每一次协作。<span
+            id="updated"
+          ></span>
+        </footer>
+      </div>
+    </div>
+    <dialog id="project-dialog">
+      <form id="project-form">
+        <span class="eyebrow">NEW OFFICE</span>
+        <h2>登记一间办公室</h2>
+        <p>
+          填写已有的项目目录。只保存工作台配置，不会初始化 Bridge 或启动 Agent。
+        </p>
+        <label
+          >项目名称<input name="name" placeholder="例如：GraD-Pert" /></label
+        ><label
+          >项目绝对路径<input
+            name="root"
+            required
+            placeholder="/Users/you/code/project"
+        /></label>
+        <p id="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" id="cancel-dialog">取消</button
+          ><button class="primary" type="submit">登记项目</button>
+        </div>
+      </form>
+    </dialog>
+    <div id="toast" role="status"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

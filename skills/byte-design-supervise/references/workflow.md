@@ -1,10 +1,11 @@
-# Design and supervise workflow (Codex-only)
+# Design and supervise workflow
 
 Current cross-chat operations use [$byte-bridge](../../byte-bridge/SKILL.md),
-its source pin and a single transport journal. The rules below preserve the
-launch/evidence/monitoring contract. Legacy direct-message examples are for
-existing Relay recovery only; new managed workflows commit engine handoffs
-and import them through Bridge. Do not run both routes.
+its source pin and a single transport journal. New work uses only Bridge native
+adapters, including for connection repair and result return. The launch and
+evidence rules below preserve engine authority; direct chat-message examples
+from historical Relay workflows are not the current procedure. A handoff already
+in flight keeps only its recorded original route until a safe boundary.
 
 This is the detailed workflow for `$byte-design-supervise`, with `$byte-relay`
 handling session identity, ownership, and handoffs.
@@ -100,8 +101,9 @@ the result without an LLM; the notification adapter wakes the exact supervisor
 only on actionable change. The timer catches missed events, dead wrappers,
 stale heartbeats, and completion not delivered by the hook.
 
-An external process cannot call Codex's in-chat `send_message_to_thread` tool
-merely by writing a file. Before promising immediate wakeup, test the actual
+A local event file cannot itself wake an idle chat. Use only the configured
+Bridge event adapter; never call a direct cross-chat message tool or CUA as a
+second route. Before promising immediate wakeup, test the actual
 event-to-task adapter against an **idle** target. A separate `codex exec resume`
 process may conflict with the desktop task's active writer; do not use it as
 the adapter unless a live test proves it works in that environment. If no
@@ -119,10 +121,10 @@ uncertain fix, architecture/scientific decision, new cost, or final result,
 write the receipt and append-only handoff with one concrete next authorized
 action and `main_continuation=pending`, return the baton to the main chat,
 then pause or delete the matching periodic monitor and verify its inactive
-status. Send the main chat a concise, actionable continuation prompt containing the evidence,
-baton status, monitor status, and exact next action. One bounded `wait_threads`
-or `read_thread` check must observe the main chat actually beginning the owned
-work and acknowledging the handback identity. A transport success, empty reply,
+status. Return through the same Bridge task a concise, actionable continuation containing the evidence,
+baton status, monitor status, and exact next action. Bridge status and actual
+native action evidence must observe the main chat beginning the owned work and
+acknowledging the exact handback identity. A transport success, empty reply,
 or idle status is not an acknowledgement. If the main chat does not act, mark
 `main_continuation=unverified`, use only a pre-authorized tested return-wake
 fallback, or report the need for manual resumption; do not retransfer ownership,

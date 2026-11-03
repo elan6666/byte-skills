@@ -4,6 +4,10 @@ import {mkdtempSync,mkdirSync,rmSync,statSync} from 'node:fs';
 import {join} from 'node:path';
 import {DatabaseSync} from 'node:sqlite';
 import {randomUUID} from 'node:crypto';
+import {isKnownZCodeArtifact,ZCODE_NATIVE_ARTIFACTS} from '../../src/adapters/zcode/version.js';
+test('original_zcode_intake_keeps_exact_artifact_pins_for_both_adapted_versions',()=>{
+ assert.equal(isKnownZCodeArtifact(ZCODE_NATIVE_ARTIFACTS['0.17.0']),true);assert.equal(isKnownZCodeArtifact(ZCODE_NATIVE_ARTIFACTS['0.17.1']),true);assert.equal(isKnownZCodeArtifact('0'.repeat(64)),false);
+});
 const modulePath='../../src/adapters/zcode/'+'intake.js';
 test('zcode_attachment_identity_comes_from_exact_native_tool_evidence_not_text',async t=>{
  const {resolveNativeChallenge}=await import(modulePath),root=mkdtempSync('/tmp/sb-zcode-proof-');t.after(()=>rmSync(root,{recursive:true,force:true}));const project=join(root,'project');mkdirSync(project);const file=join(root,'native.sqlite'),db=new DatabaseSync(file);t.after(()=>db.close());
@@ -20,7 +24,8 @@ test('zcode_attachment_refuses_non_native_external_processes',async()=>{
  const {originalZCodeOwner}=await import(modulePath);await assert.rejects(()=>originalZCodeOwner(),/native|original|原生/i);
 });
 
-import {existsSync,realpathSync} from 'node:fs';
+import {existsSync,realpathSync,readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
 import {fileURLToPath} from 'node:url';
 import {setTimeout as delay} from 'node:timers/promises';
 import {ZCodeRpc} from '../../src/adapters/zcode/rpc.js';
@@ -29,7 +34,12 @@ import {runDaemon} from '../../src/cli/daemon.js';
 import {zcodeModel} from '../helpers/zcode-model.js';
 import {openStore} from '../../src/core/database.js';
 const binary='/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs';
-test('zcode_warm_existing_native_session_attaches_via_its_own_tool_history',{skip:!existsSync(binary),timeout:45000},async t=>{
+const certifiedDesktop=existsSync(binary) && isKnownZCodeArtifact(createHash('sha256').update(readFileSync(binary)).digest('hex'));
+test('unadapted_desktop_artifact_is_rejected_before_original_intake',{skip:!existsSync(binary)||certifiedDesktop},async()=>{
+ const {originalZCodeOwner}=await import(modulePath);
+ await assert.rejects(()=>originalZCodeOwner(),/Uncertified native ZCode artifact/);
+});
+test('zcode_warm_existing_native_session_attaches_via_its_own_tool_history',{skip:!certifiedDesktop?'Requires an exact adapted ZCode desktop artifact; unknown binaries must remain blocked':false,timeout:45000},async t=>{
  const root=realpathSync(mkdtempSync('/tmp/sb-zcode-existing-')),profile=join(root,'home');mkdirSync(profile);await initProject(root,{dryRun:false});const model=await zcodeModel(profile,'attached'),rpc=new ZCodeRpc({root,profile,binary});let core=await runDaemon(root);
  t.after(async()=>{await rpc.close();await core.close();await model.close();rmSync(root,{recursive:true,force:true,maxRetries:5,retryDelay:100});});
  const id='sess_'+randomUUID(),mcp=fileURLToPath(new URL('../../src/adapters/zcode/attached-mcp.js',import.meta.url));

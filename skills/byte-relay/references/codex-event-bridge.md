@@ -1,10 +1,10 @@
 # Codex desktop event bridge: required proof
 
 Current cross-chat operations use [$byte-bridge](../../byte-bridge/SKILL.md),
-its source pin and a single transport journal. The rules below preserve the
-launch/evidence/monitoring contract. Legacy direct-message examples are for
-existing Relay recovery only; new managed workflows commit engine handoffs
-and import them through Bridge. Do not run both routes.
+its source pin and a single transport journal. New notifications use only
+Bridge native adapters; no CUA, typing or direct chat-message fallback. The
+rules below preserve the launch/evidence/monitoring contract. A pre-existing
+in-flight legacy handoff keeps only its already recorded original route.
 
 This reference applies when a main Codex chat launches a job, ends its turn,
 and an idle supervisor chat must wake on job failure/completion. It is not the
@@ -18,7 +18,7 @@ tool result in the active turn.
   event ID durably. Preserve the training command's true exit code. A shell
   `EXIT` trap cannot run after `SIGKILL`, so the periodic checker must inspect
   the run independently.
-- Use a notifier adapter that has been tested against the **same idle Codex
+- Use a Bridge notifier route that has been tested against the **same idle Codex
   desktop task**. A return code from an adapter means only transport
   acceptance; the supervisor must acknowledge the run ID in a new turn.
 - Write delivery status before sending. An ambiguous timeout must stay
@@ -33,7 +33,8 @@ tool result in the active turn.
 receipt. Its `--notifier` is an executable that receives the absolute event
 JSON path as one argument and exits zero only when the transport accepted the
 notification. It cannot infer which desktop task to wake. Configure and test
-that adapter separately before enabling immediate-wakeup claims.
+that Bridge adapter separately before enabling immediate-wakeup claims. Do not
+configure an arbitrary messenger or direct chat tool as a second notifier route.
 
 Run it under a process manager or scheduler that outlives the main chat, for
 example with an already-authorized job runner:
@@ -62,7 +63,8 @@ reconciliation before any explicit retry.
 
 ## Desktop-specific finding from the 2026-09-27 smoke
 
-Native `send_message_to_thread` between two Codex app tasks worked,
+Historical evidence only, not the current notification procedure:
+`send_message_to_thread` between two Codex app tasks worked,
 including supervisor-to-main handback. A separate `codex exec resume --all`
 process against the idle desktop supervisor task failed with
 `thread-store conflict: ... already has an active writer`. Therefore that CLI

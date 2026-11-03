@@ -39,6 +39,9 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    evidence. Only then is an unattended wait justified. Use these commands
    and `return-run` instead of bypassing the engine with direct relay writes.
    Supervisor observes only its owned run and explicitly allowed repairs.
+   For a new client pair, follow Bridge's preflight/native activation procedure;
+   installation does not prove connection or tool permission. Connection repair
+   and return stay in Bridge, without CUA or a second chat-message route.
 5. After return, main independently verifies results and records an actual
    executed action with `ack-return` before advancing. Failed science loops to
    diagnosis; execution faults follow the configured repair branch. Use new

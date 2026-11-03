@@ -28,6 +28,8 @@ LONG_CONSUMERS = (
 
 
 def copies():
+    yield (ROOT / "packages/byte-bridge/skills/sessionbridge-do/references/bridge-only.md",
+           ROOT / "skills/byte-bridge/references/bridge-only.md")
     for skill in CONSUMERS:
         yield CANONICAL, ROOT / "skills" / skill / "references" / CANONICAL.name
     source = ROOT / "skills" / "byte-auto"

@@ -1,181 +1,80 @@
-# Codex task-to-task relay
+# Codex main → supervisor → main, through Byte Bridge
 
-Current cross-chat operations use [$byte-bridge](../../byte-bridge/SKILL.md),
-its source pin and a single transport journal. The rules below preserve the
-launch/evidence/monitoring contract. Legacy direct-message examples are for
-existing Relay recovery only; new managed workflows commit engine handoffs
-and import them through Bridge. Do not run both routes.
+New cross-chat work uses [$byte-bridge](../../byte-bridge/SKILL.md) and its
+single transport journal. Do not directly call cross-chat message tools,
+CUA, typing or a second queue. Codex's native queue is used internally by the
+Bridge adapter, with its exact source, project and generation checks.
 
-Use this mode when two or more Codex tasks share one project: for example, a
-main task implements core code and tests, then a supervisor task watches a long
-performance or ablation run and returns anomalies or completion evidence.
+An older handoff already in flight before Bridge integration finishes only on
+its recorded original route and authority. Do not switch an uncertain request
+mid-flight, import it twice or use that exception for a new handoff.
 
-Codex cross-task messages are the live notification channel. Repository state is
-the durable authority. A delivered message may not produce a substantive target
-turn; it neither proves wakeup nor grants ownership by itself.
+## Select and connect
 
-When available, use Codex's native task operations deliberately:
+Use this route for independent chats or long unattended work. For authorized
+short same-task helpers, follow [delegation routing](delegation-routing.md);
+a native subagent keeps main ownership and is not a cross-chat replacement.
 
-- `create_thread`: create a supervisor only when the user explicitly requests
-  a new supervision task; target the same saved project with local checkout.
-- `send_message_to_thread`: dispatch or update the new owner only after the
-  durable handoff succeeds.
-- `read_thread`: inspect concise task context when needed, never as proof that a
-  job or code change succeeded.
-- `wait_threads`: obtain bounded progress snapshots for a dispatched task; do
-  not turn the main task into a permanent polling loop.
+1. Select the actual project and exact original main/supervisor chats. Creating
+   a new chat requires explicit user intent; a managed worker is a different
+   mode and must never masquerade as an existing chat.
+2. Use Bridge's [preflight/activation procedure](../../byte-bridge/references/bridge-only.md).
+   Install only the requested clients; both chats enroll from their native
+   sources. Verify `context`, exact `sessions` selection, host, profile, native
+   session ID, runtime generation, deadline and the real supported intake mode.
+3. Preserve current accounts and permissions. Report a concrete activation or
+   native tool-permission block, without another delivery channel. A worker's
+   granted permission mode is local to its task and lifetime.
 
-For same-task helpers, do **not** use this cross-task baton protocol. Follow
-[delegation routing](delegation-routing.md): a subagent keeps the main task's
-ownership and is preferred for bounded work expected within about one hour
-and its active turn. Cross-task supervision is for longer or unattended runs.
+## Main launches and hands off
 
-If the user explicitly requested a continuous scheduled outcome, a shared
-monitor can switch from run observation to read-only main progress checking
-after handback. End the old run scope, retaining the authorized outcome
-heartbeat; do not pause the only recovery path after initial main ACK. Follow
-the bundled continuation contract for this exception to run-only cleanup.
+Main owns core design, implementation, short tests and actual job launch.
+Before handing off, verify the real process/scheduler, run ID and attempt,
+source/config hashes, logs, acceptance, permitted repairs and terminal evidence
+paths. Code readiness alone is not successful startup.
 
-If native task operations are unavailable, keep the repository handoff valid and
-tell the user which exact supervisor task must be opened or resumed manually.
+Use the project's existing authority. A pinned `byte-workflow/v1` engine
+performs `start-run`; Bridge imports only that committed matching handoff.
+Legacy local owner helpers remain for their original projects and never bypass
+v1 revision or ownership checks. There is no second work baton in Bridge.
 
-## Identity and checkout
+Send the exact handoff through Bridge once. Record its actual task/message IDs.
+Delivery acceptance is not supervisor acknowledgement. End main's active turn
+only after the exact supervisor acknowledges the owned run, a future authorized
+check is verified, and a supported return-wake route is established. Otherwise
+label the lane unarmed and repair the missing prerequisite without relaunching.
 
-- Identify every participant as `codex:<thread-id>` and record its `host_id`
-  when available.
-- Set both `state.owner: codex` and `state.owner_session: codex:<thread-id>`.
-  Once multiple Codex tasks participate, never fall back to harness-only
-  ownership.
-- Create a supervisor task only when the user explicitly asks for a new task or
-  supervision task. Otherwise reuse an exact registered task selected by ID.
-- A supervisor watching the same process, scheduler, logs, and coordination
-  files must run in the same saved project checkout (`local` environment), not
-  an isolated worktree. Use a worktree only when the relay explicitly separates
-  code ownership and provides a shared external state channel.
+The supervisor observing shared process/log/state files needs that actual saved
+checkout; a new worktree is appropriate only when the workflow explicitly
+separates code ownership and provides a shared evidence channel.
 
-## Main task to supervisor
+## Supervisor observes and returns
 
-1. Finish and verify the bounded core implementation. Launch a long job only
-   when already authorized. A same-task helper must not own a job whose
-   lifetime needs to exceed the helper turn unless process persistence was
-   independently verified.
-2. Record the exact job/run identity, config, process or scheduler ID, log path,
-   outputs, Git snapshot, allowed repairs, stop conditions, and escalation
-   conditions in the task receipt and handoff.
-3. Create or select the supervisor task and retain its returned `threadId` and
-   `hostId`. Do not treat creation as execution or supervision. A Codex target
-   without a known host ID must not receive the baton.
-   Confirm the target's project checkout, available model/tooling, and report
-   route before enabling any recurring check. A requested cheap model is not
-   proof of the target's actual model; record native runtime evidence or mark
-   model provenance unverified. Preflight how a terminal handback will wake the
-   idle main task and how its actual continuation will be verified. If this
-   return route is untested, do not promise automatic end-to-end progress.
-4. Write the append-only handoff. Then run `scripts/relay_state.py handoff` to
-   move `owner_session` to the supervisor and set `stage=supervise`.
-5. Only after the state write succeeds, use the Codex task messaging capability
-   to send the supervisor a concise prompt containing the project path, state
-   path, its exact session ref, handoff path, run identity, and `next_action`.
-6. Record whether notification was accepted by the transport, unverified, or
-   failed. This is not an acknowledgement from the supervisor. If the call
-   times out or fails ambiguously, inspect the exact target and handoff before
-   any retry; never send a duplicate launch instruction blindly.
-7. End the main task's active work only after the exact supervisor acknowledges
-   and at least one future wake path is verified active for this run. Otherwise
-   report the lane as unarmed and reconcile or hand back without relaunching.
-   Do not keep the main task alive merely to poll the supervisor.
+Observe only the exact owned run; keep unchanged checks quiet. Deduplicate event
+and timer observations by run ID, attempt and event. Repair only within the
+recorded authority/budget, preserve the failure first and use a new run identity
+for each new attempt. Never promise immediate wakeup from a local event file.
 
-If this handoff uses a recurring monitor, verify its saved active status, exact
-supervisor target, current run identity, interval, and stop rule through the
-automation tool before calling the periodic lane armed. Record its ID in the
-append-only handoff if known before transfer; otherwise have the supervisor
-record it in a new owned receipt. A single heartbeat message is not proof of
-future registration. Reuse
-a paused monitor only after updating it for the new run; never leave a
-project-wide heartbeat querying between handoffs.
+Return real terminal status, logs, artifacts, hashes and limitations through the
+same Bridge task. Disable that run's ordinary checks and verify inactivity.
+For an explicitly authorized continuous outcome monitor, clear the old run scope
+and retarget that same monitor as the workflow specifies; do not add a second
+native message/automation delivery route around Bridge.
 
-Example state transfer after the handoff file exists:
+## Main independently verifies and continues
 
-```bash
-python3 scripts/relay_state.py handoff --project <repo> \
-  --from-harness codex --from-session-id <main-thread-id> --from-stage build \
-  --to-session codex:<supervisor-thread-id> --to-stage supervise \
-  --to-role supervisor --to-host-id <host-id> \
-  --reports-to codex:<main-thread-id> \
-  --next-action "monitor run-42; apply only the recorded bounded repairs" \
-  --handoff .byte-os/coordination/handoffs/<file>.md \
-  --note "core implementation and tests complete; long run launched"
-```
+Read the exact persisted result. Recompute acceptance from real artifacts and
+source/run identity. A return message, model text, empty reply or `idle` does not
+prove verification or continuation. Main then executes the next authorized
+analysis, repair or integration action in its own native turn.
 
-## Supervisor behavior
+When Codex native action proof is required, register the stable `plan_next`
+before verification, execute the actual verification command through Bridge's
+`action`, then execute the fixed continuation only after verification is
+confirmed. Preserve all action IDs and receipts. Non-Codex native command proof
+has its own compatibility limits; never relabel a text reply `main_continued`.
 
-1. Register the supervisor conversation only after `owner_session` names it,
-   then confirm the stage, handoff, receipt, live job identity, and Git snapshot.
-   Record the exact model with a native runtime evidence pointer when available;
-   a generic model family or the requested model is not a verified identity.
-2. Acknowledge the handoff only after confirming the exact `owner_session`,
-   host/checkout, run ID, and live job identity. Monitor with an authorized
-   process/scheduler event bridge where available, otherwise use the available
-   bounded wait or scheduled heartbeat mechanism. A sparse heartbeat may check
-   watcher liveness. Stay quiet while state is unchanged; do not keep the main
-   task polling. Never claim event-triggered wakeup without a configured and
-   tested event-to-task bridge.
-3. If the job succeeds, verify terminal outputs and acceptance, update the
-   receipt/handoff, and transfer the baton back to the main or review task.
-4. If a known, explicitly allowed, bounded repair is sufficient, preserve the
-   run and unrelated work, apply the repair, verify it, and continue supervision.
-   Never repeat an unchanged failed repair.
-5. For uncertain diagnosis, architecture or scientific changes, new cost,
-   destructive action, frozen-path changes, or exhausted retry budget: write
-   evidence, transfer ownership back to the main task, then message it. The main
-   task decides the repair.
-6. After a terminal handback, pause or delete this run's recurring monitor and
-   verify it is inactive, then message the main task with result, cleanup
-   status, handoff identity, and one concrete next authorized action. A
-   progress-only update while this supervisor still owns the run is not a
-   handback. Check one bounded `wait_threads` or `read_thread` snapshot for a
-   substantive main turn acknowledging that handoff and starting its next
-   action; transport success, an empty reply, or target `idle` does not count.
-   If absent, mark main continuation unverified and use only an authorized,
-   tested return-wake fallback or report that manual resumption is needed.
-   A run-scoped, pre-authorized main-target heartbeat may be activated only
-   after handback if the app supports and has passed a live target test; the
-   main task must disable it on acknowledgement. Do not reclaim ownership,
-   write main-owned project state, launch the next experiment, or endlessly poll.
-   If cleanup fails, report it and do not claim the whole handback complete.
-   A later run may reactivate only with a new exact handoff and current run
-   details. If a stale tick arrives when this task no longer owns a run, do
-   not query the server; disable that stale monitor.
-
-Before messaging another task, persist the corresponding handoff and state
-transition. Use task reads for context and task waits for dispatched progress,
-but treat their summaries as narrative evidence, not repository or runtime truth.
-An agent becoming idle or finishing a turn is not proof that training succeeded;
-check the scheduler/process result and expected artifacts separately.
-
-## Direct-message payload
-
-Keep cross-task prompts cohesive and self-contained:
-
-- project and checkout path;
-- `codex:<thread-id>` identity and expected `owner_session`;
-- stage, next action, acceptance, allowed repairs, and escalation boundary;
-- handoff and receipt paths;
-- run/config/log/process identities;
-- whether this is a progress update or an actual baton return, plus the one
-  next action the main task should begin;
-- which exact task should receive completion or failure reports.
-
-Do not paste large transcripts or diffs into messages. Link the durable digest,
-receipt, review package, or artifact instead.
-
-## Overall-outcome continuation
-
-Run completion and overall acceptance are separate. On main-owned terminal
-return, verify outputs and start the next already-authorized analysis, repair
-or bounded experiment in the same turn. A report upload or a reply saying
-"next action recorded" is not substantive continuation. Preserve the overall
-outcome and the user's iterative scope across compaction and status questions.
-Follow the bundled [continuation contract](long-running-work.md); keep one
-outcome record and use its exit check before yielding. It does not supersede
-host permissions or validate an untested wake adapter.
+A connection failure stays in Bridge. Reconcile the original IDs and return a
+precise native activation/permission requirement if autonomous wake is unavailable.
+Do not reclaim ownership, repeat a job or silently substitute another chat to
+hide the failure. Follow the shared [continuation contract](long-running-work.md).

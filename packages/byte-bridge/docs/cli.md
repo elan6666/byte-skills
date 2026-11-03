@@ -28,10 +28,16 @@ Always select the intended project with `--project /absolute/path/to/project`. U
 | `cancel --stdin` | Cancel future actions or supervision. |
 | `daemon start --project PATH` | Start the local project service; Ctrl-C closes it. |
 | `doctor --project PATH` | Diagnose setup without restarting apps. |
+| `preflight --harness SOURCE --with TARGET,... --project PATH --json` | Read-only Bridge connection/activation inventory for selected clients; optional exact `--query` alias or binding ID. No initialization, migration, model startup or task execution. |
 | `host --harness zcode --project PATH --stdin` | Start a dedicated native worker with explicit profile, alias, permission mode, and bounded lifetime. See [configuration](zcode.md). |
 | `host --harness kimi\|opencode --project PATH --stdin` | Explicit native ACP host, one session per process, exact binary/version/profile and bounded lifetime. See [guide](acp.md). |
 
 All examples below assume the selected project; add `--project PATH` to each command when needed. `PATH`, `NAME`, and `TASK_ID` denote values to replace.
+
+`preflight` exit 0 means observation completed; inspect its `state` and do not
+infer task execution. `setup` may return `needs_activation`/exit 3 after starting
+its bounded service successfully. Follow the [Bridge-only connection procedure](../skills/sessionbridge-do/references/bridge-only.md)
+instead of starting another service or sending through another channel.
 
 ## Structured requests
 

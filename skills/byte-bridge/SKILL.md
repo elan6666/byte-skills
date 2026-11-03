@@ -7,8 +7,36 @@ description: Connect agent chats, assign main and supervisor roles, delegate sco
 
 Use Byte Bridge as Byte's cross-chat collaboration layer. Understand the
 natural-language request in the current agent, then call its structured CLI or
-native tools. The bridge connects selected existing sessions; it does not choose
-models, grant tool permissions, or make its own model API calls.
+native tools. The bridge connects selected existing sessions or explicitly
+authorized dedicated native workers; it does not choose models, grant tool
+permissions, or make its own model API calls.
+
+## Bridge-only cooperation
+
+All cross-chat coordination uses this Bridge: connect, select roles, delegate,
+supervise, report, return and reconcile. Never substitute CUA, typing, clipboard,
+direct Codex chat messaging, another messenger or a second delivery queue when
+Bridge is blocked. The app-specific native plugin/MCP/queue is part of Bridge;
+ordinary task tools such as file editing and tests remain available.
+
+For a new pair or a connection failure, read the
+[Bridge-only connection procedure](references/bridge-only.md). Inspect only the
+selected clients, distinguish original-chat attachment from a dedicated worker,
+and check actual native permissions. An authorized one-time `yolo` worker does
+not change defaults or grant the same mode to other tasks/apps. Do not ask again
+for permission already granted within its exact scope and lifetime.
+
+```bash
+python3 scripts/bridge.py exec preflight --harness codex --with zcode --project /selected/project --json
+```
+
+`preflight` never installs, starts a service/model, migrates state, approves
+tools, sends a message or proves execution. It returns missing native activation
+steps and exact candidates. Exit 0 means the observation completed; inspect
+`state`. `setup` can return `needs_activation` with exit 3 after successfully
+starting its bounded service: reconcile that result instead of starting another
+service or declaring a generic failure. Native context, an exact target and a
+real artifact return still need verification.
 
 ## Select the intent
 
@@ -52,6 +80,12 @@ for the current schema. Send JSON through stdin as data, with argv arrays and
 `shell=False`; never interpolate user text into a shell command. Preserve the
 same request ID and immutable scope across recovery. Prefer actual native
 SessionBridge tools when available, following their schema and source challenge.
+
+Codex native `action` evidence additionally requires the installed launcher to
+appear directly in the native command with `action --action-id TOKEN` and its
+returned marker in output. Save stdin JSON separately; do not wrap the launcher
+in a Python/JavaScript subprocess script. Reconcile the existing receipt after
+the command completes instead of blindly rerunning it while proof is pending.
 
 ## Receive a collaboration notification
 

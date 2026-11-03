@@ -17,6 +17,11 @@ implemented, reviewed, resumed, handed across harnesses, or run unattended.
   process or scheduler identity, logs, outputs, and terminal status.
 - A handoff is ready: identify the upstream session, Git base and head, verified
   results, unresolved limits, and the single next action.
+- Cross-chat cooperation used Bridge: preserve the exact native participants,
+  permission mode/lifetime, request/task/message IDs, real returned artifacts
+  and independent main continuation. Installation, preflight and connection
+  alone prove no task execution. A failed Bridge route never justifies CUA or
+  another message route.
 
 Prefer fresh evidence from the current checkout and runtime. Treat summaries,
 agent reports, plans, and status files as leads to reconcile, not proof by

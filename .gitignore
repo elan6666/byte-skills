@@ -9,3 +9,6 @@ node_modules/
 packages/byte-bridge/dist/
 packages/byte-bridge/docs/distribution/
 packages/byte-bridge/coverage/
+
+# Local video production: source media, screenshots, audio, renders and delivery packages.
+/video/

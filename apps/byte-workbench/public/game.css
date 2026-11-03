@@ -1,0 +1,747 @@
+/* The office world is the primary view; controls behave like a game's HUD. */
+body {
+  background: #e8eddf;
+}
+.workspace {
+  background: #eaf0e2;
+}
+.sidebar {
+  background: #dce7d2;
+  border-right: 2px solid #b5c4a5;
+  padding-top: 22px;
+  width: 218px;
+}
+.brand {
+  font-size: 16px;
+  padding-bottom: 22px;
+}
+.brand small {
+  font-size: 9px;
+  letter-spacing: 0;
+}
+.topbar {
+  height: 58px;
+  background: #f4f4e8;
+  padding: 0 25px;
+  border-bottom: 2px solid #d3dbc7;
+}
+.workspace main#office {
+  padding: 17px 25px 10px;
+  max-width: 1920px;
+}
+.office-title {
+  margin-bottom: 12px;
+}
+.office-title h1 {
+  font-size: 27px;
+  letter-spacing: 0;
+}
+.eyebrow {
+  font-size: 8px;
+  margin-bottom: 3px;
+  letter-spacing: 1.5px;
+}
+.subtitle {
+  margin-top: 3px;
+  font-size: 9px;
+}
+.season {
+  font-size: 9px;
+}
+.season .sun {
+  font-size: 23px;
+}
+.season strong {
+  font-size: 12px;
+}
+.demo-banner {
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  border-radius: 3px;
+  background: #f2e9bf;
+  border-color: #c4b27d;
+  font-size: 10px;
+}
+.demo-banner > div {
+  display: flex;
+  gap: 15px;
+}
+.demo-banner button {
+  font-size: 10px;
+}
+.summary {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+  margin-bottom: 13px;
+  border: 2px solid #bca079;
+  background: #f6ebcd;
+  box-shadow: 0 3px #ad98702b;
+  border-radius: 4px;
+  overflow: hidden;
+  min-height: 51px;
+}
+.goal-board,
+.stat {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  padding: 7px 15px;
+}
+.goal-board {
+  flex: 1;
+  border-right: 1px solid #d7c399;
+  gap: 9px;
+}
+.goal-board strong {
+  font-size: 11px;
+}
+.goal-board small {
+  font-size: 9px;
+  margin-bottom: 0;
+}
+.goal-board div > span {
+  font-size: 9px;
+  margin-top: 0;
+}
+.board-icon {
+  font-size: 16px;
+  padding: 1px 5px;
+}
+.stat {
+  width: 113px;
+  flex: none;
+  position: relative;
+  border-left: 1px solid #d7c399;
+}
+.stat strong {
+  font:
+    20px/1.1 ui-monospace,
+    monospace;
+  float: right;
+  position: absolute;
+  right: 12px;
+  top: 11px;
+}
+.stat small {
+  font-size: 9px;
+  width: 45px;
+  margin-top: 3px;
+}
+.stat > span {
+  font-size: 8px;
+  white-space: nowrap;
+}
+.room-toolbar {
+  margin-bottom: 8px;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+.tabs {
+  border-radius: 3px;
+  background: #dce5d0;
+}
+.tabs button {
+  font-size: 10px;
+  border-radius: 2px;
+  padding: 4px 9px;
+}
+.scene-shortcuts {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+.scene-shortcuts button {
+  font-size: 10px;
+  color: #77876b;
+}
+.desk-search {
+  width: 145px;
+  padding: 6px 8px;
+  font-size: 10px;
+  border-radius: 3px;
+  margin-left: 0;
+}
+.game-shell {
+  border: 4px solid #697c63;
+  border-radius: 4px;
+  background: #b8c7a5;
+  box-shadow: 0 5px #56734d24;
+  position: relative;
+  overflow: hidden;
+}
+.game-topline {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  justify-content: space-between;
+  background: #f0e6c8;
+  border-bottom: 3px solid #bbab81;
+  height: 34px;
+  padding: 0 12px;
+  color: #65765a;
+  font-size: 10px;
+}
+.floor-switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font:
+    10px ui-monospace,
+    monospace;
+}
+.floor-switch button {
+  font-size: 19px;
+  line-height: 1;
+  padding: 0 3px;
+  color: #728465;
+}
+.floor-switch button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.scene-weather {
+  font-size: 9px;
+  color: #94885f;
+  margin-left: auto;
+}
+.game-topline > button {
+  font-size: 19px;
+  color: #849071;
+}
+.game-viewport {
+  height: min(calc(100vh - 285px), 840px);
+  min-height: 460px;
+  position: relative;
+  width: 100%;
+  display: block;
+  background: #a9bf91;
+  overflow: hidden;
+}
+.office-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  cursor: grab;
+  outline-offset: -4px !important;
+}
+.office-canvas:active {
+  cursor: grabbing;
+}
+.game-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f4e8c7;
+  border-top: 3px solid #baaa80;
+  min-height: 34px;
+  padding: 5px 10px;
+  flex-wrap: wrap;
+  font:
+    9px ui-monospace,
+    "PingFang SC",
+    sans-serif;
+  color: #8a7b58;
+}
+.game-tools button {
+  font-size: 9px;
+  color: #726a4e;
+  padding: 2px 5px;
+  border: 1px solid #c4b28a;
+  background: #f8efd5;
+  border-radius: 2px;
+  box-shadow: 0 1px #b3a07833;
+}
+.game-tools button:hover {
+  background: #fff7df;
+}
+.camera-tools {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  align-items: center;
+}
+#room-pages {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.game-story {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #edf0de;
+  padding: 6px 11px;
+  min-height: 28px;
+  font-size: 10px;
+  color: #758267;
+  border-top: 1px solid #cbd3b7;
+}
+.game-story p {
+  flex: 1;
+}
+.story-seed {
+  color: #a2a164;
+}
+.game-story > span:last-child {
+  font-size: 8px;
+  opacity: 0.7;
+}
+.behavior-key {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+  color: #8a977c;
+  font-size: 9px;
+  margin: 9px 0 5px;
+}
+.game-access {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.game-access:focus-within,
+.game-access.open {
+  clip-path: none;
+  white-space: normal;
+  width: 240px;
+  height: calc(100% - 24px);
+  top: 12px;
+  right: 12px;
+  padding: 9px;
+  margin: 0;
+  overflow: auto;
+  background: #fff3d8f5;
+  border: 3px solid #a48f66;
+  z-index: 4;
+  box-shadow: 0 6px 25px #40543d33;
+}
+.game-access .game-access-agent {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font:
+    10px/1.7 ui-monospace,
+    "PingFang SC",
+    sans-serif;
+  padding: 8px;
+  border-radius: 1px;
+  border: 0;
+  border-bottom: 1px dashed #cfbc90;
+  white-space: normal;
+  background: none;
+  color: #6b664a;
+}
+.game-access .game-access-agent:before {
+  display: none;
+}
+.game-access .game-access-agent:hover {
+  background: #e8e8c9;
+}
+.inspector {
+  position: fixed;
+  top: 82px;
+  right: 31px;
+  bottom: 28px;
+  width: 310px;
+  max-height: none;
+  z-index: 12;
+  border: 3px solid #a79b75;
+  border-radius: 3px;
+  background: #fcf3dc;
+  box-shadow: 0 10px 65px #37473040;
+  overflow: auto;
+}
+.inspector-head {
+  background: #eee2bf;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid #c9b78d;
+  padding: 8px 12px;
+  font-size: 10px;
+}
+.detail-content {
+  padding: 16px;
+}
+.detail-content .notice {
+  font-size: 10px;
+}
+.detail-section {
+  border-color: #ddd2af;
+}
+.detail-portrait canvas {
+  border-radius: 2px;
+  background: #e2e5c9;
+}
+.task-card {
+  background: #fffae8;
+  border-color: #e0d7b8;
+}
+.task-card h3 {
+  max-height: 9em;
+  overflow: auto;
+}
+.pill {
+  border-radius: 2px;
+}
+.support-panel {
+  margin-top: 10px;
+  border: 1px solid #cbd6bd;
+  border-radius: 3px;
+  background: #f4f5e9;
+}
+.support-panel > summary {
+  padding: 10px 12px;
+  font-size: 10px;
+  color: #849475;
+  cursor: pointer;
+  list-style-position: inside;
+}
+.support-panel .equipment,
+.support-panel .activity {
+  border: 0;
+  background: none;
+  margin: 0;
+  padding-top: 8px;
+}
+.office-body {
+  display: block;
+}
+.office-main {
+  width: 100%;
+}
+footer {
+  padding: 8px 25px;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+}
+.warnings:empty {
+  display: none;
+}
+.game-shell:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+}
+.game-shell:fullscreen .game-viewport {
+  height: auto;
+  flex: 1;
+  min-height: 0;
+}
+.welcome {
+  padding-top: 60px;
+}
+.welcome h1 {
+  font-size: 36px;
+}
+@media (min-width: 851px) {
+  .summary .stat:last-child {
+    width: 132px;
+  }
+  .game-viewport {
+    min-height: 340px;
+  }
+}
+@media (min-width: 1800px) {
+  .game-viewport {
+    height: calc(100vh - 285px);
+    max-height: 1000px;
+  }
+}
+@media (max-width: 1230px) {
+  .sidebar {
+    width: 190px;
+  }
+  .summary .stat {
+    width: 94px;
+  }
+  .stat strong {
+    font-size: 17px;
+    right: 7px;
+  }
+  .goal-board {
+    min-width: 180px;
+  }
+  .game-viewport {
+    min-height: 440px;
+  }
+  .scene-shortcuts button {
+    font-size: 9px;
+  }
+  .behavior-key {
+    gap: 10px;
+  }
+  .game-story > span:last-child {
+    display: none;
+  }
+}
+@media (max-width: 850px) {
+  .sidebar {
+    width: 165px;
+  }
+  .workspace main#office {
+    padding: 12px 14px;
+  }
+  .topbar {
+    padding: 0 14px;
+  }
+  .summary .stat {
+    width: 83px;
+    padding: 6px;
+  }
+  .goal-board {
+    min-width: 130px;
+  }
+  .goal-board .board-icon {
+    display: none;
+  }
+  .goal-board strong {
+    max-width: 160px;
+  }
+  .goal-board div > span {
+    max-width: 130px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .stat strong {
+    font-size: 15px;
+    right: 5px;
+    top: 10px;
+  }
+  .stat small {
+    font-size: 8px;
+    width: 38px;
+  }
+  .stat > span {
+    font-size: 7px;
+  }
+  .room-toolbar {
+    flex-wrap: wrap;
+  }
+  .scene-shortcuts {
+    margin-left: auto;
+  }
+  .desk-search {
+    width: 100%;
+    margin: 0;
+  }
+  .game-viewport {
+    height: calc(100vh - 320px);
+    min-height: 430px;
+  }
+  .floor-switch {
+    font-size: 8px;
+    gap: 5px;
+  }
+  .game-story {
+    font-size: 9px;
+  }
+  .game-tools {
+    font-size: 8px;
+  }
+  .inspector {
+    right: 16px;
+    top: 70px;
+    bottom: 20px;
+    width: min(310px, calc(100vw - 80px));
+  }
+  .behavior-key {
+    gap: 6px 12px;
+    font-size: 8px;
+  }
+  .season {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .sidebar {
+    width: 59px;
+    padding: 15px 5px;
+  }
+  .brand {
+    padding: 0 3px 22px;
+  }
+  .brand img {
+    width: 33px;
+    height: 33px;
+  }
+  .workspace main#office {
+    padding: 10px 8px;
+  }
+  .topbar {
+    height: 49px;
+    padding: 0 8px;
+  }
+  .office-title {
+    margin-bottom: 8px;
+  }
+  .office-title h1 {
+    font-size: 21px;
+  }
+  .office-title .eyebrow {
+    font-size: 7px;
+  }
+  .subtitle {
+    font-size: 8px;
+    gap: 3px;
+  }
+  #project-root {
+    max-width: 180px;
+  }
+  .summary {
+    flex-wrap: wrap;
+    min-height: 76px;
+  }
+  .summary .goal-board {
+    min-width: 100%;
+    height: 36px;
+    border: 0;
+    border-bottom: 1px solid #d7c399;
+    padding: 4px 8px;
+  }
+  .goal-board strong {
+    max-width: 260px;
+    font-size: 10px;
+  }
+  .goal-board small {
+    display: none;
+  }
+  .goal-board div > span {
+    max-width: 260px;
+    font-size: 8px;
+  }
+  .summary .stat {
+    width: 33.333%;
+    height: 40px;
+    padding: 3px 7px;
+    overflow: hidden;
+  }
+  .stat strong {
+    font-size: 15px;
+    top: 5px;
+  }
+  .stat small {
+    font-size: 7px;
+  }
+  .stat > span {
+    font-size: 6px;
+    line-height: 1.2;
+  }
+  .demo-banner {
+    font-size: 8px;
+    gap: 5px;
+    padding: 5px;
+  }
+  .demo-banner > div {
+    gap: 7px;
+    flex: none;
+  }
+  .demo-banner button {
+    font-size: 8px;
+  }
+  .room-toolbar {
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+  .tabs {
+    width: auto;
+  }
+  .tabs button {
+    font-size: 8px;
+    padding: 4px 6px;
+  }
+  .scene-shortcuts {
+    gap: 3px;
+  }
+  .scene-shortcuts button {
+    font-size: 8px;
+    padding: 3px;
+  }
+  .desk-search {
+    padding: 5px 7px;
+    font-size: 9px;
+  }
+  .game-shell {
+    border-width: 3px;
+  }
+  .game-topline {
+    height: 30px;
+    padding: 0 7px;
+    gap: 5px;
+  }
+  .scene-weather {
+    display: none;
+  }
+  .floor-switch {
+    font-size: 7px;
+    max-width: calc(100% - 22px);
+    overflow: hidden;
+  }
+  .game-viewport {
+    height: 470px;
+    min-height: 420px;
+  }
+  .game-tools {
+    padding: 5px;
+    gap: 5px;
+  }
+  #scene-count {
+    font-size: 7px;
+  }
+  .game-tools button {
+    font-size: 8px;
+    padding: 2px 3px;
+  }
+  .camera-tools {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .game-story {
+    padding: 5px 7px;
+    font-size: 8px;
+    line-height: 1.8;
+  }
+  .behavior-key {
+    font-size: 7px;
+    gap: 4px 10px;
+  }
+  .inspector {
+    right: 9px;
+    top: 58px;
+    bottom: 12px;
+    width: calc(100vw - 80px);
+  }
+  .sidebar-bottom {
+    padding-top: 10px;
+  }
+  .game-access.open,
+  .game-access:focus-within {
+    right: 7px;
+    width: calc(100% - 14px);
+  }
+  footer {
+    padding: 10px 8px;
+  }
+  .welcome {
+    padding: 55px 10px;
+  }
+  .welcome h1 {
+    font-size: 26px;
+  }
+  .game-topline > button {
+    font-size: 17px;
+  }
+}

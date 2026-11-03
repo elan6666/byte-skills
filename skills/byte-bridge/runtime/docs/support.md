@@ -11,6 +11,11 @@ Byte Bridge 0.1 是本地会话接入原型。连接成功、消息送达、模�
 - 周期监督需要项目协调服务保持运行。电脑休眠会暂停本地服务和作业；恢复后继续检查，不保证即时响应或自动重启应用。
 - 应用原有账号、模型访问和工具权限继续由原应用管理。
 
+跨会话协作只走 Bridge 原生适配器。新组合使用
+`preflight --harness SOURCE --with TARGET --project PATH --json`，再按
+[统一接入与权限流程](../skills/sessionbridge-do/references/bridge-only.md)处理缺项。
+受阻不改走 CUA、键盘或直接跨聊天消息；检查结果不等于原生权限、任务执行或唤醒通过。
+
 ## 应用连接
 
 | 应用 | 接入方式 | 使用边界 |
@@ -20,7 +25,7 @@ Byte Bridge 0.1 是本地会话接入原型。连接成功、消息送达、模�
 | Pi | 原生扩展与 followUp | 接口适配 1.3.0；切换或重载会话后旧连接失效；不通过 interrupt 抢占执行 |
 | dsh | Web/Desktop Cordis 插件绑定原 Agent | 接口适配 0.2.1-rc.2；Web 模式支持范围较明确，任意桌面实例需另行确认；各入口语法以原应用能力为准 |
 | Hermes | 原生插件与 canonical gateway TUI 队列 | 普通 CLI 的忙碌注入受限，桌面 GUI 接入尚未验证 |
-| ZCode | 原会话原生 MCP 主动收件 ＋ 专用 App Server | 0.17.0 精确版本；`attached/native_tool_pull` 需原会话显式插件与限时 wait，不自动唤醒空闲聊天。`managed` 需独立 profile。权限由原应用决定。见[上手](zcode.zh-CN.md)。 |
+| ZCode | 原会话原生 MCP 主动收件 ＋ 专用 App Server | 0.17.0、0.17.1 精确版本；`attached/native_tool_pull` 需原会话显式插件与限时 wait，不自动唤醒空闲聊天。`managed` 需独立 profile。权限由原应用决定。见[上手](zcode.zh-CN.md)。 |
 | Kimi Code | 独立 ACP 原生进程 | 2.4.1；`managed`，每进程一会话，使用独立 profile。已有 TUI 接入不受支持；旧0.28.1自定义 GLM ACP 未通过。见[指南](acp.zh-CN.md)。 |
 | OpenCode | 独立 ACP ＋ 原生项目插件主动收件 | 1.19.5；ACP 每进程一会话。原会话需预先启用项目插件并主动 wait，不自动唤醒。GUI 单独验收，不由 CLI 结果推定。见[指南](acp.zh-CN.md)。 |
 

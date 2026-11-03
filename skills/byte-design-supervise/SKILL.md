@@ -1,6 +1,6 @@
 ---
 name: byte-design-supervise
-description: Coordinate a Codex main chat and separate supervisor chat for training or ablations expected to last about an hour or outlive the main turn. Short bounded waits belong to the same-task subagent route.
+description: Coordinate a main chat and separate supervisor through Byte Bridge for training or ablations expected to last about an hour or outlive the main turn, within each native client's supported mode. Short bounded waits belong to the same-task subagent route.
 ---
 
 # Byte Design and Supervise
@@ -8,8 +8,12 @@ description: Coordinate a Codex main chat and separate supervisor chat for train
 This is the independently callable training/ablation preset of
 [$byte-bridge](../byte-bridge/SKILL.md). Use Bridge for all cross-chat connection,
 notification, supervision and return operations; do not send another manual
-message or create a parallel delivery queue. Use this preset for the Codex
-main-chat → supervisor-chat → main-chat workflow. The main chat owns design,
+message or create a parallel delivery queue. Bridge's native adapters also
+connect the explicitly selected supported agent clients. Use its
+preflight/activation procedure for a new pair;
+do not use CUA or direct chat messages to conceal missing native permissions.
+Use this preset for the main-chat → supervisor-chat → main-chat workflow.
+The main chat owns design,
 core code, launch, and final acceptance; the supervisor owns long-run checks
 and only explicitly bounded repairs. Use ordinary chat turns rather than Goal
 mode unless the user requests a Goal.

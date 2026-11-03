@@ -6,6 +6,7 @@ import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import { BridgeError } from '../../protocol/errors.js';
+import { SUPPORTED_ZCODE_VERSIONS } from './version.js';
 const exec = promisify(execFile);
 export const DEFAULT_ZCODE_BINARY = '/Applications/ZCode.app/Contents/Resources/glm/zcode.cjs';
 export const ZCODE_METHODS = new Set(['runtime/capabilities', 'session/create', 'session/read', 'session/send', 'session/messages', 'session/events', 'session/subscribe']);
@@ -20,6 +21,8 @@ export class ZCodeRpc {
     pending = new Map();
     trace = [];
     notifications = [];
+    // Names only: never retain permission payloads, tool arguments or credentials.
+    deniedPermissionRequests = [];
     version = '';
     binarySha256 = '';
     constructor(options) {
@@ -50,7 +53,7 @@ export class ZCodeRpc {
                     env[k] = process.env[k];
             Object.assign(env, { HOME: profile, USERPROFILE: profile, ZCODE_DATA_BASE_DIR: profile, ZCODE_BUILTIN_PROVIDER_CONFIG_FILE: realpathSync(builtin), ZCODE_PERSONAL_PROVIDER_CONFIG_FILE: join(profile, '.zcode/v2/provider_config.json'), ZCODE_STORAGE_DIR: join(profile, '.zcode/cli'), ZCODE_LOG_DIR: join(profile, '.zcode/cli/logs') });
             const version = (await exec(process.execPath, [binary, '--version'], { timeout: 10000, env, cwd: this.options.root })).stdout.trim();
-            if (version !== '0.17.0')
+            if (!SUPPORTED_ZCODE_VERSIONS.some(v => v === version))
                 throw new BridgeError('zcode_version_drift', 'Uncertified ZCode version: ' + version, 'Retest this exact native runtime in isolated sessions', 3);
             this.version = version;
             this.binarySha256 = createHash('sha256').update(readFileSync(binary)).digest('hex');
@@ -75,6 +78,11 @@ export class ZCodeRpc {
                     try {
                         const m = JSON.parse(line.toString('utf8'));
                         if (m.method && m.id !== undefined) {
+                            if (/permission|approval/i.test(m.method)) {
+                                this.deniedPermissionRequests.push(m.method);
+                                if (this.deniedPermissionRequests.length > 16)
+                                    this.deniedPermissionRequests.shift();
+                            }
                             this.child.stdin.write(JSON.stringify(m.method === 'session/requestRuntimePreferences' ? { id: m.id, result: { nativeSearchEnhancementsEnabled: false, memoryEnabled: false, toolSearchMode: 'off', askUserQuestionAutoResolutionEnabled: false } } : { id: m.id, error: { code: -32601, message: 'SessionBridge does not approve native permissions' } }) + '\n');
                             continue;
                         }

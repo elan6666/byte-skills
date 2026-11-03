@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { BridgeError } from '../protocol/errors.js';
 import { digest } from '../protocol/canonical.js';
 import { skillCommand } from '../cli/runtime.js';
+import { harnessGuidance } from '../adapters/guidance.js';
 export const HARNESSES = ['codex', 'claude', 'pi', 'hermes', 'dsh', 'zcode', 'kimi', 'opencode'];
 export const SKILLS = ['sessionbridge-do', 'session-bridge-delegate', 'session-bridge-supervise', 'session-bridge-return'];
 export function bytesHash(text) { return createHash('sha256').update(text).digest('hex'); }
@@ -81,7 +82,7 @@ export async function planInstall(options) {
     for (const file of files)
         if (file.before_sha256 !== null && file.before_sha256 !== bytesHash(file.content) && !previous?.owned_files.some(old => old.path === file.path && old.sha256 === file.before_sha256))
             conflicts.push(file.path);
-    return { harness: options.harness, scope: options.scope, targetRoot: root, packageRoot: core, files, config, previous, next_steps: [`原生 Skill 用法：${skillCommand(options.harness)}`, ['kimi', 'opencode'].includes(options.harness) ? 'host --harness ' + options.harness + ' 使用独立 profile 的 managed ACP 模式；不接管已运行 TUI，不使用 session/load/resume。' : options.harness === 'zcode' ? '在所选项目的 .zcode/config.json 显式启用 plugins.enabled/dirs 指向本插件目录；原会话调用 sessionbridge_attach + sessionbridge_wait，见 docs/zcode.zh-CN.md。host --harness zcode 是另一种专用 managed 模式。' : options.harness === 'claude' ? `在专用或空闲会话显式使用 claude --plugin-dir ${JSON.stringify(locations.plugin)}；MCP/Hook 许可由原生应用确认。` : options.harness === 'pi' ? `在专用或空闲会话使用 pi -e ${JSON.stringify(join(locations.plugin, 'index.ts'))}，或由用户明确 /reload。` : options.harness === 'hermes' ? '在 Hermes 原生插件管理器中为选定 profile 启用此插件；TUI/桌面消息注入需要原生许可，CLI 投递保持 blocked。' : options.harness === 'dsh' ? '通过原 Host 的 Cordis 插件配置启用此目录，并显式选择原有会话；不要新开 SDK 冒充已有 Host。' : '项目 .agents/skills 已准备；插件包可由本地 marketplace 导入，新会话加载，现有桌面不自动重启。', '安装文件不等于会话已接入；运行 doctor、connect 和 context 核对。'], conflicts };
+    return { harness: options.harness, scope: options.scope, targetRoot: root, packageRoot: core, files, config, previous, next_steps: [`原生 Skill 用法：${skillCommand(options.harness)}`, harnessGuidance(options.harness).activation, harnessGuidance(options.harness).tool, harnessGuidance(options.harness).limit, '安装文件不等于会话已接入；运行 preflight，再由原生 context、精确目标和实际任务核对。受阻时仅修复 Bridge 原生接入，不改走 CUA 或另一个消息渠道。'], conflicts };
 }
 export function activeInstallOwners(root) {
     const owners = [];

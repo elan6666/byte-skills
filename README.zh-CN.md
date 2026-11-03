@@ -15,7 +15,7 @@
 
 <p align="center">
   <strong>简体中文</strong> · <a href="README.md">English</a><br />
-  <a href="#overview">技能总览</a> · <a href="#quick-start">快速安装</a> · <a href="#byte-bridge">Byte Bridge</a> · <a href="#example">实际案例</a> · <a href="#skills">常用入口</a> · <a href="#supervision">长任务协作</a> · <a href="#continuity">持续推进</a>
+  <a href="#overview">技能总览</a> · <a href="#quick-start">快速安装</a> · <a href="#byte-office">像素工作台</a> · <a href="#byte-bridge">Byte Bridge</a> · <a href="#example">实际案例</a> · <a href="#skills">常用入口</a> · <a href="#supervision">长任务协作</a> · <a href="#continuity">持续推进</a>
 </p>
 
 ---
@@ -42,6 +42,27 @@
 ## 技能总览
 
 <img src="assets/overview.zh-CN.svg" alt="五个常用入口：byte-do、byte-auto、byte-discuss、byte-bridge、byte-workflow；其余中间能力合并展示" width="100%" />
+
+<a id="byte-office"></a>
+
+## Byte Office · 像素工作台
+
+**一间会自己生活的 2D 像素办公室。** 一个项目一张地图，一个 harness 一个房间，
+一个对话一位伙伴。人物会回工位工作、休息、浇花、喝咖啡；新交接时沿走廊碰面、
+递交文件再返回。点击人物查看真实任务和证据，未知与陈旧状态明确标注。
+
+![Byte Office：独立的虚构示例办公室](apps/byte-workbench/docs/office-preview.png)
+
+```bash
+bash scripts/workbench.sh
+# http://localhost:4317 — 先选择项目
+```
+
+需要 Node.js 24.15–24.x，无额外 npm 依赖，不调用语言模型。
+原生对话和执行状态只读；展示登记与任务方案可编辑，不执行 Agent 或创建定时任务。
+新增任务台支持状态筛选与任务历史分页；项目记忆支持检索笔记及 Bridge 任务摘要，
+按需展开详情并保留来源和哈希。[使用项目记忆](skills/byte-status/references/project-recall.md)。
+[启动、数据接入与状态说明](apps/byte-workbench/README.zh-CN.md)。
 
 <a id="quick-start"></a>
 
@@ -115,6 +136,11 @@ python3 .agents/skills/byte-bridge/scripts/bridge.py bootstrap
 `byte-bridge` 是 Byte 内置的协作能力：连接同一应用或不同 Agent 应用中选定的会话，
 设置分工，再按明确范围派发任务。执行会话可以实现一个模块，监督会话可以检查长时间训练，
 主会话等待结果。各应用继续保留原来的上下文、模型、账号和工具权限，Bridge 内核自身不调用模型 API。
+
+**跨会话只走一个协作通道：**接入、派发、监督、回报和恢复均通过 Bridge 的原生适配器。
+连接受阻时给出准确的原生激活或权限缺项，不转用电脑操作、键盘输入或另一条聊天消息路线。
+新组合先用只读 `preflight`，按[统一接入流程](skills/byte-bridge/references/bridge-only.md)继续。
+安装、连接和任务完成分开核验；一次限时 worker 的权限不会变成其他任务或全局默认权限。
 
 <img src="assets/bridge.zh-CN.svg" alt="主会话通过 Byte Bridge 派发给执行或监督会话，结果与证据返回主会话，核验后继续推进" width="100%" />
 

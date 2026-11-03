@@ -64,6 +64,13 @@ Save this non-secret JSON as the private project file `.session-bridge/zcode-sta
 
 `profile_dir` is the dedicated home, not its `.zcode/cli` subdirectory. Choose `build`, `edit`, `plan`, `yolo`, or `guarded` explicitly; ZCode defines their semantics. Byte Bridge does not approve native permission requests, so actions requiring an interactive decision can remain blocked. Select `yolo` only for a dedicated environment where you explicitly accept direct native tool execution. The deadline or Ctrl-C closes this dedicated runtime without stopping other applications.
 
+An enrollment-time native permission request now reports
+`native_permission_required` promptly and closes this owned worker. Use the
+actual native approval route, or a specifically authorized dedicated, bounded
+`yolo` worker. Never change global defaults, working profiles or future tasks;
+`yolo` is not a file sandbox. A blocked route never falls back to CUA or a second
+chat-message channel.
+
 ```bash
 session-bridge host --harness zcode --project /path/to/project --stdin \
   < /path/to/project/.session-bridge/zcode-start.json

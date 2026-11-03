@@ -69,6 +69,12 @@ session-bridge daemon start --project /path/to/project
 
 `permission_mode` 必须显式选择：`build`、`edit`、`plan`、`yolo` 或 `guarded`，含义由原生 ZCode 决定。会桥不代批权限请求；需要交互确认的调用可能保持受阻。仅在你明确接受原生工具可直接执行的专用环境中选择 `yolo`。时间到或 Ctrl-C 会关闭本次专用执行者；不会终止其他应用或进程。
 
+如果无交互宿主在登记时收到原生权限请求，会立即报告
+`native_permission_required` 并关闭本次执行者，而不是等待通用注册超时。
+先按实际原生批准路径修复；只有已获明确授权时才对该独立限时 worker
+选择 `yolo`，不修改全局配置、工作会话或未来默认权限。`yolo` 不提供
+单文件隔离。故障时不改走 CUA 或另一条消息路线。
+
 ```bash
 session-bridge host --harness zcode --project /path/to/project --stdin \
   < /path/to/project/.session-bridge/zcode-start.json

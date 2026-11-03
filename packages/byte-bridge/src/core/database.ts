@@ -32,7 +32,7 @@ CREATE TABLE task_results(task_id TEXT PRIMARY KEY,sha256 TEXT NOT NULL,result_j
 CREATE TABLE task_returns(task_id TEXT PRIMARY KEY,state TEXT NOT NULL,result_sha256 TEXT NOT NULL,authority_json TEXT,message_id TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,baseline_json TEXT,verified_at TEXT,verification_json TEXT,continuation_json TEXT);
 CREATE TABLE continuation_plans(task_id TEXT PRIMARY KEY,plan_json TEXT NOT NULL);
 `, `ALTER TABLE requests ADD COLUMN delegate_journal_json TEXT;`];
-export function openStore(projectRoot:string):BridgeStore {
+export function openStore(projectRoot:string,options:{readOnly?:boolean}={}):BridgeStore {
   const root=realpathSync(projectRoot),dir=join(root,'.session-bridge');
   const info=lstatSync(dir);
   if(info.isSymbolicLink() || !info.isDirectory())throw new BridgeError('unsafe_state_dir','Invalid private state directory','Run init in a real project directory');
@@ -40,11 +40,16 @@ export function openStore(projectRoot:string):BridgeStore {
   if(config.protocol_version!==1 || !config.project_id)throw new BridgeError('invalid_project','Incompatible project config','Use the matching bridge version');
   const path=join(dir,'bridge.sqlite');
   if(existsSync(path) && (!lstatSync(path).isFile() || lstatSync(path).isSymbolicLink()))throw new BridgeError('unsafe_database','Database must be a regular private file','Remove the unsafe link after preserving your data');
-  const db=new DatabaseSync(path);
+  if(options.readOnly && !existsSync(path))throw new BridgeError('database_missing','Bridge database is not initialized','Run authorized setup for this project; preflight never creates state',3);
+  const db=new DatabaseSync(path,{readOnly:options.readOnly??false});
   try {
     db.exec('PRAGMA busy_timeout=5000');
     const version=Number(db.prepare('PRAGMA user_version').get()?.user_version);
     if(version>migrations.length)throw new BridgeError('future_schema','Database was created by a newer version','Upgrade SessionBridge; do not downgrade the database');
+    if(options.readOnly){
+      if(version<migrations.length)throw new BridgeError('schema_upgrade_required','Bridge state needs a schema upgrade','Use the matching authorized setup before connecting; preflight does not migrate state',3);
+      return {db,project_id:config.project_id,root,close:()=>db.close()};
+    }
     chmodSync(dir,0o700);chmodSync(path,0o600);
     db.exec('PRAGMA busy_timeout=5000; PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
     const store:BridgeStore={db,project_id:config.project_id,root,close:()=>db.close()};

@@ -24,6 +24,12 @@ paragraph may be enough; a comparison table may be better for several options.
 Persist notes only when the user asks or the discussion is part of a resumable
 project. Prefer a concise decision note over multiple Byte OS artifacts.
 
+When this project has enabled `.byte-os/workboard.json`, an actionable task
+discussion also updates its [task plan](../byte-plan/references/workboard.md):
+proposed solution, steps and acceptance criteria. Use the current host model;
+no extra service. Preserve unresolved choices and leave unexecuted steps pending.
+This is a saved proposal, not permission to implement or contact other agents.
+
 Apply relevant active lessons when present. If the user corrects a material
 misunderstanding, update `.byte-os/LESSONS.md` with the correction and a reusable
 prevention rule. Do not treat ordinary clarification as a mistake or store

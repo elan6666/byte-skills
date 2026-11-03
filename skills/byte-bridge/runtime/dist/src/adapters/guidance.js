@@ -1,0 +1,18 @@
+import { BridgeError } from '../protocol/errors.js';
+/** Connection instructions, not a probe or a certificate of native execution. */
+const routes = {
+    codex: { attached: 'original_chat_native_queue', managed: null, activation: 'Run connect --harness codex from this original Codex chat, then context.', tool: 'Bridge CLI from the original native chat; shared MCP alone is not source proof.', limit: 'Exact supported desktop version; unloaded or archived chats have no guaranteed wake.' },
+    claude: { attached: 'native_plugin_inbox', managed: null, activation: 'Load the installed Claude Code plugin in the selected original CLI session; use its native reload when authorized.', tool: 'Native SessionBridge MCP tools and plugin lifecycle; keep Claude tool permissions.', limit: 'Installing .mcp.json alone does not activate the plugin or certify another Claude surface.' },
+    opencode: { attached: 'native_tool_pull', managed: 'acp', activation: 'Load the project .opencode/plugins/sessionbridge.js in the selected native session, or explicitly start host --harness opencode with an isolated configured profile.', tool: 'sessionbridge_request({method,params}); original sessions actively call sessionbridge_wait with a bounded timeout.', limit: 'No arbitrary idle-chat wake; one session per managed ACP process; no load/resume takeover.' },
+    zcode: { attached: 'native_tool_pull', managed: 'app_server', activation: 'Enable the installed project ZCode plugin and call sessionbridge_attach, or explicitly start managed host --harness zcode with an isolated configured profile and permission_mode.', tool: 'Attached: {request:{method,params},challenge?}; repeat every challenged call with the same parameters plus its actual challenge. Managed: {method,params}.', limit: 'Native tool permission is still required. Never select yolo without explicit authorization; no arbitrary idle-chat wake.' },
+    dsh: { attached: 'native_cordis_host', managed: null, activation: 'Enable the installed plugin in the selected original Cordis Host/Agent; do not replace it with another SDK session.', tool: 'sessionbridge_request({method,params}) from the original native Agent.', limit: 'Host/Web/Desktop instance boundaries need their own native evidence.' },
+    hermes: { attached: 'canonical_gateway_tui', managed: null, activation: 'Enable the installed Hermes plugin in the selected profile and use the supported canonical gateway TUI.', tool: 'sessionbridge_request({command,payload}); report with command=report and actual artifact_paths.', limit: 'Ordinary busy CLI and arbitrary desktop GUI attachment are not supported routes.' },
+    pi: { attached: 'native_extension_followup', managed: null, activation: 'Load the installed Pi extension in the selected CLI; use native reload only when authorized.', tool: 'sessionbridge_request({method,params}) from the native extension.', limit: 'Switching or reloading the session invalidates the old binding; no interruption takeover.' },
+    kimi: { attached: null, managed: 'acp', activation: 'Explicitly start managed ACP host --harness kimi with one isolated, already-configured native profile.', tool: 'Managed native sessionbridge_request({method,params}).', limit: 'Existing TUI attachment is unsupported; one session per ACP process; no load/resume takeover.' },
+};
+export function harnessGuidance(harness) {
+    if (!Object.hasOwn(routes, harness))
+        throw new BridgeError('unsupported_harness', 'No Bridge route for ' + harness, 'Choose codex, claude, opencode, zcode, dsh, hermes, pi or kimi', 4);
+    return routes[harness];
+}
+//# sourceMappingURL=guidance.js.map

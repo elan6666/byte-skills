@@ -7,6 +7,26 @@ description: Use when the user asks existing agent conversations to cooperate, a
 
 保留用户正在使用的会话，由当前宿主模型理解自然语言，再调用会桥的结构化接口。原会话身份以实际连接证明为准。
 
+## 只通过 Byte Bridge 协作
+
+跨会话的接入、角色、派发、监督、回报与恢复只走 Bridge 原生适配器。
+受阻时不得改用 CUA、键盘输入、剪贴板、直接 Codex 跨聊天消息或另一个
+消息渠道。插件/MCP/原生队列属于 Bridge 的内部接入；执行任务时的普通
+文件、测试、终端工具不受这个消息路线约束。
+
+首次接入或修复连接时，按 [统一接入流程](references/bridge-only.md)
+运行 `session-bridge preflight --harness 当前宿主 --with 目标宿主 --project
+/项目绝对路径 --json`，只检查用户选定的宿主。命令只读、不迁移数据库、
+不启动服务或模型、不证明执行。exit 0 表示检查完成，仍须看 state。
+setup 返回 needs_activation/exit 3 可能已经完成安装和有界服务启动，
+此时按实际缺项继续原生激活，不重复启动或假称整个 setup 失败。
+
+权限由各宿主保持。Zcode 的 edit 模式可能无法在无交互 App Server
+确认 MCP 工具，host 会报 native_permission_required 并关闭本次进程。
+先复用用户已授权的原生权限；只有明确授权了独立限时 worker 才使用 yolo，
+不把一次授权写成全局默认、其他任务权限或文件沙箱。已获同一范围的授权
+无需再问。仅有插件文件、连接记录或模型口头 READY 不算真实闭环。
+
 已有 Byte 项目先读取 references/workflow.md 的 Byte 分支：显式 byte-source bind，然后由 Byte 提交交接、byte-import 运输；不直接调用旧 helper 处理 v1。Byte 系列统一入口为 byte-bridge。
 
 首次使用，在原主会话执行 `session-bridge setup --harness codex --with zcode --project /项目绝对路径 --json`，也可先加 `--dry-run`。这会初始化项目、安装所选接入文件、启动默认一小时的有界协调服务，并尝试连接当前 Codex 来源。安装不等于所有目标已连接；按 targets_ready / connection / next_steps 在原应用激活。不会启动付费模型、创建替代会话、自动启用插件或修改模型配置。`service status|stop --project PATH` 查询／停止本工具拥有的服务；身份不明时拒绝停止。需要更长时间，显式使用 setup --stdin 的 lifetime_seconds；重复 setup 复用原服务，不延长期限。

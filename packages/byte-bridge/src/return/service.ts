@@ -65,11 +65,24 @@ export class ReturnService {
  }
  async verifyTask(actor:Actor,taskId:string,input:VerificationEvidence):Promise<TaskRecord>{
   const task=readTask(this.options.store,taskId);this.main(actor,task);const evidence=evidenceSchema.parse(input);await this.checkEvidence(actor,task,evidence);
-  if(task.state==='verified')return task;
-  this.options.store.db.prepare('UPDATE task_returns SET verification_json=? WHERE task_id=?').run(JSON.stringify({actor,evidence}),taskId);
+  // A background reconciliation may have read an older pending action before
+  // main submitted a newer receipt. Never let that stale reader replace it.
+  const selected=transaction(this.options.store,()=>{
+   if(readTask(this.options.store,taskId).state==='verified')return false;
+   const row=this.options.store.db.prepare('SELECT verification_json FROM task_returns WHERE task_id=?').get(taskId);
+   if(row?.verification_json){const prior=JSON.parse(String(row.verification_json)) as {evidence:VerificationEvidence};
+    if(prior.evidence.native_receipt.action_id!==evidence.native_receipt.action_id && Date.parse(prior.evidence.native_receipt.occurred_at)>=Date.parse(evidence.native_receipt.occurred_at))return false;
+   }
+   this.options.store.db.prepare('UPDATE task_returns SET verification_json=? WHERE task_id=?').run(JSON.stringify({actor,evidence}),taskId);return true;
+  });
+  if(!selected)return readTask(this.options.store,taskId);
   const valid=await this.options.verifyNativeAction?.(actor,evidence,'verification').catch(()=>false)??false;
-  if(!valid){appendEvent(this.options.store,'verification_pending_native_evidence',taskId,{action_id:evidence.native_receipt.action_id});return task;}
-  transaction(this.options.store,()=>{const seq=appendEvent(this.options.store,'task_verified',taskId,{result_sha256:evidence.result_sha256,native_call_id:evidence.native_receipt.native_call_id});this.options.store.db.prepare("UPDATE tasks SET state='verified',event_seq=? WHERE task_id=?").run(seq,taskId);this.options.store.db.prepare('UPDATE task_returns SET verified_at=? WHERE task_id=?').run(new Date().toISOString(),taskId);});return readTask(this.options.store,taskId);
+  if(!valid){appendEvent(this.options.store,'verification_pending_native_evidence',taskId,{action_id:evidence.native_receipt.action_id});return readTask(this.options.store,taskId);}
+  transaction(this.options.store,()=>{
+   const row=this.options.store.db.prepare('SELECT verification_json FROM task_returns WHERE task_id=?').get(taskId);
+   if(!row?.verification_json || digest((JSON.parse(String(row.verification_json)) as {evidence:VerificationEvidence}).evidence)!==digest(evidence) || readTask(this.options.store,taskId).state==='verified')return;
+   const seq=appendEvent(this.options.store,'task_verified',taskId,{result_sha256:evidence.result_sha256,native_call_id:evidence.native_receipt.native_call_id});this.options.store.db.prepare("UPDATE tasks SET state='verified',event_seq=? WHERE task_id=?").run(seq,taskId);this.options.store.db.prepare('UPDATE task_returns SET verified_at=? WHERE task_id=?').run(new Date().toISOString(),taskId);
+  });return readTask(this.options.store,taskId);
  }
  async recordMainContinuation(actor:Actor,taskId:string,input:ContinuationEvidence):Promise<void>{
   const task=readTask(this.options.store,taskId);this.main(actor,task);if(this.options.store.db.prepare('SELECT task_id FROM task_cancellations WHERE task_id=?').get(taskId))throw new BridgeError('continuation_cancelled','Future work for this task was cancelled','Create an explicitly authorized new task before continuation',3);const evidence=continuationSchema.parse(input);await this.checkEvidence(actor,task,evidence);
