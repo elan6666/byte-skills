@@ -4,7 +4,7 @@
   "canonical_repository": "https://github.com/elan6666/byte-skills",
   "origin_repository": "https://github.com/elan6666/Session-bridge",
   "origin_commit": "7d60a11efafb55f33fe6e932927921cc9a184177",
-  "source_tree_sha256": "2378f8b2a9bffb196869c2bc08bf27d1437c63c15d21142da5d92a59ff2fb671",
+  "source_tree_sha256": "eac3a76a77a4163899d8b7c7cd94451ef9f94bcfb3f566246d45e8f4c3ae328e",
   "files": {
     ".agents/plugins/marketplace.json": "838c29a25dd8197e86e63e4aeed7818c2900a912cfcb98a05f8720a2d4517e76",
     "LICENSE": "c91baea7e85bcd8e3433b03d99474130fdb055366c65defbed82ddb0da26f8cd",
@@ -91,7 +91,7 @@
     "dist/src/install/apply.js": "ec9f9c7218b1e070fb74f869b25a5af5d1425b5c04d809f51d9598dcb5f8cb7f",
     "dist/src/install/plan.js": "5224930dde38d404540b03ca5b8042accf526603ce0d335048818744bc38c120",
     "dist/src/install/remove.js": "c99e1a7c267a7c3faf8ab158e0a79caffcf7ead069e78b79a42673388ae3ab69",
-    "dist/src/mcp/server.js": "726f2735e7cec4615f6e11173c0ef748e80ab8e7bde7fabbbb3d600a258e7807",
+    "dist/src/mcp/server.js": "22accdaa5ea4873c1fc6ab54bace9a224acade6cd6cc1e0432e2add5dea0ce81",
     "dist/src/mcp/stdio.js": "d7c19842471dec2bb67b062b2f471ea796794758e520b5b2b756bf93c1022dfb",
     "dist/src/protocol/canonical.js": "efa7a2720697ad2a596dad950106cf806fff844f042318ac7593cb74666fcaa3",
     "dist/src/protocol/command-inputs.js": "abfe7400d7a936a34ae80895dd4202ffb3c0d0f388254cb310dccf9cff18a517",
