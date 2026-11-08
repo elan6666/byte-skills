@@ -48,6 +48,19 @@ node dist/src/cli/main.js preflight --harness <h> --project "$HOME/.byte-bridge"
 2. 队列项在 `~/.codex/queue_1.sqlite` 可查，pending=1；
 3. 目标对话**活跃时**会被消费并执行（有历史证据）；**未加载/忙碌时**消息滞留队列，这与 Codex 官方限制一致（`unloaded or archived chats have no guaranteed wake`），因此 `--wait` 超时属于真实行为，不是程序错误。
 
+## 二·补 插件安装（已完成，待应用侧加载）
+
+四个 harness 的原生插件已装进 hub 项目 `~/.byte-bridge`（回执可查）：
+
+| Harness | 安装状态 | 回执 |
+| --- | --- | --- |
+| claude | installed / enabled:false | `.session-bridge-install/0e71a6c5-…/receipt.json` |
+| hermes | installed / enabled:false | `.session-bridge-install/5469d77e-…/receipt.json` |
+| zcode | installed / enabled:false | `.session-bridge-install/43240f77-…/receipt.json` |
+| dsh | installed / enabled:false | `.session-bridge-install/dfdc619d-…/receipt.json` |
+
+`enabled:false` 表示文件已就位，但必须由各应用加载一次（这是 bridge 的“原生身份证明”设计，CLI 不能代替）。
+
 ## 三、尚未完成的 P3/P4
 
 1. `say` 目前只实现了 **Codex 目标**；DSH/ZCode/Hermes 目标需要各自原生插件完成绑定后，走 hub 路由（P3）。
