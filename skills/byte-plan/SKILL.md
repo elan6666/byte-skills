@@ -65,6 +65,18 @@ For the requested combined workflow, use
 closing core work, including allowed repairs and when to return to a Goal.
 Planning alone does not authorize launching jobs or enabling monitoring.
 
+
+## Durable agent roles and collaboration
+
+When the project uses agent working documents, follow the shared
+[agent collaboration contract](../byte-plan/references/agent-collaboration.md).
+On joining, resuming or receiving a task, read your explicitly assigned current
+role document and task contract. Main may create/customize these documents;
+users can edit them directly. Keep task IDs across dispatch and recovery, return
+actual evidence for main review, and continue the next authorized action after
+acceptance. Use existing workboard/Bridge/workflow state; do not require agent
+files for ordinary work or claim universal app hooks or native permissions.
+
 ## Source And Updates
 
 Canonical repository: [elan6666/byte-skills](https://github.com/elan6666/byte-skills). Use its current `main` branch when checking for or installing updates.

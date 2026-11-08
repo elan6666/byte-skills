@@ -68,3 +68,9 @@ step; don't maintain a second, contradictory execution authority.
 
 No tracked file is automatically published. Keep secrets and raw transcripts
 out of task descriptions and evidence references.
+
+
+For optional durable agent documents, exact native bindings, task inputs/outputs,
+dependencies, immutable handoff references and report-to-review behavior, use
+[the agent collaboration contract](agent-collaboration.md). These extend the
+existing board without changing schema-1 defaults or execution authority.

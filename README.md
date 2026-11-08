@@ -62,6 +62,17 @@ searches saved notes and Bridge task summaries, then opens selected details with
 their source and hash. [Use project recall](skills/byte-status/references/project-recall.md).
 [Run it, connect data sources and understand status](apps/byte-workbench/README.md).
 
+## Reusable agent working documents
+
+Give each durable agent an editable project document, assign it from the main chat
+or customize it yourself, and bind it to the actual native conversation. Reuse the
+same role across replacement chats. Task contracts carry inputs, outputs,
+dependencies and acceptance; reports return for main review before dependent work
+continues. Recovery preserves the original request/task IDs. This optional layer
+works across project types and uses the existing workboard, Bridge and workflow
+engine. It adds no scheduler, model service or universal client hook.
+[Agent documents and collaboration guide](skills/byte-plan/references/agent-collaboration.md).
+
 ## Quick start
 
 You need Git, Bash, Python 3, and a coding assistant that can load local `SKILL.md` files. The installer and Relay scripts use the Python standard library.

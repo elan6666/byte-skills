@@ -11,7 +11,7 @@
     "start": "node server.mjs",
     "demo": "node server.mjs --demo --port 4318",
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check server.mjs && node --check public/app.js && node --check public/art.js && node --check public/office-model.js && node --check public/office-game.js && node --check public/worklog.js && node --check public/mission.js && node --check public/session-navigation.js && node --check lib/history.mjs && node --check lib/workboard.mjs && node --check ../../skills/byte-status/scripts/recall.mjs && node --check ../../skills/byte-plan/scripts/workboard.mjs"
+    "check": "node --check server.mjs && node --check public/app.js && node --check public/art.js && node --check public/office-model.js && node --check public/office-game.js && node --check public/worklog.js && node --check public/mission.js && node --check public/session-navigation.js && node --check lib/history.mjs && node --check lib/workboard.mjs && node --check ../../skills/byte-status/scripts/recall.mjs && node --check ../../skills/byte-plan/scripts/workboard.mjs && node --check ../../skills/byte-plan/scripts/agents.mjs && node --check ../../skills/byte-plan/scripts/collaboration.mjs"
   },
   "license": "MIT"
 }
