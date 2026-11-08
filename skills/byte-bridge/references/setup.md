@@ -61,7 +61,11 @@ python3 scripts/bridge.py exec sessions --query supervisor --project /absolute/p
 ```
 
 Run the supervisor's own `connect --alias supervisor` inside that original chat.
-Do not run both commands in one chat pretending to be two sources. Native cwd,
+When main is authorized to coordinate the selected peer, it sends a native
+enrollment request so that peer performs this step itself. Do not require the
+user to switch chats merely to relay that request. Wait for and inspect the
+actual peer binding before assigning work. Do not run both commands in one
+chat pretending to be two sources. Native cwd,
 project, host, profile, session and generation must agree. Setup starts one
 bounded service after authorization; its default one-hour lifetime is not enough
 for every long experiment. Inspect setup's actual schema for an explicitly

@@ -44,10 +44,15 @@ Preserve the returned IDs and inspect the missing step; do not rerun blindly.
 | Pi | Native extension and followUp | Explicitly selected isolated native CLI/profile | `{method,params}` |
 | Kimi | Existing TUI attachment unsupported | `host --harness kimi`, isolated ACP profile | `{method,params}` |
 
-Installation does not activate a running app. Native plugin activation is part
-of Bridge enrollment, not permission to type into a GUI or send an alternate
-chat message. If the app cannot load the connector through an available native
-route, give the precise native enable/reload step to the user. Do not restart a
+Installation does not activate a running app. If the user selected existing
+chats and authorized main to coordinate them, main should use an available
+native platform message to ask the exact peer to run its own connection and
+context checks. Reuse a pending activation request instead of sending another.
+Main reads back the actual binding; a sent message alone proves no enrollment.
+This is an enrollment-only bootstrap, not an alternate route for task dispatch
+or results. No identity or credentials are copied from another chat. Only give
+the user a manual enable/reload step when no supported native route can perform
+it. Do not restart a
 working session, copy another profile's credentials, purchase model access or
 silently replace an existing chat with a new worker.
 

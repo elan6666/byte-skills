@@ -13,11 +13,17 @@ permissions, or make its own model API calls.
 
 ## Bridge-only cooperation
 
-All cross-chat coordination uses this Bridge: connect, select roles, delegate,
-supervise, report, return and reconcile. Never substitute CUA, typing, clipboard,
-direct Codex chat messaging, another messenger or a second delivery queue when
-Bridge is blocked. The app-specific native plugin/MCP/queue is part of Bridge;
-ordinary task tools such as file editing and tests remain available.
+Use this Bridge for role assignment, task delegation, supervision, result return
+and reconciliation. When the user wants main to coordinate selected existing
+chats end to end, main also handles their enrollment and reconnection. A native
+platform message to the exact selected peer may request that peer's own
+`connect` and `context`; the user need not switch chats or relay instructions.
+This enrollment-only bootstrap is not a second task queue or a business-result
+route. The peer establishes its own native identity; main checks the resulting
+binding before dispatch. Do not fill another chat's identity or assume that a
+sent activation request connected it. Once connected, use Bridge for the work.
+Never substitute CUA, typing, clipboard or another delivery queue for uncertain
+Bridge tasks. Ordinary local editing and tests remain available.
 
 For a new pair or a connection failure, read the
 [Bridge-only connection procedure](references/bridge-only.md). Inspect only the
