@@ -5,6 +5,23 @@ description: Connect agent chats, assign main and supervisor roles, delegate sco
 
 # Byte Bridge
 
+## 快速模式（默认先走这里）
+
+绝大多数“让某个对话做件事”只需要一句话，不需要 setup / 角色 / 验收字段：
+
+```bash
+byte-bridge say "<会话名或 id>" "任务内容" --wait   # 投递并等待回复
+byte-bridge ls                                    # 列出可投递对话
+byte-bridge tail "<会话名或 id>" 3                 # 查看最近回复
+byte-bridge stop                                  # 停止本机 hub
+```
+
+实现：单机常驻 hub（默认 ~/.byte-bridge，可用 BYTE_BRIDGE_HOME 覆盖）；项目只是标签，不再阻断跨目录协作。
+来源侧原生身份证明、投递去重与审计仍然保留；下面的 delegate / supervise / return 是进阶模式，仅在需要验收、监督或结果回收时使用。
+
+## 进阶模式
+
+
 Use Byte Bridge as Byte's cross-chat collaboration layer. Understand the
 natural-language request in the current agent, then call its structured CLI or
 native tools. The bridge connects selected existing sessions or explicitly

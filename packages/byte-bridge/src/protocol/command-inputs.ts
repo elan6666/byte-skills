@@ -100,7 +100,7 @@ export const sourceToolSchema=withVariants(z.strictObject({
  params:z.record(z.string(),z.unknown()).default({})
 }),sourceToolVariants);
 
-export const setupInputSchema=z.strictObject({lifetime_seconds:z.number().int().min(1).max(86400).default(3600)});
+export const setupInputSchema=z.strictObject({lifetime_seconds:z.number().int().min(0).max(86400).default(0)});
 export const zcodeAttachInputSchema=z.strictObject({challenge:z.string().uuid().optional(),alias:z.string().min(1).max(128).default('zcode-attached'),lifetime_seconds:z.number().int().min(1).max(3600).default(900)});
 export const zcodeWaitInputSchema=z.strictObject({challenge:z.string().uuid().optional(),timeout_seconds:z.number().int().min(1).max(60).default(30)});
 export const zcodeAttachedRequestInputSchema=z.strictObject({challenge:z.string().uuid().optional(),request:sourceToolSchema});

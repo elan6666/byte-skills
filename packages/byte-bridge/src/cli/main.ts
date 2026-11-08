@@ -30,7 +30,14 @@ import {pinByteSource} from '../workflows/byte-source.js';
 import {byteDoctor,byteImportRequest} from './byte.js';
 import { interactiveWizard } from './wizard.js';
 import {collaborationPreflight} from './preflight.js';
-const help=`会桥 / SessionBridge
+import {quickCommand,stopHub} from './quick.js';
+const help=`会桥 / SessionBridge —— 快速模式（推荐）
+  say <目标> \"消息\" [--wait=秒] [--json]  直接投递一句话并等待回复（零配置，hub 常驻）
+  ls [关键词] [--json]                列出可投递的对话（Codex 线程 + 已连接会话）
+  tail <目标> [N]                     查看该对话最近 N 条回复
+  stop                                停止本机 hub（等价 service stop）
+
+进阶 / 兼容模式
   setup --harness codex --with zcode --project PATH  初始化、安装、启动有界服务并连接当前原会话
   service status|stop --project PATH   查看/关闭本工具拥有的服务
   init --project PATH                  初始化选定目录
@@ -62,7 +69,9 @@ export async function runCli(argv:string[],io:CliIO):Promise<number>{
   checkRuntime(process.version);const [command,...args]=argv;
   if(!command){if(io.isTTY)return interactiveWizard(process.cwd());io.stdout(help+'非交互环境需要明确命令。\n');return 4;}
   if(command==='--help' || command==='help'){io.stdout(help);return 0;}
-  const supported=['init','sessions','context','connect','daemon','request','delegate','supervise','return','recover','cancel','status','report','acknowledge','action','run','mcp','wizard','install','uninstall','doctor','host','describe','byte-source','byte-doctor','byte-import','setup','service','preflight'];
+  if(command==='say'||command==='ls'||command==='tail')return quickCommand(command,args,io);
+  if(command==='stop')return stopHub(io);
+  const supported=['say','ls','tail','stop','init','sessions','context','connect','daemon','request','delegate','supervise','return','recover','cancel','status','report','acknowledge','action','run','mcp','wizard','install','uninstall','doctor','host','describe','byte-source','byte-doctor','byte-import','setup','service','preflight'];
   if(!supported.includes(command))throw new BridgeError('invalid_command','未知命令','运行 session-bridge --help',2);
   let root=process.env.SESSIONBRIDGE_PROJECT??process.cwd(),dryRun=false,query='',harness:string|undefined,profile:string|undefined,alias='codex',scope='project',receipt:string|undefined,actionId:string|undefined,taskId:string|undefined,withHarnesses:string[]=[];
   for(let i=0;i<args.length;i++){

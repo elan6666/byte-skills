@@ -2,6 +2,6 @@
     - id: sessionbridge
       name: sessionbridge-dsh
       config:
-        sessions: []
+        sessions: auto
     - id: sessionbridge-command
       name: sessionbridge-dsh/commands
