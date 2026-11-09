@@ -30,8 +30,9 @@ export async function originalCodexOwner(binary=DESKTOP_CODEX){
 }
 export async function connectCodex(root:string,alias:string){
  const thread=process.env.CODEX_THREAD_ID;if(!thread)throw new BridgeError('native_source_required','当前进程没有原生聊天身份','请在 Codex 会话中运行 connect',3);
- const projectRoot=realpathSync(root),nativeCwd=realpathSync(process.cwd()),rel=relative(nativeCwd,projectRoot);
- if(isAbsolute(rel) || rel==='..' || rel.startsWith('../'))throw new BridgeError('native_project_mismatch','选定项目不在原会话目录范围内','显式选择本会话下的工作目录',3);
+ // Single-machine hub: the target store may live outside the chat's cwd. The native
+ // owner proof below still binds the exact desktop process and thread.
+ const projectRoot=realpathSync(root),nativeCwd=realpathSync(process.cwd());
  const desktopBinary=DESKTOP_CODEX,codexHome=realpathSync(process.env.CODEX_HOME??join(homedir(),'.codex')),owner=await originalCodexOwner(desktopBinary),version=await validateSupportedCodexBinary(desktopBinary),store=openStore(projectRoot);
  try{
   const identity={harness:'codex',host_id:hostname(),profile_id:digest(codexHome),native_session_id:thread,project_id:store.project_id,runtime_generation:digest({owner,version:version.sha256,thread,profile:codexHome})};

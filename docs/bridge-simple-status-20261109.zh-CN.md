@@ -79,3 +79,15 @@ node dist/src/cli/main.js preflight --harness <h> --project "$HOME/.byte-bridge"
 node dist/src/cli/main.js ls
 node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
 ```
+
+## 真实案例 1：DSH ↔ Codex 完整往返（2026-11-09 14:00，已通过）
+
+1. **用 Computer Use 在 Codex 桌面新建测试会话**：点击「新聊天」，发送指令让它执行连接脚本；会话 id `01a1bedf-abf9-72f2-be7f-65773cb2fa83`。
+2. **Codex 会话内 connect 成功**：`{"state":"connected","binding_id":"e4ae9a1d-…","alias":"codex-main"}`，hub 中出现第二个 binding。
+3. **DSH 会话作为 source 发起 delegate**（ticket `61c3fc21-156c-4962-bd0f-01b3f17caf77`）：目标 `codex-main`，goal 要求回复 `DSH-TO-CODEX-OK`。
+4. **投递回执**：`transport_confirmed`，`native_receipt=01a1bee3-886d-7230-9f98-746fd1eba3c3`（Codex 原生队列）。
+5. **Codex 执行并回复**：`DSH-TO-CODEX-OK`，同时通过 Bridge 回传结果。
+6. **结果回收**：`state=result_reported`，summary `DSH-TO-CODEX-OK`；return `return_delivered`，native receipt `dsh-native-inbox:00aaff36-…` 送达 DSH 收件箱。
+7. **截图证据**：docs/assets/bridge-dsh-to-codex-20261109.webp
+
+配套改动：`src/adapters/codex/connect.ts` 允许把会话连接进 cwd 之外的 hub store（单机 hub 需要），原生 owner/thread 证明保留。
