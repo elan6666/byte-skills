@@ -91,3 +91,23 @@ node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
 7. **截图证据**：docs/assets/bridge-dsh-to-codex-20261109.webp
 
 配套改动：`src/adapters/codex/connect.ts` 允许把会话连接进 cwd 之外的 hub store（单机 hub 需要），原生 owner/thread 证明保留。
+
+## 真实案例 2：Codex → Hermes 完整往返（2026-11-09 14:53，已通过）
+
+1. Hermes 插件启用：`hermes plugins enable sessionbridge`（此前只是安装、未启用，所以 `/sessionbridge-connect` 在输入框无匹配）。
+2. 修复与 Hermes 22.0.3 的兼容问题：`LiveSession` 没有 `superseded` 属性，改为 `getattr(live,'superseded',False)`（仓库源文件与已安装插件同步修复）。
+3. 授权网关注入：`~/.hermes/config.yaml` → `plugins.entries.sessionbridge.allow_gateway_injection: true`，否则 connect 返回“原生插件消息注入未获许可”。
+4. Hermes 会话工作目录为 `/Users/elan`，在该目录 `session-bridge init` 并启动常驻 hub 服务（pid 82180，不过期）。
+5. Hermes 内执行 `/sessionbridge-connect` → 绑定 `hermes-desktop`（`agent:main:local:dm:local-76e2…`）。
+6. Codex 会话在同一项目 connect 为 `codex-main2`（`project_id=b517d2e3-…`）。
+7. Codex 通过桥 `delegate` → task `cf9ce064-…`；Hermes 会话**实际收到注入消息**并回复 **`CODEX-TO-HERMES-OK`**。
+8. 截图证据：docs/assets/bridge-codex-to-hermes-20261109.webp
+
+说明：deliveries 记录为 `uncertain`（Hermes 推注入不回 ack），但 Hermes 会话中可见外部 Agent 数据消息并已按任务回复，属于“投递已达成、回执缺失”，需按 Bridge 规则对账，不重发。
+
+## 其余两个 harness 的阻塞（截至本轮）
+
+| Harness | 状态 | 具体阻塞 |
+| --- | --- | --- |
+| ZCode | 未完成 | `zcode` CLI 报 “无法定位 CLI ZCode Built-in Provider Config”（`/Applications/ZCode.app/...` 与 `/config/provider/zcode-builtin.json`）；managed host 同样 warmup 失败；attached 需要 ZCode 项目加载 MCP 插件（配置已写入 `/Users/elan/.zcode/config.json`，但 CLI 环境先失败） |
+| Claude Code | 未完成 | 原生 hook 要求 `owner`（可执行文件为 claude 的父进程）与 `startup_token`；从普通 shell/DSH 启动的 `claude` 父进程是 node，无法满足 owner 证明；`host --harness claude` 明确不支持 → 需要代码层新增 Claude 托管通道 |

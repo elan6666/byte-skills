@@ -24,7 +24,7 @@ def gateway_session(ctx, session_key):
     authority=authority_for_home(gateway[0],manager.home_path)
     if authority is None:return None
     for live in authority.sessions.values():
-        if live.route!=session_key or live.superseded or live.history_mount or live.source.platform.value!='local':continue
+        if live.route!=session_key or getattr(live,'superseded',False) or getattr(live,'history_mount',None) or live.source.platform.value!='local':continue
         policy=policy_for_source(gateway[0],live.source)
         if policy and policy.platform in ('tui','desktop'):return gateway,live,policy
     return None
