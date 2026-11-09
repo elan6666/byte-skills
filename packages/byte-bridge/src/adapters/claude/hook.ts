@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { pathToFileURL,fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { readFileSync,realpathSync,writeFileSync } from 'node:fs';
+import { existsSync,readFileSync,realpathSync,writeFileSync } from 'node:fs';
 import { privateDirectory } from '../../core/private-paths.js';
 import { openStore,transaction } from '../../core/database.js';
 import { BindingService,issueEnrollment } from '../../core/bindings.js';
@@ -17,7 +17,22 @@ import { assertClaudeStartup,endClaudeStartup,reserveClaudeStartup,withClaudeSta
 import { requireMinimumVersion } from '../version-policy.js';
 function diagnostic(input:NativeHookInput,state:string,reason:string){try{const root=realpathSync(input.cwd),dir=privateDirectory(root,['.session-bridge','native-diagnostics']);writeFileSync(join(dir,'claude-'+digest(input.session_id)+'.json'),JSON.stringify({state,reason,session_id_sha256:digest(input.session_id),at:new Date().toISOString()}),{mode:0o600});}catch{/* Diagnostics never change native execution. */}}
 interface NativeHookInput {session_id:string;transcript_path:string;cwd:string;hook_event_name:string;owner?:NativeProcessOwner;startup_token?:string}
-async function nativeOwner():Promise<NativeProcessOwner>{let pid=process.ppid;for(let i=0;i<12 && pid>1;i++){const owner=await readCodexOwner(pid);if(/(?:claude|claude\.exe)$/.test(owner.executable))return owner;pid=Number(execFileSync('ps',['-p',String(pid),'-o','ppid='],{encoding:'utf8',timeout:3000}).trim());}throw new Error('Original Claude owner is unavailable');}
+async function nativeOwner():Promise<NativeProcessOwner>{
+ let pid=process.ppid;
+ for(let i=0;i<12 && pid>1;i++){
+  const owner=await readCodexOwner(pid);
+  if(/(?:claude|claude\.exe)$/.test(owner.executable))return owner;
+  // npm/standalone installs run the Claude CLI through node; the parent comm is
+  // "node" while its command line still names the original claude entrypoint.
+  try{
+   const command=execFileSync('ps',['-p',String(pid),'-o','command='],{encoding:'utf8',timeout:3000}).trim();
+   const shim=command.split(/\s+/).find(token=>/(?:^|\/)claude(?:\.js|\.cjs)?$/.test(token) && existsSync(token.replace(/^['"]|['"]$/g,'')));
+   if(shim)return {...owner,executable:shim.replace(/^['"]|['"]$/g,'')};
+  }catch{/* fall through to the next ancestor */}
+  pid=Number(execFileSync('ps',['-p',String(pid),'-o','ppid='],{encoding:'utf8',timeout:3000}).trim());
+ }
+ throw new Error('Original Claude owner is unavailable');
+}
 async function child(input:NativeHookInput):Promise<void>{
  const root=realpathSync(input.cwd),store=openStore(root),socket=process.env.CLAUDE_CODE_MESSAGING_SOCKET;
  if(!socket || !input.owner || !input.startup_token){store.close();throw new Error('Native inbox, owner or startup unavailable');}

@@ -111,3 +111,16 @@ node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
 | --- | --- | --- |
 | ZCode | 未完成 | `zcode` CLI 报 “无法定位 CLI ZCode Built-in Provider Config”（`/Applications/ZCode.app/...` 与 `/config/provider/zcode-builtin.json`）；managed host 同样 warmup 失败；attached 需要 ZCode 项目加载 MCP 插件（配置已写入 `/Users/elan/.zcode/config.json`，但 CLI 环境先失败） |
 | Claude Code | 未完成 | 原生 hook 要求 `owner`（可执行文件为 claude 的父进程）与 `startup_token`；从普通 shell/DSH 启动的 `claude` 父进程是 node，无法满足 owner 证明；`host --harness claude` 明确不支持 → 需要代码层新增 Claude 托管通道 |
+
+## 2026-11-09 15:55 追加：ZCode 修复与 Claude owner 修复
+
+### ZCode（CLI 已修好，接入仍差一步）
+- 根因：`zcode` CLI（0.17.1，App 内 `Resources/glm/zcode.cjs`）只认 `Resources/glm/provider/zcode-builtin.json`，而 App 3.17.2 实际提供 `Resources/config/provider/zcode-builtin.json`。
+- 修复：创建兼容软链 `Resources/glm/provider/zcode-builtin.json -> ../../config/provider/zcode-builtin.json`。
+- 401 修复：`zcode login bigmodel`（浏览器会话已授权，自动完成，凭据写入 `~/.zcode/v2/credentials.json`）；此后 `zcode -p` 可正常返回。
+- 仍未完成：managed host 仍 `zcode_warmup_failed`；attached 路线 `zcode -p` 会话中未出现 `sessionbridge_*` 工具（插件目录已安装并写入 `.zcode/config.json`，但 CLI 会话未加载）。
+
+### Claude Code（owner 检测已修，仍差登录/子会话就绪）
+- 修复：`src/adapters/claude/hook.ts` 的 `nativeOwner()` 增加 node 启动 claude 的父进程识别（按命令行找 claude 入口，不再只认 comm 为 claude）。
+- 现状：hook 可执行并进入 `native_child_not_ready` 分支；Claude 会话报 `Not logged in · Please run /login`，子 helper 未在 5s 内登记绑定。
+- 待办：Claude 登录态恢复 + 子 helper 就绪诊断（或改为托管通道）。
