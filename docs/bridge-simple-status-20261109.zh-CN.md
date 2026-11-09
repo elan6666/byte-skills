@@ -124,3 +124,13 @@ node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
 - 修复：`src/adapters/claude/hook.ts` 的 `nativeOwner()` 增加 node 启动 claude 的父进程识别（按命令行找 claude 入口，不再只认 comm 为 claude）。
 - 现状：hook 可执行并进入 `native_child_not_ready` 分支；Claude 会话报 `Not logged in · Please run /login`，子 helper 未在 5s 内登记绑定。
 - 待办：Claude 登录态恢复 + 子 helper 就绪诊断（或改为托管通道）。
+
+## 2026-11-09 20:50 追加：Claude Code 改用 GLM API
+
+- 按用户要求，Claude Code 不再依赖 Anthropic 登录，改走 GLM Coding Plan 的 Anthropic 兼容端点。
+- 配置写入 `/Users/elan/.claude/settings.json`（0600，密钥仅本地，不入库）：
+  - `ANTHROPIC_BASE_URL=https://open.bigmodel.cn/api/anthropic`
+  - `ANTHROPIC_AUTH_TOKEN=…`（来自 `~/.config/glm/api.key`）
+  - `ANTHROPIC_MODEL=glm-5.3-flash`
+- 验证：`claude -p "只回复 ok" --brief` → 返回 **ok**（此前是 `Not logged in`）。
+- 桥接仍差最后一步：hook 能执行并进入 `native_child_not_ready`（SessionStart 子 helper 未在 UserPromptSubmit 的 5 秒内登记绑定），需继续修 Claude child 初始化；与模型认证无关。
