@@ -151,3 +151,13 @@ node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
 - 通过 ZCode 桌面 “打开文件夹” 已成功打开 `/Users/elan` 项目（workspace = elan）。
 - ZCode Agent 能加载 bridge 的 **skills**，但 `sessionbridge_attach/wait` 仍不在工具列表；应用对项目级 MCP 插件的加载需要重启 ZCode 或额外的插件注册步骤。
 - CLI 侧：`zcode -p` 已可用（provider 软链 + login 修复）。
+
+## 2026-11-10 11:55 追加：ZCode 插件清单修复
+
+- 发现仓库 `plugins/zcode` 缺少 `.zcode-plugin/plugin.json`（MCP 服务器清单），这解释了为什么 ZCode 只能加载 skills、看不到 `sessionbridge_attach/wait` 工具。
+- 已补回清单（内容取自历史可用项目）：
+  ```json
+  {"name":"sessionbridge","version":"0.1.0","mcpServers":{"sessionbridge":{"command":"node","args":["${ZCODE_PLUGIN_ROOT}/scripts/mcp.mjs"],"env":{"SESSIONBRIDGE_PROJECT":"${ZCODE_PROJECT_DIR}"}}}}
+  ```
+- 已同步到已安装目录，并在 ZCode 中新建专用项目 `zcode-bridge-test`（含 bridge init + 插件 + `.zcode/config.json`）。
+- 结果：ZCode 会话仍只能看到 skills，MCP 工具未注入——需要重启 ZCode 应用（或其插件热加载入口）才能让项目 MCP 生效；当前 ZCode 里有一个正在等待确认的交易任务，未擅自重启。
