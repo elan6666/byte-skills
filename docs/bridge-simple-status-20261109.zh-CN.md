@@ -134,3 +134,20 @@ node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
   - `ANTHROPIC_MODEL=glm-5.3-flash`
 - 验证：`claude -p "只回复 ok" --brief` → 返回 **ok**（此前是 `Not logged in`）。
 - 桥接仍差最后一步：hook 能执行并进入 `native_child_not_ready`（SessionStart 子 helper 未在 UserPromptSubmit 的 5 秒内登记绑定），需继续修 Claude child 初始化；与模型认证无关。
+
+## 2026-11-10 11:40 追加：Claude 真实往返打通；ZCode 项目已打开
+
+### Claude Code（完成，真实往返）
+修复链：
+1. `nativeOwner()` 支持 node 启动的 claude：按父进程命令行 + PATH 解析出 claude 入口（此前 comm=node 直接抛错）。
+2. `child-helper` 等待 transcript 的时间从 5s 提升到 60s（SessionStart 时 transcript 尚未创建）。
+3. Claude 设置 `crossSessionInbound: "accept"`（默认按权限模式“拒绝/挂起”对端消息；无 mode 声明时 `no-mode-asserted` 挂起）。
+4. Claude 走 GLM API（`~/.claude/settings.json` env，密钥不入库）。
+
+实测：Codex 会话 → `delegate` → task `e33d0c4c-…` → Claude 会话通过 messaging socket 收到消息并回复 **`CODEX-TO-CLAUDE-OK`**（claude-out4.log 中 `"result":"CODEX-TO-CLAUDE-OK"`）。
+
+### ZCode（CLI 修复 + 桌面项目已打开，MCP 工具仍差一步）
+- 已创建测试项目 `/Users/elan/zcode-bridge-test`（bridge init + zcode 插件安装 + `.zcode/config.json`）。
+- 通过 ZCode 桌面 “打开文件夹” 已成功打开 `/Users/elan` 项目（workspace = elan）。
+- ZCode Agent 能加载 bridge 的 **skills**，但 `sessionbridge_attach/wait` 仍不在工具列表；应用对项目级 MCP 插件的加载需要重启 ZCode 或额外的插件注册步骤。
+- CLI 侧：`zcode -p` 已可用（provider 软链 + login 修复）。

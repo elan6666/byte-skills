@@ -36,7 +36,7 @@ export async function startClaudeChild(context:EnrollmentContext,options?:Claude
  if(id.harness!=='claude' || id.native_session_id!==host.session_id || id.profile_id!==host.profile_id || id.runtime_generation!==host.runtime_generation || realpathSync(host.cwd)!==root || Date.parse(context.native_proof.expires_at)<=Date.now())throw new Error('Native host identity mismatch');
  const nativeInfo=lstatSync(nativeSocket);
  // SessionStart precedes the native transcript's first write. Wait for that writer; never create its file.
- const transcriptDeadline=Date.now()+5000;let transcriptInfo:Awaited<ReturnType<typeof lstat>>;
+ const transcriptDeadline=Date.now()+60000;let transcriptInfo:Awaited<ReturnType<typeof lstat>>;
  for(;;){try{transcriptInfo=await lstat(host.transcript_path);break;}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT' || Date.now()>=transcriptDeadline)throw error;await delay(25);}}
  if(!nativeInfo.isSocket() || nativeInfo.isSymbolicLink() || !transcriptInfo.isFile() || transcriptInfo.isSymbolicLink())throw new Error('Native inbox and transcript must be original files');
  const store=openStore(root),bindings=new BindingService(store);
