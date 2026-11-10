@@ -161,3 +161,26 @@ node dist/src/cli/main.js say <各 harness 目标> "测试" --wait=120
   ```
 - 已同步到已安装目录，并在 ZCode 中新建专用项目 `zcode-bridge-test`（含 bridge init + 插件 + `.zcode/config.json`）。
 - 结果：ZCode 会话仍只能看到 skills，MCP 工具未注入——需要重启 ZCode 应用（或其插件热加载入口）才能让项目 MCP 生效；当前 ZCode 里有一个正在等待确认的交易任务，未擅自重启。
+
+## 2026-11-10 12:40 追加：Codex → ZCode 真实往返打通
+
+关键突破：ZCode 3.17.2 的项目级 `.zcode/config.json plugins.dirs` 没有生效；改为在 ZCode 设置 → **MCP 服务器 → 新建** 手动添加：
+
+- 名称：`sessionbridge`
+- 类型：stdio
+- 命令：`node`
+- 参数：`/Users/elan/zcode-bridge-test/.session-bridge-plugins/zcode/scripts/mcp.mjs`
+- 环境变量：`SESSIONBRIDGE_PROJECT=/Users/elan/zcode-bridge-test`（写入 `~/.zcode/cli/config.json` 的 `mcp.servers.sessionbridge.env`）
+
+重启 ZCode 后，ZCode 会话里出现 `sessionbridge_attach / wait` 工具。随后：
+
+1. ZCode 会话调用 `sessionbridge_attach`（challenge 二次确认）→ 绑定 `zcode-worker`；
+2. 调用 `sessionbridge_wait`（tool schema 上限 timeout_seconds=60）；
+3. Codex 侧（`codex-main4`，同一项目 store）`delegate` task `9583a02f-ac8e-4b0b-9d37-757e30e9acb7`；
+4. 投递回执 `transport_confirmed`，native receipt `zcode-native-inbox:841cd229-…`；
+5. ZCode 领取任务、执行，`report_result` 返回 `result_reported`，summary 含 **CODEX-TO-ZCODE-OK**；
+6. `auto_return.transport_confirmed`，回传到 Codex 主会话，native receipt `01a1c3c0-…`。
+
+截图证据：docs/assets/bridge-codex-to-zcode-20261110.webp
+
+附带修复：ZCode App 因此前 bundle 软链破坏签名无法启动，已用官方 3.17.2 dmg 重新安装（`/Applications/ZCode.app`，签名校验通过），并清理了 updater 的 pending 缓存。
