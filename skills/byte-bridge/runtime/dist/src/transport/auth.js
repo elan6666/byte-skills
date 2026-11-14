@@ -5,6 +5,7 @@ import { nonempty, requestOperations, sessionSchema } from '../protocol/schema.j
 import { digest } from '../protocol/canonical.js';
 import { BridgeError } from '../protocol/errors.js';
 import { BindingService } from '../core/bindings.js';
+import { isOperator } from '../core/operator.js';
 import { transaction } from '../core/database.js';
 export const actorSchema = z.strictObject({ session: sessionSchema, binding_id: nonempty, scope: z.strictObject({ project_id: nonempty, task_ids: z.array(nonempty), operations: z.array(nonempty) }) });
 function denied() { throw new BridgeError('scope_denied', 'Session capability is invalid or out of scope', 'Reconnect the exact session in the intended project', 3); }
@@ -20,6 +21,12 @@ export function issueSessionCapability(store, input, clock = systemClock) {
 export function authenticate(store, token, claimed, method, params, clock = systemClock) {
     if (typeof token !== 'string' || token.length !== 64)
         denied();
+    // Local operator: the machine owner may send without an enrolled native session.
+    if (claimed && claimed.binding_id === 'operator' && isOperator(store, token, claimed)) {
+        const actor = actorSchema.parse(claimed);
+        const operations = new Set([...actor.scope.operations, 'say']);
+        return { ...actor, scope: { ...actor.scope, operations: [...operations] } };
+    }
     const row = store.db.prepare('SELECT * FROM session_capabilities WHERE capability_hash=? AND revoked=0 AND expires_at>?').get(digest(token), clock.now().toISOString());
     if (!row)
         denied();

@@ -579,11 +579,11 @@ ZCode 已打开原会话的插件工具另用 zcode.attach / zcode.wait / zcode.
 
 入口：`session-bridge setup --harness codex --with zcode --project PATH --stdin --json`
 
-输入契约摘要：`e49be21007b3c4187f4ce302a6f5404de3f6818a1b8f1777a5b69df3968e66e1`
+输入契约摘要：`348668fa2a4de259894622952cdea20540b493c3fb1c30adcbcb14c083cebbd5`
 
 | 字段 | 类型 | 必填／默认值 |
 | --- | --- | --- |
-| `lifetime_seconds` | `integer` | 可选；默认 `3600` |
+| `lifetime_seconds` | `integer` | 可选；默认 `0` |
 
 结构示例：structure-1
 

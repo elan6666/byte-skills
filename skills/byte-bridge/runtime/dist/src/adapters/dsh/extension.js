@@ -1,4 +1,5 @@
-import { hostname } from 'node:os';
+import { homedir, hostname } from 'node:os';
+import { join } from 'node:path';
 import { realpathSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { invokeSourceTool, sourceToolJsonSchema } from '../source-tool.js';
@@ -11,14 +12,29 @@ export async function installDsh(ctx, config, makeMessage) {
     const profile = ctx.get('profileContext');
     if (!profile || profile.startedBundles.some(name => /sdk|headless/.test(name)) || !profile.startedBundles.some(name => /web-app|desktop/.test(name)))
         throw new Error('Native Web/Desktop profile proof required; a new SDK is managed');
-    if (!Array.isArray(config.sessions) || new Set(config.sessions.map(s => s.session_id)).size !== config.sessions.length)
+    const auto = config.sessions === 'auto';
+    if (!auto && (!Array.isArray(config.sessions) || new Set(config.sessions.map(s => s.session_id)).size !== config.sessions.length))
         throw new Error('Configure unique original DSH sessions explicitly');
-    const selected = new Map(config.sessions.map(s => [s.session_id, { ...s, root: realpathSync(s.root), cwd: realpathSync(s.cwd ?? s.root) }]));
+    // Single-machine hub: "auto" enrolls every original agent in this host, no session list required.
+    const hubRoot = realpathSync(config.root ?? process.env.BYTE_BRIDGE_HOME ?? join(homedir(), '.byte-bridge'));
+    const { ensureHubRoot } = await import('../../core/hub.js');
+    await ensureHubRoot();
+    const selected = auto ? null : new Map(config.sessions.map(s => [s.session_id, { ...s, root: realpathSync(s.root), cwd: realpathSync(s.cwd ?? s.root) }]));
+    const pick = (agent) => {
+        if (selected) {
+            const s = selected.get(String(agent.id));
+            return s ? { root: s.root, cwd: s.cwd, alias: s.alias ?? 'dsh' } : undefined;
+        }
+        const cwd = agent.session.header.cwd;
+        if (!cwd)
+            return undefined;
+        return { root: hubRoot, cwd: realpathSync(cwd), alias: 'dsh:' + String(agent.id).slice(-6) };
+    };
     const byAgent = new Map(), pending = new Map();
     let closed = false;
     const current = (agent, cwd) => !closed && ctx.agents.get(agent.id) === agent && Boolean(agent.session.header.cwd) && realpathSync(agent.session.header.cwd) === cwd && ctx.remoteAccess.allows({ kind: 'session', id: agent.id });
     const connect = async (agent) => {
-        const s = selected.get(String(agent.id));
+        const s = pick(agent);
         if (!s || byAgent.has(agent) || !current(agent, s.cwd))
             return;
         if (pending.has(agent))
@@ -65,7 +81,7 @@ export async function installDsh(ctx, config, makeMessage) {
     const call = async (agent, raw) => {
         if (!agent)
             throw new Error('An original native Agent is required');
-        const entry = byAgent.get(agent), s = selected.get(String(agent.id));
+        const entry = byAgent.get(agent), s = pick(agent);
         if (!entry || !s || !current(agent, s.cwd))
             throw new Error('This original native Agent is not connected');
         return invokeSourceTool(entry.handle.connection_file, entry.root, raw, () => current(agent, s.cwd));
@@ -83,10 +99,12 @@ export async function installDsh(ctx, config, makeMessage) {
         byAgent.clear();
     };
     try {
-        for (const id of selected.keys()) {
-            const agent = ctx.agents.get(id);
-            if (agent)
-                await connect(agent);
+        if (selected) {
+            for (const id of selected.keys()) {
+                const agent = ctx.agents.get(id);
+                if (agent)
+                    await connect(agent);
+            }
         }
         return dispose;
     }

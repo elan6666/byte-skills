@@ -3,6 +3,8 @@ name: sessionbridge-do
 description: Use when the user asks existing agent conversations to cooperate, assigns a main or supervisor conversation, delegates work across Codex Claude dsh Hermes Pi ZCode Kimi Code OpenCode, asks for progress, or requests a result handback. 适用于跨会话协作、设置主监督角色、派任务、监督与回报。
 ---
 
+> **快速模式已并入 [byte-bridge](../byte-bridge/SKILL.md)。** 本文件仅作兼容入口：日常优先使用 byte-bridge say "<目标>" "任务" --wait；需要验收、监督、回传时再按本文的进阶流程。
+
 # 会桥：从当前会话协作
 
 保留用户正在使用的会话，由当前宿主模型理解自然语言，再调用会桥的结构化接口。原会话身份以实际连接证明为准。

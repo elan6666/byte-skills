@@ -3,6 +3,8 @@ name: session-bridge-delegate
 description: Use when the user asks a specific existing conversation to implement, review, research, or document a bounded task and return its result.
 ---
 
+> **快速模式已并入 [byte-bridge](../byte-bridge/SKILL.md)。** 本文件仅作兼容入口：日常优先使用 byte-bridge say "<目标>" "任务" --wait；需要验收、监督、回传时再按本文的进阶流程。
+
 # 派发具体任务
 
 接入和权限故障按 sessionbridge-do 的 Bridge-only 流程处理；不改走

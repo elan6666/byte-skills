@@ -3,6 +3,8 @@ name: session-bridge-supervise
 description: Use when the user explicitly requests checks for an already started run, specifies supervision timing, or changes the scope of an existing supervised task.
 ---
 
+> **快速模式已并入 [byte-bridge](../byte-bridge/SKILL.md)。** 本文件仅作兼容入口：日常优先使用 byte-bridge say "<目标>" "任务" --wait；需要验收、监督、回传时再按本文的进阶流程。
+
 # 监督已启动的运行
 
 接入、通知与回报仅通过 Bridge 原生适配器；受阻不转用 CUA 或直接聊天
