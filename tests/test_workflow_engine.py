@@ -323,6 +323,37 @@ class WorkflowEngineTests(unittest.TestCase):
         self.assertNotIn(first["wake"]["next_action"], second["prompt"])
         self.assertEqual(self.call("monitor-prompt", "--caller-session", "codex:main")[1]["prompt"], base["prompt"])
 
+    def test_user_guidance_reaches_wake_and_is_linked_to_completed_steps(self):
+        outcome = self.outcome()
+        args = ("--request-ref", "user:use-frozen-inputs", "--scope", "outcome",
+                "--summary", "Use only the frozen inputs.")
+        self.assertEqual(self.change("record-guidance", actor="codex:supervisor", extra=args)[0], 1)
+        self.assertEqual(self.change("record-guidance", revision=9, extra=args)[0], 1)
+        self.assertEqual(self.change("record-guidance", event="frozen-inputs", extra=args)[0], 0)
+        self.assertTrue(self.change("record-guidance", event="frozen-inputs", revision=0, extra=args)[1]["idempotent"])
+        iteration = ("--request-ref", "user:check-calibration", "--scope", "iteration",
+                     "--summary", "Check calibration in this round.")
+        self.assertEqual(self.change("record-guidance", event="calibration", extra=iteration)[0], 0)
+        self.assertEqual(self.outcome()["acceptance"], outcome["acceptance"])
+        self.assertEqual(self.outcome()["next_action"], outcome["next_action"])
+        idle = ("--caller-session", "codex:supervisor", "--main-status", "idle")
+        guidance = self.call("status")[1]["user_guidance"]
+        self.assertEqual(guidance, self.call("monitor-prompt", *idle)[1]["wake"]["user_guidance"])
+        self.assertEqual({item["event_id"] for item in guidance}, {"frozen-inputs", "calibration"})
+
+        proof = self.proof("step_result", {"observed": True})
+        self.assertEqual(self.change("advance", evidence=proof)[0], 0)
+        event = self.workflow()["events"][-1]
+        self.assertEqual(event["step_receipt"], hashref(proof.resolve()))
+        self.assertEqual(set(event["guidance_event_ids"]), {"frozen-inputs", "calibration"})
+        self.advance({"reviewed": True})
+        _, output, _ = self.real_trial(0)
+        self.record_short(output)
+        self.advance({"compared": True})
+        wake = self.call("monitor-prompt", *idle)[1]["wake"]
+        self.assertEqual(wake["iteration"], 2)
+        self.assertEqual([item["event_id"] for item in wake["user_guidance"]], ["frozen-inputs"])
+
     def long_wait(self, scope=None, process=None):
         self.experiment_step()
         outcome = self.outcome()

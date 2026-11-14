@@ -840,6 +840,11 @@ def current_facts(workflow, facts):
     return dict(facts, **{"workflow.iteration": workflow["iteration"], "workflow.runs": len(workflow["used_runs"])})
 
 
+def active_guidance(workflow):
+    return [item for item in workflow.get("user_guidance", {}).values()
+            if item["scope"] == "outcome" or item["iteration"] == workflow["iteration"]]
+
+
 def mutate(args):
     _, _, state_path = paths(args.project)
     with locked(state_path):
@@ -866,6 +871,7 @@ def mutate(args):
             require(state.get("owner_session") == args.session, "actor does not own the project baton")
         step = manifest["definition"]["steps"][workflow["step"]]
         execution = outcome["execution"]
+        event_details = {}
         if repairing:
             prepared = repair_expired_monitor_sources(args, root, manifest, state, outcome, workflow, state_bytes)
             preview = {"check_only": args.check_only, "outcome_id": outcome["id"],
@@ -894,6 +900,16 @@ def mutate(args):
                             before=prepared["before"], after=prepared["after"])
             state = commit_run_mirror_repair(prepared, root, workflow, request_hash, state_bytes)
             outcome, workflow = state["overall_outcome"], state["overall_outcome"]["workflow"]
+        elif command == "record-guidance":
+            require(args.session == manifest["roles"]["main"] and execution["mode"] == "active",
+                    "only active main can record user guidance")
+            summary = nonempty(args.summary, "guidance summary")
+            require(len(summary) <= 1600, "guidance summary must fit in 1600 characters")
+            guidance = {"event_id": args.event_id, "scope": args.scope, "summary": summary,
+                        "request_ref": nonempty(args.request_ref, "explicit user instruction reference"),
+                        "iteration": workflow["iteration"]}
+            workflow.setdefault("user_guidance", {})[args.scope] = guidance
+            event_details["guidance"] = guidance
         elif command == "advance":
             require(execution["mode"] == "active" and args.session == manifest["roles"][step["owner"]], "advance requires the active step owner")
             require(not workflow.get("return_pending"), "main must acknowledge substantive continuation before advancing")
@@ -911,6 +927,8 @@ def mutate(args):
             require(transition is not None, "no matching transition")
             destination = transition["to"]
             workflow["evidence"].append(ref)
+            event_details["step_receipt"] = ref
+            event_details["guidance_event_ids"] = [item["event_id"] for item in active_guidance(workflow)]
             workflow["facts"] = combined
             if destination == "done":
                 require(accepted, "done requires verified overall acceptance")
@@ -1082,7 +1100,8 @@ def mutate(args):
             raise Invalid("unsupported mutation")
         workflow["revision"] += 1
         workflow["events"].append({"id": args.event_id, "command": command, "actor": args.session,
-                                   "request_sha256": request_hash, "revision": workflow["revision"], "at": now()})
+                                   "request_sha256": request_hash, "revision": workflow["revision"],
+                                   "at": now(), **event_details})
         if repairing:
             verify_history(workflow, root)
             require(state_path.read_bytes() == state_bytes, "state changed before repair commit")
@@ -1287,7 +1306,9 @@ def monitor_prompt(root, manifest, state, outcome, workflow, caller, main_status
         "external blocker with no independent work. Read back native changes.\n\n"
         "Keep the overall objective active across short requests. Answer or finish the short request, then resume "
         "the current authorized action under the same outcome. Apply scope changes and pauses to the work the user "
-        "specified. Preserve active run and handoff identities. Use revision-checked transitions with actual "
+        "specified. For a durable instruction, update the affected project guidance and record it in the workflow "
+        "with record-guidance. Reconcile instructions that were recorded only in project docs. Read active guidance "
+        "before each step. Preserve active run and handoff identities. Use revision-checked transitions with actual "
         "evidence. Delivery and acknowledgement alone do not advance a step. Keep the heartbeat quiet when unchanged."
     )
     if caller is not None:
@@ -1307,6 +1328,8 @@ def monitor_prompt(root, manifest, state, outcome, workflow, caller, main_status
                 "step": workflow["step"], "iteration": workflow["iteration"],
                 "owner_session": state["owner_session"], "next_action": next_action,
             }
+            if guidance := active_guidance(workflow):
+                wake["user_guidance"] = guidance
             if return_pending:
                 returned = workflow["returned_run"]
                 wake["returned_run"] = {key: returned[key] for key in ("run_id", "attempt", "exit_code", "receipt")}
@@ -1365,7 +1388,7 @@ def main(argv=None):
     commands.choices["monitor-prompt"].add_argument("--main-status", choices=("active", "idle", "unknown"),
                                                     default="unknown", help="Fresh native main chat observation")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
-    for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
+    for name in ("advance", "record-guidance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
         sub = commands.add_parser(name)
         sub.add_argument("--session", required=True)
         sub.add_argument("--expect-revision", type=int, required=True)
@@ -1387,8 +1410,11 @@ def main(argv=None):
         if name == "arm-run":
             for field in ("supervisor-ack", "monitor-registration", "return-wake-receipt"):
                 sub.add_argument("--" + field, required=True, type=Path)
-        if name in ("pause", "resume"):
+        if name in ("pause", "resume", "record-guidance"):
             sub.add_argument("--request-ref", required=True)
+        if name == "record-guidance":
+            sub.add_argument("--scope", choices=("outcome", "iteration"), required=True)
+            sub.add_argument("--summary", required=True, help="Consolidated effective guidance for the scope")
         if name == "resume":
             sub.add_argument("--evidence", type=Path)
     for name, sub in commands.choices.items():
@@ -1423,6 +1449,7 @@ def main(argv=None):
                 result = {"outcome_id": outcome["id"], "status": outcome["status"], "revision": workflow["revision"],
                           "step": workflow["step"], "iteration": workflow["iteration"], "visit": workflow["visit"],
                           "owner_session": state["owner_session"], "next_action": outcome["next_action"],
+                          "user_guidance": active_guidance(workflow),
                           "return_pending": workflow.get("return_pending", False), "monitor": manifest["monitor"],
                           "acceptance": outcome["acceptance"], **history_diagnostics(workflow)}
             elif args.command == "doctor":

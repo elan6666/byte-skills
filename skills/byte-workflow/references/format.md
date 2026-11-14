@@ -425,6 +425,30 @@ This operation changes evidence location only. It preserves run identity,
 ownership, `return_pending`, workflow facts and scientific acceptance. Main must
 independently verify the result and execute the action required by `ack-return`.
 
+## Connect user instructions to execution
+
+Update the affected project plan or role instructions when a user request
+changes how future work should proceed. The active main owner also records the
+effective guidance in the workflow with a reference to the human instruction:
+
+```bash
+uv run <skill>/scripts/workflow.py record-guidance --project <project> \
+  --session codex:<main-id> --expect-revision <current-revision> \
+  --event-id <stable-id> --request-ref <user-message-reference> \
+  --scope outcome --summary "Use the updated project protocol for future rounds."
+```
+
+Use `iteration` for changes confined to the current round. Each record replaces
+the effective summary of its scope. Carry forward earlier instructions that
+still apply. Progress questions and one-off actions need no guidance record.
+The audit retains earlier changes. Read active guidance from `status` before
+acting. A fresh wake summary includes it. `advance` links the verified step
+receipt with the active guidance event IDs. The IDs document which guidance
+was in force. The receipt must supply the evidence of what actually happened.
+This operation keeps the pinned workflow, acceptance and any in-flight run
+identity intact. A change to the actual steps or acceptance requires an
+explicitly authorized version change.
+
 ## Scheduled goal mode
 
 Use this mode when the user authorizes periodic continuation of an overall

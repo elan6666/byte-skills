@@ -30,6 +30,12 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    appropriate Byte capability. Record real output/source hashes in a step
    receipt, then `advance` using the observed revision and a stable event ID.
    A status message, empty reply or saved plan cannot advance a required step.
+   When the user changes ongoing work, update the affected project guidance
+   and use `record-guidance` to attach the effective instruction and user
+   reference to the current iteration or overall outcome. Read this guidance
+   before acting. `advance` links actual step evidence to the active guidance.
+   Changes to the pinned definition or acceptance require an explicitly
+   authorized version change with the current run and evidence preserved.
 4. Use [$byte-bridge](../byte-bridge/SKILL.md) for cross-chat transport, with its
    committed-handoff metadata and explicitly pinned source. The engine alone
    changes workflow ownership; Bridge imports the exact transfer without a
