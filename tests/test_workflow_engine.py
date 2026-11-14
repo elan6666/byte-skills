@@ -157,6 +157,12 @@ class WorkflowEngineTests(unittest.TestCase):
                 self.advance({"compared": True})
                 self.assertEqual(self.workflow()["iteration"], 2)
                 self.assertEqual(self.outcome()["status"], "active")
+                code, wake = self.call("monitor-prompt", "--caller-session", "codex:supervisor",
+                                       "--main-status", "idle")
+                self.assertEqual(code, 0, wake)
+                self.assertEqual(wake["action"], "resume_main")
+                self.assertEqual(wake["wake"]["iteration"], 2)
+                self.assertEqual(wake["wake"]["step"], "diagnose")
             else:
                 self.assertEqual(result[0], 0, result)
                 self.advance({"compared": True})
@@ -282,9 +288,44 @@ class WorkflowEngineTests(unittest.TestCase):
             self.assertEqual(result[1]["action"], action)
         self.assertEqual(self.call("route", "--caller-session", "codex:main", "--main-status", "active")[1]["action"], "continue_main")
 
+    def test_scheduled_goal_wake_summary_tracks_revision_and_preserves_monitor(self):
+        before = self.state_path.read_bytes()
+        _, base = self.call("monitor-prompt")
+        self.assertEqual(base["target_session"], "codex:supervisor")
+        self.assertNotIn("wake", base)
+        for status, action in (("active", "watch_main"), ("unknown", "inspect_main")):
+            code, result = self.call("monitor-prompt", "--caller-session", "codex:supervisor",
+                                     "--main-status", status)
+            self.assertEqual(code, 0, result)
+            self.assertEqual(result["action"], action)
+            self.assertEqual(result["prompt"], base["prompt"])
+        self.assertEqual(self.call("monitor-prompt", "--caller-session", "codex:other", "--main-status", "idle")[0], 1)
+        self.assertEqual(self.call("monitor-prompt", "--main-status", "idle")[0], 1)
+        idle = ("--caller-session", "codex:supervisor", "--main-status", "idle")
+        code, first = self.call("monitor-prompt", *idle)
+        self.assertEqual(code, 0, first)
+        self.assertEqual(first["wake"]["step"], "diagnose")
+        self.assertEqual(first["wake"]["revision"], 0)
+        self.assertEqual(first["wake"]["iteration"], 1)
+        self.assertEqual(first["target_session"], "codex:main")
+        self.assertEqual(first["monitor_id"], base["monitor_id"])
+        self.assertEqual(first["interval_minutes"], base["interval_minutes"])
+        self.assertEqual(self.state_path.read_bytes(), before)
+
+        proof = self.proof("step_result", {"observed": True})
+        self.assertEqual(self.change("advance", evidence=proof)[0], 0)
+        code, second = self.call("monitor-prompt", *idle)
+        self.assertEqual(code, 0, second)
+        self.assertEqual(second["wake"]["step"], "literature")
+        self.assertEqual(second["wake"]["revision"], 1)
+        self.assertEqual(second["wake"]["latest_workflow_evidence"], hashref(proof.resolve()))
+        self.assertIn(second["wake"]["next_action"], second["prompt"])
+        self.assertNotIn(first["wake"]["next_action"], second["prompt"])
+        self.assertEqual(self.call("monitor-prompt", "--caller-session", "codex:main")[1]["prompt"], base["prompt"])
+
     def long_wait(self, scope=None, process=None):
         self.experiment_step()
-        outcome, workflow = self.outcome(), self.workflow()
+        outcome = self.outcome()
         run_id = "long-test"
         handoff = self.project / ".byte-os/coordination/handoffs/launch.md"
         handoff.parent.mkdir(parents=True)
@@ -313,12 +354,25 @@ class WorkflowEngineTests(unittest.TestCase):
     def test_long_return_needs_substantive_main_action_and_rejects_empty_ack(self):
         run_id = self.long_wait()
         self.assertEqual(self.state()["owner_session"], "codex:supervisor")
+        supervisor = ("--caller-session", "codex:supervisor", "--main-status", "idle")
+        code, waiting = self.call("monitor-prompt", *supervisor)
+        self.assertEqual(code, 0, waiting)
+        self.assertEqual(waiting["action"], "supervise_run")
+        self.assertNotIn("wake", waiting)
         self.assertEqual(self.change("advance", evidence=self.proof("step_result", {"verified": True}))[0], 1)
         terminal = self.proof("run_terminal", run_id=run_id, attempt=1, exit_code=1)
         handoff = self.project / ".byte-os/coordination/handoffs/return.md"
         handoff.write_text("# Run failed; main must independently inspect it\n")
         returned = self.change("return-run", evidence=terminal, extra=("--handoff", str(handoff)))
         self.assertEqual(returned[0], 0, returned)
+        code, wake = self.call("monitor-prompt", *supervisor)
+        self.assertEqual(code, 0, wake)
+        self.assertEqual(wake["action"], "resume_main")
+        self.assertEqual(wake["wake"]["returned_run"], {
+            "run_id": run_id, "attempt": 1, "exit_code": 1, "receipt": hashref(terminal.resolve()),
+        })
+        self.assertEqual(wake["wake"]["return_handoff"], hashref(handoff.resolve()))
+        self.assertIn("ack-return", wake["wake"]["next_action"])
         proof = self.proof("step_result", {"verified": True})
         self.assertEqual(self.change("advance", evidence=proof)[0], 1)
         empty = self.proof("main_continuation", run_id=run_id, attempt=1)
@@ -348,6 +402,7 @@ class WorkflowEngineTests(unittest.TestCase):
         paused = self.change("pause", extra=("--request-ref", "user:pause"))
         self.assertEqual(paused[0], 0, paused)
         self.assertEqual(self.call("route", "--caller-session", "codex:supervisor")[1]["action"], "stop_monitor")
+        self.assertEqual(self.call("monitor-prompt", "--caller-session", "codex:supervisor", "--main-status", "idle")[0], 1)
         self.assertEqual(self.change("advance", evidence=self.proof("step_result", {"observed": True}))[0], 1)
         self.assertEqual(self.change("resume", extra=("--request-ref", "user:resume"))[0], 0)
         blocked = self.proof("external_block", blocker_kind="authority", reason="explicit compute budget exhausted",

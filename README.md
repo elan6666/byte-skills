@@ -359,14 +359,13 @@ The helper checks consistency of local records. It cannot intercept a client's f
 
 ## Maintenance and verification
 
-For an explicitly requested continuous two-chat research loop, keep one
-outcome-level heartbeat across experiments and active analysis, literature
-review, and implementation. The supervisor watches the current run or quietly
-checks main-chat progress. If the main chat is idle with authorized ready work,
-retarget the same heartbeat to main for recovery. End checks of a completed run
-without disabling the overall recovery path. Stale reminders route from current
-state. Preserve the user's chosen research order; see the
-[continuous research procedure](skills/byte-design-supervise/references/research-loop.md).
+For explicitly authorized periodic continuation, use
+[scheduled goal mode](skills/byte-workflow/references/format.md#scheduled-goal-mode).
+One heartbeat spans the overall workflow. The supervisor checks the exact run
+while main yields, or quietly checks main's progress. When main is idle with
+ready work, `monitor-prompt` generates a fresh wake message from the current
+step and evidence. Main resumes work and hands the same heartbeat back to
+supervisor. Handle short requests within their scope, then resume the outcome.
 
 `skills/byte-auto/scripts/continuation_route.py --help` documents the read-only
 routing helper. Native configuration, readback and observed scheduled execution

@@ -50,12 +50,14 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    configured `done` transition with every criterion verified completes the
    overall outcome. Respect explicit user pauses and actual resource limits.
 
-For a user-authorized continuous two-chat loop, generate the stable prompt with
-`monitor-prompt` and configure the native automation separately. Keep one
-outcome monitor active across steps; main-active ticks watch quietly from the
-supervisor, idle-main ticks restore main, waiting-run ticks observe the current
-run. Read back native configuration and observe actual scheduling. `route` and
-`doctor` never prove the app woke a chat. Existing native tools remain necessary.
+For a user-authorized [scheduled goal](references/format.md#scheduled-goal-mode),
+use the existing continuous workflow option and one native heartbeat. Generate
+the supervisor prompt with `monitor-prompt`. When `route` reports `resume_main`,
+use `monitor-prompt` with the actual caller and fresh idle status to generate a
+wake summary for the current revision, stage and action. On resumption, restore
+the base prompt and supervisor target. Main-active ticks stay quiet. Waiting-run
+ticks check the exact handed-off run once. Read back native configuration and
+observe actual scheduling and substantive continuation.
 
 For background experiment waits, use the supervisor-and-timer workflow below.
 For other short waits, prefer an authorized same-task helper while main retains

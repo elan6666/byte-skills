@@ -39,6 +39,8 @@ as connection. A one-time worker permission grant stays local to that task.
 For a reusable local workflow with custom steps, loops, acceptance and role
 bindings, use [$byte-workflow](../byte-workflow/SKILL.md). Its pinned definition
 and engine-managed state take precedence over ad hoc phase descriptions.
+When the user asks for a goal that persists across scheduled checks and role
+handoffs, use its [scheduled goal mode](../byte-workflow/references/format.md#scheduled-goal-mode).
 
 ## State
 
@@ -129,13 +131,15 @@ cost, or irreversible action from this continuity rule.
 
 ## Outcome continuity
 
-Keep the overall outcome separate from stage or run acceptance. During an
-already authorized iterative task, status questions and candidate discussions
-do not silently revoke execution authority. Reconcile the latest explicit user
-scope, complete the requested substep, then start the next authorized action.
-A report or platform update is a dependency, not a stopping point. Follow the
-[shared continuation contract](references/long-running-work.md); ordinary turns
-remain the default, and Goals require explicit user request.
+When a project has an authorized long-term outcome, recover its current owner,
+acceptance criteria and next action from the existing state before classifying
+a follow-up. A status request, correction or temporary priority normally applies
+to the current step or short task. A pause or change to the overall outcome
+requires user intent that applies to that outcome. Handle the follow-up, then
+start the next ready, authorized action for the same outcome in the same turn.
+Keep an already-authorized wake route active if the chat must yield. Follow the
+[shared continuation contract](references/long-running-work.md). Ordinary turns
+remain the default. Goals require explicit user request.
 
 
 ## Durable agent roles and collaboration

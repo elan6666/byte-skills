@@ -425,12 +425,32 @@ This operation changes evidence location only. It preserves run identity,
 ownership, `return_pending`, workflow facts and scientific acceptance. Main must
 independently verify the result and execute the action required by `ack-return`.
 
-## Native scheduler integration and recovery
+## Scheduled goal mode
 
-`monitor-prompt --project <path>` emits a stable prompt and requested monitor
-identity/cadence; configure it using native client tools and verify readback.
-It does not create an automation. Preserve the prompt when retargeting, obtain
-caller identity from the actual chat and do not freeze a historical run into it.
+Use this mode when the user authorizes periodic continuation of an overall
+outcome. Use the existing `init --continuous --monitor-id <id>` options shown
+above and bind the actual main and supervisor conversations. For an existing
+continuous workflow, reuse its pinned instance and monitor ID. Use the client's
+native tools to configure the heartbeat and observe actual scheduled turns.
+
+```bash
+# Base prompt for the designated supervisor
+uv run <skill>/scripts/workflow.py monitor-prompt --project <project>
+
+# Fresh wake message after the supervisor confirms that main is idle and ready
+uv run <skill>/scripts/workflow.py monitor-prompt --project <project> \
+  --caller-session codex:<supervisor-id> --main-status idle
+```
+
+The second command uses the same routing rules as `route`. On `resume_main`,
+it emits the main target and a new prompt with a `wake` summary of the current
+revision, iteration, step, next action, and relevant evidence or returned run.
+Update the same heartbeat with this target and prompt, retaining cadence and
+notification settings. Main re-reads current state before executing, restores
+the supervisor target and base prompt, and records actual work. Each handback
+replaces the prior summary. Both commands are read-only. When storing native
+readback as workflow evidence, save an immutable snapshot instead of hashing
+the mutable scheduler settings file.
 
 `route --project <path> --caller-session <ref> --main-status active|idle|unknown`
 uses the bundled deterministic router. `watch_main` stays quiet in supervisor,
@@ -438,9 +458,12 @@ uses the bundled deterministic router. `watch_main` stays quiet in supervisor,
 retaining the supervisor watchdog, and `supervise_run` observes the current run.
 An explicitly supervisor-owned active step routes to `continue_supervisor` or
 `dispatch_supervisor`, without authorizing scientific acceptance.
-Stale reminders, reports and initial main ACK never pause an authorized
-outcome-level monitor. Stop it on verified completion, explicit pause or a
-concrete external block. Follow native approval/input waits without bypassing them.
+On a long run, supervisor checks the current identity once per tick and reports
+only terminal results, actionable failures or required decisions. Once the
+handoff is verified, main can yield when no independent work is ready. Keep
+the outcome active across short requests and continue its next authorized step
+after handling them. Stop the heartbeat on verified completion, explicit
+pause or a concrete external block. Follow native approval and input waits.
 
 `doctor --project <path>` checks snapshot/evidence consistency and the existing
 continuation disposition. It cannot prove timer activation or an idle-chat

@@ -29,12 +29,12 @@ material and unsafe to infer.
 ## Preserve the overall outcome
 
 For an explicitly authorized iterative task, retain the overall outcome across
-turns, questions, compaction, phase receipts, and supervisor handbacks. A status
-question or request to investigate another candidate normally steers that work;
-it does not revoke execution authority. Honor explicit pause, cancellation, or
-"discussion only" limits for their stated scope. Never infer a global pause from
-a request to park one candidate. Resolve scope from the user's instructions,
-not a stale state entry written by an earlier agent.
+turns, questions, short tasks, compaction, phase receipts, and supervisor
+handbacks. Apply the [follow-up scope rules](references/long-running-work.md#handle-short-requests-during-a-long-term-outcome)
+before changing the outcome or its monitor. Finish or answer the short request,
+re-read current ownership and evidence, then start the next ready, authorized
+action. If the host interrupts the turn, the existing authorized wake route
+resumes from the persisted action and outstanding run or handoff identity.
 
 Persist one `overall_outcome` record in existing state: stable ID/objective,
 authority and limits, acceptance criteria and evidence, current iteration,
@@ -101,8 +101,9 @@ the main turn must end, and independence—not just by model price:
   missing watcher; terminal text and agent-idle status alone never prove a
   scientific run succeeded.
 - When the user explicitly requests a continuous scheduled two-chat loop,
-  retain one outcome-level heartbeat across analysis, literature review,
-  implementation and experiments. The cheaper supervisor checks main progress
+  use [scheduled goal mode](../byte-workflow/references/format.md#scheduled-goal-mode)
+  and retain one outcome-level heartbeat across analysis, literature review,
+  implementation and experiments. The supervisor checks main progress
   while main owns active work; an idle main with ready work receives the same
   heartbeat as its return fallback. Clear old run checks on handback, but do
   not pause this authorized continuity monitor after the first ACK. Follow

@@ -41,6 +41,37 @@ alone is not success. A round count is a review checkpoint unless explicitly
 set as a budget. Reassess failed approaches; do not retry unchanged hypotheses
 indefinitely or promise a scientific result irrespective of evidence.
 
+## Handle short requests during a long-term outcome
+
+The long-term outcome is the explicitly authorized result and its overall
+acceptance criteria. A short request has its own immediate result, such as a
+status answer, checking a paper, changing the current experiment or handling a
+temporary priority. The newest request can steer the work without replacing
+the overall outcome. Resolve the scope from the user's words and the task they
+refer to. For example:
+
+- "What's the status?" Answer from current evidence, then continue the ready step.
+- "Check this paper first" or "park this candidate" changes the order or that
+  candidate's scope. Record any consequence for the next action and continue
+  the rest of the authorized loop.
+- "Discuss this candidate only" limits work on that candidate to discussion.
+  Apply the same limit to the entire loop when the user explicitly scopes it
+  that way. "Pause the research loop" pauses the overall outcome and its wake route.
+- A change to the overall target or cancellation applies when the user clearly
+  asks for it. A different or competing short task can take priority while the
+  same overall outcome remains active. Preserve the previous work's identity
+  and resource boundaries during the switch.
+
+Before switching away from active work, use the existing state to preserve the
+next executable action and any in-flight run or handoff. When the short request
+is handled, re-read ownership, current revision, and actual results. Continue
+the ready action in the same turn when possible. Reconcile in-flight actions
+under their original IDs before attempting a retry. When the host interrupts
+or the chat must yield, retain the already-authorized wake path and verify that
+it returns control to an owner who performs substantive work. For a waiting
+step, continue independent authorized work if available. A completed short
+request does not complete the long-term outcome or disarm its monitor.
+
 ## Active work
 
 On each owned turn, read the compact outcome and fresh evidence. Select and
@@ -129,6 +160,14 @@ prompt identifies the outcome/pair/state, rather than freezing an old run.
 An obsolete run notification never overrides fresh active work. When main
 owns a ready action, a stale reminder is reconciled and that current action
 continues in the same owned turn; do not end after saying the reminder is stale.
+
+When the user wants the scheduled message to adapt to progress, retain the
+same heartbeat ID and routing instructions. On a retarget to main, replace the
+previous handoff summary with the current outcome ID, revision, stage, ready
+action, and only the evidence or active handoff relevant to that action. Read
+the workflow again on receipt. If the revision or ownership changed, act on
+the current state. Clear the previous handoff summary when returning the
+heartbeat to the supervisor. Healthy ticks can stay quiet.
 
 - Supervisor owns a waiting run: inspect only the current identity-bound run.
 - Main owns active work: target the cheaper supervisor as a progress watchdog.

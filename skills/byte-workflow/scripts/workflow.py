@@ -1247,6 +1247,81 @@ def adopt(args):
             "previous_state": str(archive), "run_relaunched": False, "past_steps_replayed": False}
 
 
+def monitor_prompt(root, manifest, state, outcome, workflow, caller, main_status):
+    monitor = manifest["monitor"]
+    require(monitor["continuous"], "this instance has no continuous monitoring authorization")
+    require(outcome["status"] == "active", "do not arm a nonactive workflow")
+    main, supervisor = manifest["roles"]["main"], manifest["roles"]["supervisor"]
+    script = Path(__file__).resolve()
+    command = f"uv run {shlex.quote(str(script))}"
+    project = shlex.quote(str(root))
+    result = {
+        "monitor_id": monitor["id"],
+        "interval_minutes": monitor["interval_minutes"],
+        "target_session": supervisor,
+        "status": "requires_native_registration",
+    }
+    prompt = (
+        f"Continue authorized workflow {outcome['id']} in {root}. "
+        f"Read the project's current instructions, {script.parent.parent / 'SKILL.md'}, and workflow status. "
+        "Confirm the actual caller identity. "
+        f"Run {command} route --project {project} --caller-session '<actual current harness:session-id>'. "
+        f"For inspect_main, observe {main} using native chat status, then rerun route with "
+        "--main-status active or idle when confirmed. Use unknown for approval, user input or uncertain status. "
+        "A handed-off run is checked directly without polling main.\n\n"
+        "watch_main: exit quietly while main is working. inspect_main: reconcile the blocker. "
+        f"resume_main: run {command} monitor-prompt --project {project} "
+        "--caller-session '<actual current harness:session-id>' --main-status idle to generate the current handback. "
+        "Apply its prompt and target to the SAME native heartbeat, preserve cadence and notification settings, "
+        "read back the result, and verify that main actually starts work. "
+        f"continue_main: re-read the current owner, revision and evidence, then restore the supervisor target "
+        f"and base prompt from {command} monitor-prompt --project {project}. "
+        "Execute the current authorized step and record substantive progress. An older wake summary is context only.\n\n"
+        "supervise_run: check only the handed-off run and attempt once, preferably using machine-readable "
+        "status or terminal receipts. End a healthy tick quietly. Return a terminal result, failure, or required "
+        "decision once through the existing Byte Bridge task. Main verifies the result and continues the next step. "
+        "For a pending return, verify that run and record the executed action with ack-return before advancing. "
+        "After a verified long-run handoff, main may yield when no independent work is ready. "
+        "continue_supervisor/dispatch_supervisor: handle the configured supervisor-owned step. "
+        "stop_monitor: pause the existing heartbeat after verified completion, explicit pause, or a concrete "
+        "external blocker with no independent work. Read back native changes.\n\n"
+        "Keep the overall objective active across short requests. Answer or finish the short request, then resume "
+        "the current authorized action under the same outcome. Apply scope changes and pauses to the work the user "
+        "specified. Preserve active run and handoff identities. Use revision-checked transitions with actual "
+        "evidence. Delivery and acknowledgement alone do not advance a step. Keep the heartbeat quiet when unchanged."
+    )
+    if caller is not None:
+        decision = route(state, root, outcome_id=outcome["id"], main=main,
+                         supervisor=supervisor, caller=caller, main_status=main_status)
+        result["action"] = decision["action"]
+        if decision["action"] == "resume_main":
+            return_pending = workflow.get("return_pending", False)
+            next_action = (
+                "Independently verify the returned run and record substantive continuation with ack-return."
+                if return_pending else decision["next_action"]
+            )
+            if len(next_action) > 1600:
+                next_action = next_action[:1600] + "… (read the full action from workflow status)"
+            wake = {
+                "outcome_id": outcome["id"], "revision": workflow["revision"],
+                "step": workflow["step"], "iteration": workflow["iteration"],
+                "owner_session": state["owner_session"], "next_action": next_action,
+            }
+            if return_pending:
+                returned = workflow["returned_run"]
+                wake["returned_run"] = {key: returned[key] for key in ("run_id", "attempt", "exit_code", "receipt")}
+                wake["return_handoff"] = {
+                    "path": state["current_handoff"], "sha256": state["current_handoff_sha256"],
+                }
+            elif workflow["evidence"]:
+                wake["latest_workflow_evidence"] = workflow["evidence"][-1]
+            result.update(target_session=decision["target_session"], wake=wake)
+            prompt += "\n\nCurrent wake summary (check against live workflow state):\n"
+            prompt += json.dumps(wake, ensure_ascii=False, sort_keys=True)
+    result["prompt"] = prompt
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", default=str(Path.home() / ".byte/workflows"), help="Local reusable template library")
@@ -1286,6 +1361,9 @@ def main(argv=None):
         commands.add_parser(name)
     commands.choices["route"].add_argument("--caller-session", required=True)
     commands.choices["route"].add_argument("--main-status", choices=("active", "idle", "unknown"), default="unknown")
+    commands.choices["monitor-prompt"].add_argument("--caller-session", help="Actual caller for a live wake summary")
+    commands.choices["monitor-prompt"].add_argument("--main-status", choices=("active", "idle", "unknown"),
+                                                    default="unknown", help="Fresh native main chat observation")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
     for name in ("advance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
         sub = commands.add_parser(name)
@@ -1363,21 +1441,9 @@ def main(argv=None):
                     stream.write(encoded(manifest["definition"]))
                 result = {"exported": str(args.output), "bindings_exported": False}
             else:
-                require(manifest["monitor"]["continuous"], "this instance has no continuous monitoring authorization")
-                require(outcome["status"] == "active", "do not arm a nonactive workflow")
-                script = Path(__file__).resolve()
-                result = {"monitor_id": manifest["monitor"]["id"], "interval_minutes": manifest["monitor"]["interval_minutes"],
-                          "target_session": manifest["roles"]["supervisor"], "status": "requires_native_registration",
-                          "prompt": (f"Continue authorized workflow {outcome['id']} in {root}. Read current state and {script.parent.parent / 'SKILL.md'}. "
-                                     f"Use uv run {shlex.quote(str(script))} route --project {shlex.quote(str(root))} --caller-session '<actual current harness:session-id>' "
-                                     "with freshly observed --main-status active/idle/unknown. Never hardcode caller or an old run. "
-                                     "watch_main: quiet read-only progress check; resume_main: retarget this SAME native heartbeat to main; "
-                                     "continue_main: retarget to supervisor then execute the current owned action; supervise_run: check only current owned run. "
-                                     "continue_supervisor/dispatch_supervisor: execute only the configured supervisor-owned step, never main's scientific acceptance. "
-                                     "Preserve this reusable prompt across retargets. Use revision-checked engine commands for transitions, independent main acceptance after return, "
-                                     "and real source-hashed receipts. Delivery/empty replies never advance steps. "
-                                     "Keep one outcome monitor active across experiments, literature and implementation until verified completion, explicit pause or a real external block. "
-                                     "Respect user/approval/resource boundaries and native readback. Quiet while healthy and unchanged; notify only actionable changes.")}
+                require(args.caller_session is not None or args.main_status == "unknown",
+                        "a native main status requires the actual caller session")
+                result = monitor_prompt(root, manifest, state, outcome, workflow, args.caller_session, args.main_status)
         else:
             nonempty(args.event_id, "event ID")
             result = mutate(args)
