@@ -293,6 +293,8 @@ uv run skills/byte-workflow/scripts/workflow.py team-plan --template research-au
 
 在新项目里用 `$byte-workflow` 应用 `research-automation`，按授权复用或创建对应会话。定时监督按项目授权启用。参见[团队配置](skills/byte-workflow/references/format.md#reuse-a-team-and-its-workflow)。
 
+[扰动预测科研团队预设](skills/byte-workflow/templates/perturbation-research-team.yaml)分别验收细胞内和跨细胞预测。安装该模板文件后，用 `team-plan --template perturbation-research-team` 查看分工。
+
 模板在 `~/.byte/workflows/<模板名>/workflow.yaml`。每个项目保存自己的 `.byte-os/workflow.yaml` 快照，并在既有 `.byte-os/coordination/state.json` 中运行。全局模板以后修改，不会改变已启动的项目。
 
 步骤可以分配给主会话或监督会话，支持条件分支、循环返回和独立验收。状态推进需要匹配版本号、稳定事件 ID 和带来源哈希的证据；空回复无法替代主会话的实际接手。短等待保留主会话所有权，长等待使用先交接、再确认监控生效的两阶段流程。整体验收通过才完成；显式暂停和真实外部阻塞有独立状态。

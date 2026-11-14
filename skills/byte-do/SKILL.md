@@ -144,6 +144,12 @@ remain the default. Goals require explicit user request.
 
 ## Durable agent roles and collaboration
 
+For an assigned team, use the existing specialist chats for substantive work.
+Keep the lead on framing, trade-offs, and evidence-based acceptance. Break
+large tasks into bounded deliverables, dispatch independent pieces in parallel
+when feasible, and use the same assignment IDs when resuming. A role roster
+without dispatch and verified returns does not establish team execution.
+
 When the project uses agent working documents, follow the shared
 [agent collaboration contract](../byte-plan/references/agent-collaboration.md).
 On joining, resuming or receiving a task, read your explicitly assigned current

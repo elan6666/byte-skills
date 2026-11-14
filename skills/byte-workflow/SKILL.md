@@ -36,6 +36,16 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    appropriate Byte capability. Record real output/source hashes in a step
    receipt, then `advance` using the observed revision and a stable event ID.
    A status message, empty reply or saved plan cannot advance a required step.
+   A step owner coordinates and accepts the step. For named specialists, first
+   reconcile existing assignments, then dispatch the missing bounded pieces
+   through the project's authorized route. Give each piece one deliverable,
+   input versions, dependencies, write scope, and a verification criterion.
+   Run independent pieces concurrently when feasible. Keep the lead on framing,
+   deciding between options, and spot-checking evidence. Leave literature,
+   design proposals, implementation, execution, and independent reproduction
+   with the assigned roles. A delayed return calls for recovery by original
+   task ID, independent ready work, or a concrete blocker. Before advancing a
+   step with `delegations`, attach each verified native return and its artifacts.
    When the user changes ongoing work, update the affected project guidance
    and use `record-guidance` to attach the effective instruction and user
    reference to the current iteration or overall outcome. Read this guidance
@@ -64,10 +74,12 @@ transitions; it does not run arbitrary commands or control the app scheduler.
 
 For a user-authorized [scheduled goal](references/format.md#scheduled-goal-mode),
 use the existing continuous workflow option and one native heartbeat. Generate
-the supervisor prompt with `monitor-prompt`. When `route` reports `resume_main`,
-use `monitor-prompt` with the actual caller and fresh idle status to generate a
-wake summary for the current revision, stage and action. On resumption, restore
-the base prompt and supervisor target. Main-active ticks stay quiet. Waiting-run
+the supervisor prompt with `monitor-prompt`. For a scheduled tick, use
+`route --wake-only` with the actual caller. After `inspect_main`, rerun the
+same command with the observed main status. On `resume_main`, attach the
+returned checkpoint to the base prompt and retarget the existing heartbeat.
+Main reads the current action from `status`, then restores the base prompt and
+supervisor target. Main-active ticks stay quiet. Waiting-run
 ticks check the exact handed-off run once. Read back native configuration and
 observe actual scheduling and substantive continuation.
 

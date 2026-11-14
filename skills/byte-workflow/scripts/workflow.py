@@ -77,11 +77,15 @@ def load(path):
 
 
 def atomic(path, value):
+    atomic_bytes(path, encoded(value))
+
+
+def atomic_bytes(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
     try:
         with temporary.open("xb") as stream:
-            stream.write(encoded(value))
+            stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(temporary, path)
@@ -210,7 +214,7 @@ def validate(template):
         identifier(name, "step.id")
         require(name != "done", "done is reserved for overall completion")
         require(isinstance(step, dict) and step.get("owner") in ("main", "supervisor"), "step owner must be main or supervisor")
-        require(set(step) <= {"owner", "action", "acceptance", "transitions", "wait_owner"}, "unsupported step field")
+        require(set(step) <= {"owner", "action", "acceptance", "transitions", "wait_owner", "delegations"}, "unsupported step field")
         nonempty(step.get("action"), "step.action")
         require(step.get("wait_owner") in (None, "supervisor"), "v1 wait_owner is supervisor")
         require(not step.get("wait_owner") or step["owner"] == "main", "long jobs must be launched by main")
@@ -249,6 +253,18 @@ def validate(template):
             require(name in parameters, "undefined action parameter: " + name)
     if "team" in template:
         validate_team(template["team"], steps)
+    roles = template.get("team", {}).get("roles", {})
+    for step in steps.values():
+        if "delegations" not in step:
+            continue
+        tasks = step["delegations"]
+        require(isinstance(tasks, dict) and tasks, "delegations must be a nonempty mapping")
+        for name, task in tasks.items():
+            identifier(name, "delegation ID")
+            require(isinstance(task, dict) and set(task) == {"role", "deliverable"}, "delegation needs a role and deliverable")
+            role = nonempty(task["role"], "delegation role")
+            require(role in roles and role != step["owner"], "delegation needs a distinct team role")
+            nonempty(task["deliverable"], "delegation deliverable")
     return template
 
 
@@ -283,7 +299,9 @@ def team_plan(template, bindings=None, model_preferences=None):
         )
         roles[name] = entry
     return {"template_id": template["id"], "version": template["version"], "roles": roles,
-            "monitor_preference": team.get("monitor")}
+            "monitor_preference": team.get("monitor"),
+            "delegations": {step_id: step["delegations"] for step_id, step in template["steps"].items()
+                            if "delegations" in step}}
 
 
 def team_bindings(template, args, main, supervisor):
@@ -850,6 +868,12 @@ def action_for(manifest, step):
     return re.sub(r"\$\{([^}]+)\}", lambda m: str(manifest["parameters"][m[1]]), action)
 
 
+def step_delegations(manifest, workflow):
+    tasks = manifest["definition"]["steps"][workflow["step"]].get("delegations", {})
+    bindings = manifest.get("team_sessions", manifest["roles"])
+    return {name: dict(task, session=bindings.get(task["role"])) for name, task in tasks.items()}
+
+
 def make_ready(manifest, state, step):
     outcome = state["overall_outcome"]
     role = manifest["definition"]["steps"][step]["owner"]
@@ -886,6 +910,33 @@ def receipt(path, kind, outcome, workflow, *, current_step=True):
                             for e in workflow.get("historical_source_invalidations", [])),
                     "retired monitoring cannot serve as scientific acceptance evidence")
     return value, ref
+
+
+def delegated_results(manifest, outcome, workflow, step_result, step_receipt_path):
+    tasks = step_delegations(manifest, workflow)
+    if not tasks:
+        return {}
+    results = step_result.get("delegated_results")
+    require(isinstance(results, dict) and results.keys() == tasks.keys(),
+            "advance requires verified returns for every declared delegation")
+    refs, task_ids = {}, set()
+    for name, task in tasks.items():
+        expected_session = nonempty(task["session"], "bound specialist for " + name)
+        evidence_bytes(results[name], step_receipt_path.parent, "delegated result receipt")
+        path = source_path(results[name], step_receipt_path.parent)
+        returned, ref = receipt(path, "delegated_result", outcome, workflow)
+        require(returned.get("delegation_id") == name and returned.get("role") == task["role"]
+                and returned.get("session") == expected_session,
+                "delegated return role, session or task mismatch: " + name)
+        task_id = nonempty(returned.get("task_id"), "native delegation task ID")
+        require(task_id not in task_ids, "each delegation needs its own native task ID")
+        native = returned.get("native_return")
+        require(native in returned["sources"] and any(source_path(item, path.parent) != source_path(native, path.parent)
+                                                        for item in returned["sources"]),
+                "delegated return needs native return evidence and a separate output or failure artifact")
+        task_ids.add(task_id)
+        refs[name] = ref
+    return refs
 
 
 def overall_accepted(outcome, root):
@@ -985,6 +1036,7 @@ def mutate(args):
             require(execution["mode"] == "active" and args.session == manifest["roles"][step["owner"]], "advance requires the active step owner")
             require(not workflow.get("return_pending"), "main must acknowledge substantive continuation before advancing")
             value, ref = receipt(args.evidence, "step_result", outcome, workflow)
+            returns = delegated_results(manifest, outcome, workflow, value, Path(ref["path"]))
             facts = current_facts(workflow, value.get("facts", {}))
             if step.get("wait_owner"):
                 require(workflow.get("returned_run"), "experiment step needs a verified run return")
@@ -998,6 +1050,9 @@ def mutate(args):
             require(transition is not None, "no matching transition")
             destination = transition["to"]
             workflow["evidence"].append(ref)
+            if returns:
+                workflow["evidence"].extend(returns.values())
+                event_details["delegated_results"] = returns
             event_details["step_receipt"] = ref
             event_details["guidance_event_ids"] = [item["event_id"] for item in active_guidance(workflow)]
             workflow["facts"] = combined
@@ -1341,6 +1396,83 @@ def adopt(args):
             "previous_state": str(archive), "run_relaunched": False, "past_steps_replayed": False}
 
 
+def upgrade(args):
+    """Pin a new definition at a ready main-owned checkpoint, preserving the outcome."""
+    nonempty(args.authority_ref, "explicit upgrade authority reference")
+    nonempty(args.event_id, "upgrade event ID")
+    source = template_path(args.template, args.home)
+    template_bytes = source.read_bytes()
+    template = validate(load(source))
+    require(source.read_bytes() == template_bytes, "target template changed during read")
+    _, manifest_path, state_path = paths(args.project)
+    with locked(state_path):
+        before, previous_manifest = state_path.read_bytes(), manifest_path.read_bytes()
+        root, manifest, state, outcome, workflow = opened(args.project)
+        require(digest(before) == args.expect_state_sha256 and workflow["revision"] == args.expect_revision,
+                "workflow state changed; reread the owner checkpoint")
+        require(outcome["status"] == "active" and state["owner_session"] == args.session == manifest["roles"]["main"],
+                "upgrade requires the active main-owned checkpoint")
+        execution = outcome["execution"]
+        require(execution["mode"] == "active" and outcome["next_action"]["trigger"] == "ready"
+                and not workflow.get("return_pending") and not workflow.get("returned_run"),
+                "finish the current run or pending handback before upgrading")
+        step = workflow["step"]
+        require(step in template["steps"] and template["steps"][step]["owner"] == "main",
+                "target must preserve the current step and owner")
+        require(template["acceptance"] == manifest["definition"]["acceptance"],
+                "upgrade must preserve the overall acceptance contract")
+        require(template.get("parameters", {}).keys() == manifest["parameters"].keys(),
+                "upgrade must preserve project parameter bindings")
+        require(template != manifest["definition"], "target definition is already pinned")
+        require(not any(event["id"] == args.event_id for event in workflow["events"]), "event ID already used")
+        bindings = team_bindings(template, args, manifest["roles"]["main"], manifest["roles"]["supervisor"])
+        require(all(bindings.get(role) == session_id for role, session_id in manifest.get("team_sessions", {}).items()),
+                "upgrade must preserve existing role bindings")
+        required_roles = {task["role"] for spec in template["steps"].values() for task in spec.get("delegations", {}).values()}
+        require(required_roles <= bindings.keys(), "bind all delegated roles before upgrading")
+        snapshot = dict(manifest, definition=template, template_sha256=digest(template_bytes), team_sessions=bindings)
+        if args.interval_minutes is not None:
+            require(args.interval_minutes > 0, "monitor interval must be positive")
+            snapshot["monitor"] = dict(manifest["monitor"], interval_minutes=args.interval_minutes)
+        result = {"outcome_id": outcome["id"], "template_id": template["id"], "revision": workflow["revision"] + 1,
+                  "iteration": workflow["iteration"], "step": step, "visit": workflow["visit"], "bindings": bindings,
+                  "monitor": snapshot["monitor"], "changed": False}
+        if args.check_only:
+            return result
+        require(state_path.read_bytes() == before and manifest_path.read_bytes() == previous_manifest,
+                "project changed during upgrade inspection")
+        archive = root / ".byte-os/coordination/receipts" / ("pre-upgrade-" + uuid.uuid4().hex)
+        archive.mkdir(parents=True)
+        write_immutable(archive / "workflow.yaml", previous_manifest)
+        write_immutable(archive / "state.json", before)
+        backups = [reference(archive / name) for name in ("workflow.yaml", "state.json")]
+        workflow["instance_sha256"] = digest(encoded(snapshot))
+        workflow["revision"] = result["revision"]
+        workflow["evidence"].extend(backups)
+        workflow["events"].append({"id": args.event_id, "command": "upgrade", "actor": args.session,
+                                   "revision": workflow["revision"], "at": now(), "authority_ref": args.authority_ref,
+                                   "request_sha256": digest(encoded(snapshot)), "previous": backups})
+        outcome["next_action"] = dict(outcome["next_action"], description=action_for(snapshot, step))
+        atomic(manifest_path, snapshot)
+        try:
+            require(state_path.read_bytes() == before, "state changed before upgrade commit")
+            atomic(state_path, state)
+        except (Invalid, OSError):
+            atomic_bytes(manifest_path, previous_manifest)
+            raise
+        return dict(result, changed=True, backups=backups)
+
+
+def wake_checkpoint(outcome, workflow, state):
+    return {
+        "outcome_id": outcome["id"],
+        "revision": workflow["revision"],
+        "step": workflow["step"],
+        "iteration": workflow["iteration"],
+        "owner_session": state["owner_session"],
+    }
+
+
 def monitor_prompt(root, manifest, state, outcome, workflow, caller, main_status):
     monitor = manifest["monitor"]
     require(monitor["continuous"], "this instance has no continuous monitoring authorization")
@@ -1360,17 +1492,22 @@ def monitor_prompt(root, manifest, state, outcome, workflow, caller, main_status
         f"Read the project's current instructions, {script.parent.parent / 'SKILL.md'}, and workflow status. "
         "Confirm the actual caller identity. "
         f"Run {command} route --project {project} --caller-session '<actual current harness:session-id>'. "
-        f"For inspect_main, observe {main} using native chat status, then rerun route with "
-        "--main-status active or idle when confirmed. Use unknown for approval, user input or uncertain status. "
+        f"For inspect_main, observe {main} using native chat status, then rerun the same command with "
+        "--main-status active or idle and --wake-only. Use unknown for approval, user input or uncertain status. "
         "A handed-off run is checked directly without polling main.\n\n"
         "watch_main: exit quietly while main is working. inspect_main: reconcile the blocker. "
-        f"resume_main: run {command} monitor-prompt --project {project} "
-        "--caller-session '<actual current harness:session-id>' --main-status idle to generate the current handback. "
-        "Apply its prompt and target to the SAME native heartbeat, preserve cadence and notification settings, "
-        "read back the result, and verify that main actually starts work. "
+        "resume_main: use the target_session and wake checkpoint from route --wake-only. "
+        "Append the checkpoint to this base prompt and apply the target and updated prompt to the same native heartbeat. "
+        "Preserve cadence and notification settings, "
+        "read back the result, and verify that main actually starts work. If the active heartbeat still targets the supervisor, "
+        "resume_main requires retargeting even when revision is unchanged or the preceding lead turn already did work. "
+        "The lead must reconcile any pending specialist returns before deciding whether a step is ready to advance. "
         f"continue_main: re-read the current owner, revision and evidence, then restore the supervisor target "
         f"and base prompt from {command} monitor-prompt --project {project}. "
-        "Execute the current authorized step and record substantive progress. An older wake summary is context only.\n\n"
+        "Read the lead role instructions and any current step delegations. For an assigned specialist's work, "
+        "reconcile the original task and return evidence or dispatch the missing bounded assignment. "
+        "The lead frames questions, reviews evidence, and records decisions. Record substantive progress. "
+        "An older wake summary is context only.\n\n"
         "supervise_run: check only the handed-off run and attempt once, preferably using machine-readable "
         "status or terminal receipts. End a healthy tick quietly. Return a terminal result, failure, or required "
         "decision once through the existing Byte Bridge task. Main verifies the result and continues the next step. "
@@ -1398,13 +1535,11 @@ def monitor_prompt(root, manifest, state, outcome, workflow, caller, main_status
             )
             if len(next_action) > 1600:
                 next_action = next_action[:1600] + "… (read the full action from workflow status)"
-            wake = {
-                "outcome_id": outcome["id"], "revision": workflow["revision"],
-                "step": workflow["step"], "iteration": workflow["iteration"],
-                "owner_session": state["owner_session"], "next_action": next_action,
-            }
+            wake = dict(wake_checkpoint(outcome, workflow, state), next_action=next_action)
             if guidance := active_guidance(workflow):
                 wake["user_guidance"] = guidance
+            if tasks := step_delegations(manifest, workflow):
+                wake["delegations"] = tasks
             if return_pending:
                 returned = workflow["returned_run"]
                 wake["returned_run"] = {key: returned[key] for key in ("run_id", "attempt", "exit_code", "receipt")}
@@ -1461,13 +1596,24 @@ def main(argv=None):
     adopter.add_argument("--interval-minutes", type=int, default=20)
     adopter.add_argument("--param", action="append", default=[])
     adopter.add_argument("--role-session", action="append", default=[], metavar="ROLE=HARNESS:ID")
+    upgrader = commands.add_parser("upgrade", help="Migrate a pinned workflow at a coordinated main-owned checkpoint")
+    for field in ("template", "session", "authority-ref", "expect-state-sha256", "event-id"):
+        upgrader.add_argument("--" + field, required=True)
+    upgrader.add_argument("--expect-revision", type=int, required=True)
+    upgrader.add_argument("--interval-minutes", type=int)
+    upgrader.add_argument("--role-session", action="append", default=[], metavar="ROLE=HARNESS:ID")
+    upgrader.add_argument("--check-only", action="store_true")
     for name in ("status", "doctor", "route", "monitor-prompt", "export"):
         commands.add_parser(name)
     commands.choices["route"].add_argument("--caller-session", required=True)
     commands.choices["route"].add_argument("--main-status", choices=("active", "idle", "unknown"), default="unknown")
+    commands.choices["route"].add_argument("--wake-only", action="store_true",
+                                          help="Omit the action description and include a compact checkpoint on resume_main")
     commands.choices["monitor-prompt"].add_argument("--caller-session", help="Actual caller for a live wake summary")
     commands.choices["monitor-prompt"].add_argument("--main-status", choices=("active", "idle", "unknown"),
                                                     default="unknown", help="Fresh native main chat observation")
+    commands.choices["monitor-prompt"].add_argument("--wake-only", action="store_true",
+                                                    help="Emit compact routing and checkpoint metadata for a custom heartbeat prompt")
     commands.choices["export"].add_argument("--output", required=True, type=Path)
     for name in ("advance", "record-guidance", "accept", "start-run", "arm-run", "record-readiness", "return-run", "record-run", "ack-return", "block", "pause", "resume", "repair-expired-monitor-sources", "repair-run-mirrors", "repair-source-locations"):
         sub = commands.add_parser(name)
@@ -1531,6 +1677,8 @@ def main(argv=None):
             result = init(args)
         elif args.command == "adopt":
             result = adopt(args)
+        elif args.command == "upgrade":
+            result = upgrade(args)
         elif args.command in ("status", "doctor", "route", "monitor-prompt", "export"):
             root, manifest, state, outcome, workflow = opened(args.project)
             if args.command == "status":
@@ -1538,6 +1686,7 @@ def main(argv=None):
                           "step": workflow["step"], "iteration": workflow["iteration"], "visit": workflow["visit"],
                           "owner_session": state["owner_session"], "next_action": outcome["next_action"],
                           "user_guidance": active_guidance(workflow),
+                          "delegations": step_delegations(manifest, workflow),
                           "return_pending": workflow.get("return_pending", False), "monitor": manifest["monitor"],
                           "acceptance": outcome["acceptance"], **history_diagnostics(workflow)}
             elif args.command == "doctor":
@@ -1550,6 +1699,10 @@ def main(argv=None):
             elif args.command == "route":
                 result = route(state, root, outcome_id=outcome["id"], main=manifest["roles"]["main"],
                                supervisor=manifest["roles"]["supervisor"], caller=args.caller_session, main_status=args.main_status)
+                if args.wake_only:
+                    result.pop("next_action", None)
+                    if result["action"] == "resume_main":
+                        result["wake"] = wake_checkpoint(outcome, workflow, state)
             elif args.command == "export":
                 require(not args.output.exists(), "export target already exists")
                 with args.output.open("xb") as stream:
@@ -1559,6 +1712,10 @@ def main(argv=None):
                 require(args.caller_session is not None or args.main_status == "unknown",
                         "a native main status requires the actual caller session")
                 result = monitor_prompt(root, manifest, state, outcome, workflow, args.caller_session, args.main_status)
+                if args.wake_only:
+                    result.pop("prompt")
+                    if "wake" in result:
+                        result["wake"] = wake_checkpoint(outcome, workflow, state)
         else:
             nonempty(args.event_id, "event ID")
             result = mutate(args)

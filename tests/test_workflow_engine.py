@@ -324,6 +324,90 @@ class WorkflowEngineTests(unittest.TestCase):
         self.assertEqual(self.call("export", "--output", str(exported))[0], 0)
         self.assertEqual(json.loads(exported.read_text()), template)
 
+    def test_lead_advances_delegated_step_only_with_each_specialist_return(self):
+        template = definition()
+        role = {"title": "Research role", "harness": "codex", "creation": "reuse-or-create",
+                "responsibilities": "Contribute evidence", "handoff": "Return a verifiable artifact"}
+        template["team"] = {"roles": {name: dict(role) for name in ("main", "supervisor", "methods", "evaluation")}}
+        template["steps"]["diagnose"]["delegations"] = {
+            "proposal": {"role": "methods", "deliverable": "Design draft"},
+            "audit": {"role": "evaluation", "deliverable": "Independent review"},
+        }
+        self.template.write_text(json.dumps(template))
+        self.project = self.root / "delegation-project"
+        self.state_path = self.project / ".byte-os/coordination/state.json"
+        result = self.call("init", "--template", str(self.template), "--objective", "Delegate research work",
+                           "--authority-ref", "user:delegate", "--main-session", "codex:main",
+                           "--supervisor-session", "codex:supervisor", "--role-session", "methods=codex:student",
+                           "--role-session", "evaluation=codex:reviewer", "--monitor-id", "test-monitor", "--continuous")
+        self.assertEqual(result[0], 0, result)
+        tasks = self.call("status")[1]["delegations"]
+        self.assertEqual(tasks["proposal"]["session"], "codex:student")
+        _, wake = self.call("monitor-prompt", "--caller-session", "codex:supervisor", "--main-status", "idle")
+        self.assertEqual(wake["wake"]["delegations"], tasks)
+
+        def specialist(delegation_id, role, author, native_id, *, with_artifact=True):
+            native = hashref(self.artifact({"native_task": native_id}).resolve())
+            sources = [native]
+            if with_artifact:
+                sources.append(hashref(self.artifact({"result": delegation_id}).resolve()))
+            return hashref(self.proof("delegated_result", delegation_id=delegation_id, role=role,
+                                      session=author, task_id=native_id, native_return=native,
+                                      sources=sources).resolve())
+
+        def finish(returns):
+            proof = self.proof("step_result", {"observed": True}, delegated_results=returns)
+            return self.change("advance", evidence=proof)
+
+        proposal = specialist("proposal", "methods", "codex:student", "task-proposal")
+        self.assertEqual(finish({"proposal": proposal})[0], 1)
+        for wrong in (specialist("audit", "evaluation", "codex:main", "task-audit"),
+                      specialist("audit", "evaluation", "codex:reviewer", "task-proposal"),
+                      specialist("audit", "evaluation", "codex:reviewer", "task-audit", with_artifact=False)):
+            self.assertEqual(finish({"proposal": proposal, "audit": wrong})[0], 1)
+        self.assertEqual(self.workflow()["revision"], 0)
+        audit = specialist("audit", "evaluation", "codex:reviewer", "task-audit")
+        returns = {"proposal": proposal, "audit": audit}
+        result = finish(returns)
+        self.assertEqual(result[0], 0, result)
+        self.assertEqual(self.workflow()["events"][-1]["delegated_results"], returns)
+        self.assertEqual(self.call("doctor")[0], 0)
+
+    def test_upgrade_retains_current_outcome_and_requires_bound_specialists(self):
+        self.advance({"observed": True})
+        manifest_path = self.project / ".byte-os/workflow.yaml"
+        original_manifest = manifest_path.read_bytes()
+        original_state = self.state_path.read_bytes()
+        before = self.outcome()
+        template = definition()
+        template["version"] = 2
+        role = {"title": "Role", "harness": "codex", "creation": "reuse-or-create",
+                "responsibilities": "Review evidence", "handoff": "Return verified work"}
+        template["team"] = {"roles": {name: role for name in ("main", "supervisor", "reviewer")}}
+        template["steps"]["literature"]["delegations"] = {
+            "review": {"role": "reviewer", "deliverable": "Source review"},
+        }
+        self.template.write_text(json.dumps(template))
+        args = ("--template", str(self.template), "--session", "codex:main", "--authority-ref", "user:upgrade",
+                "--expect-state-sha256", hashlib.sha256(original_state).hexdigest(), "--expect-revision", "1",
+                "--event-id", "upgrade-v2", "--interval-minutes", "10")
+        self.assertEqual(self.call("upgrade", *args)[0], 1)
+        args += ("--role-session", "reviewer=codex:reviewer")
+        self.assertEqual(self.call("upgrade", *args, "--check-only")[0], 0)
+        self.assertEqual(manifest_path.read_bytes(), original_manifest)
+        self.assertEqual(self.state_path.read_bytes(), original_state)
+        code, result = self.call("upgrade", *args)
+        self.assertEqual(code, 0, result)
+        self.assertEqual(result["revision"], 2)
+        self.assertEqual(result["monitor"]["interval_minutes"], 10)
+        for key in ("id", "status", "acceptance", "execution"):
+            self.assertEqual(self.outcome()[key], before[key])
+        self.assertEqual(self.workflow()["events"][:-1], before["workflow"]["events"])
+        self.assertEqual(self.workflow()["evidence"][:-2], before["workflow"]["evidence"])
+        self.assertEqual(self.call("status")[1]["delegations"]["review"]["session"], "codex:reviewer")
+        self.assertEqual(self.call("upgrade", *args)[0], 1)
+        self.assertEqual(self.call("doctor")[0], 0)
+
     def test_scheduled_goal_wake_summary_tracks_revision_and_preserves_monitor(self):
         before = self.state_path.read_bytes()
         _, base = self.call("monitor-prompt")
@@ -346,6 +430,16 @@ class WorkflowEngineTests(unittest.TestCase):
         self.assertEqual(first["target_session"], "codex:main")
         self.assertEqual(first["monitor_id"], base["monitor_id"])
         self.assertEqual(first["interval_minutes"], base["interval_minutes"])
+        for status, action in (("unknown", "inspect_main"), ("active", "watch_main"), ("idle", "resume_main")):
+            caller = ("--caller-session", "codex:supervisor", "--main-status", status)
+            code, routed = self.call("route", *caller, "--wake-only")
+            self.assertEqual(code, 0, routed)
+            self.assertEqual(routed["action"], action)
+            self.assertNotIn("next_action", routed)
+            _, compact = self.call("monitor-prompt", *caller, "--wake-only")
+            self.assertEqual(routed.get("wake"), compact.get("wake"))
+            self.assertEqual(routed["target_session"], compact["target_session"])
+            self.assertEqual("wake" in routed, action == "resume_main")
         self.assertEqual(self.state_path.read_bytes(), before)
 
         proof = self.proof("step_result", {"observed": True})
@@ -354,6 +448,9 @@ class WorkflowEngineTests(unittest.TestCase):
         self.assertEqual(code, 0, second)
         self.assertEqual(second["wake"]["step"], "literature")
         self.assertEqual(second["wake"]["revision"], 1)
+        _, routed = self.call("route", *idle, "--wake-only")
+        self.assertEqual(routed["wake"]["revision"], 1)
+        self.assertEqual(routed["wake"]["step"], "literature")
         self.assertEqual(second["wake"]["latest_workflow_evidence"], hashref(proof.resolve()))
         self.assertIn(second["wake"]["next_action"], second["prompt"])
         self.assertNotIn(first["wake"]["next_action"], second["prompt"])

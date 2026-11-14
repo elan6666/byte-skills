@@ -83,6 +83,43 @@ The monitor interval is a default when initializing a team template. Set
 `--continuous` only for user-authorized scheduled work. Register and verify the
 heartbeat in the native client before relying on unattended continuation.
 
+### Delegate deliverables within a step
+
+Use `delegations` when a step owner should coordinate or approve work that
+belongs to bound specialists. For example, a design step can require two
+separate deliverables:
+
+```yaml
+delegations:
+  design-draft: {role: methods, deliverable: Candidate protocol and falsification criteria}
+  design-audit: {role: evaluation, deliverable: Independent review of the protocol and evidence boundaries}
+```
+
+`status` and scheduled wake summaries show the current assignments and bound
+sessions. Split additional pieces when inputs, outputs, access, or acceptance
+can be checked independently. Dispatch parallel pieces only when their inputs
+are ready. For the example, the audit follows the draft. Use the existing
+Bridge task or workboard identity through interruption and recovery.
+
+An `advance` receipt for this step includes `delegated_results`, a mapping from
+each declared delegation ID to a `{path, sha256}` reference. Each referenced
+receipt has `kind: delegated_result`, `status: verified`, the same `outcome_id`,
+`step_id`, `iteration`, and `visit`, and these fields:
+
+- `delegation_id`, `role`, and the bound `session`.
+- `task_id` from the actual native assignment. Each delegation uses a distinct ID.
+- `native_return` referencing the native return evidence observed by the owner.
+- `sources` containing that same reference and at least one separate output or
+  failure artifact. Hashes are checked for both. The owner verifies the actual
+  sender and task status through the project's authorized transport before recording.
+
+The engine associates these receipts with the step event. A queued assignment,
+lead-authored substitute, or a receipt from another step or visit cannot serve as
+the specialist's return. For a failed run, include the specialist's observed
+failure evidence and use the declared repair branch. Steps without explicit
+delegations keep the existing receipt format. Apply the project collaboration
+rules to previously pinned workflows when coordinating a specialist team.
+
 ## Explicit adoption of an existing active outcome
 
 When the user explicitly requests migration, coordinate the exact main and
@@ -125,6 +162,29 @@ with current step/run identity, `main_session` and
 `independent_work_remaining: false`. Only the supervisor owner records this
 transition, after actually receiving/verifying main's readiness evidence.
 Do not infer readiness from silence or manually clear the flag during adoption.
+
+## Upgrade a pinned workflow
+
+Use `upgrade` for a user-authorized version change at a coordinated, ready
+main-owned checkpoint. The target definition preserves the current step,
+overall acceptance contract, and parameter keys. Bind any added specialists
+with `--role-session` and retain existing bindings. When the native cadence
+has changed, pass the observed interval with `--interval-minutes`.
+
+```bash
+uv run <skill>/scripts/workflow.py upgrade --project <project> \
+  --template <target-template> --session <current-main-session> \
+  --authority-ref <user-request> --expect-revision <current-revision> \
+  --expect-state-sha256 <fresh-state-sha256> --event-id <migration-event> \
+  --role-session <specialist>=<native-session> --check-only
+```
+
+Coordinate with the existing owner and scheduler before committing. Repeat the
+checked command without `--check-only`. The upgrade archives the previous
+definition and state, adds a revision, and retains the outcome, evidence,
+iteration, current visit, and run history. A running workflow handback must
+finish before this operation. Verify `status` and `doctor`, then refresh the
+existing native monitor from the new state and verify its configuration.
 
 ## Definition
 
@@ -493,16 +553,16 @@ native tools to configure the heartbeat and observe actual scheduled turns.
 # Base prompt for the designated supervisor
 uv run <skill>/scripts/workflow.py monitor-prompt --project <project>
 
-# Fresh wake message after the supervisor confirms that main is idle and ready
-uv run <skill>/scripts/workflow.py monitor-prompt --project <project> \
-  --caller-session codex:<supervisor-id> --main-status idle
+# Route and get the wake checkpoint after confirming that main is idle
+uv run <skill>/scripts/workflow.py route --project <project> \
+  --caller-session codex:<supervisor-id> --main-status idle --wake-only
 ```
 
-The second command uses the same routing rules as `route`. On `resume_main`,
-it emits the main target and a new prompt with a `wake` summary of the current
-revision, iteration, step, next action, and relevant evidence or returned run.
-Update the same heartbeat with this target and prompt, retaining cadence and
-notification settings. Main re-reads current state before executing, restores
+On `resume_main`, the second command emits the main target and a compact
+`wake` checkpoint with the current outcome, revision, iteration, step and
+owner. Append it to the base prompt and update the same heartbeat with the
+returned target, retaining cadence and notification settings. Main reads the
+live next action and evidence from `status` before executing, restores
 the supervisor target and base prompt, and records actual work. Each handback
 replaces the prior summary. Both commands are read-only. When storing native
 readback as workflow evidence, save an immutable snapshot instead of hashing

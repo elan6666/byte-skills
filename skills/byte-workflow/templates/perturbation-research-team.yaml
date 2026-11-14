@@ -1,0 +1,632 @@
+{
+  "schema_version": 1,
+  "id": "perturbation-research-team",
+  "version": 1,
+  "description": "复用双路独立推导、判别实验、端到端训练与独立评估的科研团队工作方式。",
+  "start": "diagnose",
+  "parameters": {
+    "in_cell": "项目登记的细胞内留出任务",
+    "cross_cell": "项目登记的跨细胞迁移任务",
+    "target_source": "项目登记的折半 Pearson Δ 参考和可比性协议",
+    "epochs": "10",
+    "loss": "表达 MSE",
+    "comparison": "同信息、同预算的自身对照和消融；零响应作内部诊断",
+    "resource_limits": "项目已授权的服务器、数据和队列权限"
+  },
+  "acceptance": [
+    {
+      "id": "within-cell-target",
+      "description": "细胞内任务的末轮冻结预测达到预先登记的折半 Pearson Δ 目标，独立核验评分匹配、覆盖、训练和数据隔离。",
+      "scope": "workflow",
+      "checks": {
+        "all": [
+          {
+            "fact": "dataset_role",
+            "op": "eq",
+            "value": "within-cell"
+          },
+          {
+            "fact": "matched_protocol_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "heldout_evidence_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "score_minus_registered_target",
+            "op": "ge",
+            "value": 0
+          }
+        ]
+      }
+    },
+    {
+      "id": "cross-cell-target",
+      "description": "跨细胞任务的末轮冻结预测达到预先登记的折半 Pearson Δ 目标，独立核验目标线隔离、评分匹配、覆盖和训练。",
+      "scope": "workflow",
+      "checks": {
+        "all": [
+          {
+            "fact": "dataset_role",
+            "op": "eq",
+            "value": "cross-cell"
+          },
+          {
+            "fact": "matched_protocol_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "heldout_evidence_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "score_minus_registered_target",
+            "op": "ge",
+            "value": 0
+          }
+        ]
+      }
+    }
+  ],
+  "steps": {
+    "diagnose": {
+      "owner": "main",
+      "action": "核对最近真实结果、已失败的尝试及开发暴露。从响应方向、幅度、观测噪声和域外失效中找出具体瓶颈。若上一轮已重新审题，绑定其新问题和适用边界。冻结同一个可区分的科学问题及许可数据边界。任务：${in_cell} 和 ${cross_cell}。",
+      "acceptance": {
+        "fact": "diagnosis_verified",
+        "op": "eq",
+        "value": true
+      },
+      "transitions": [
+        {
+          "to": "literature"
+        }
+      ]
+    },
+    "literature": {
+      "owner": "main",
+      "action": "总控从数学、物理、统计、控制与系统辨识、计算科学、语言模型、生成建模及其他适用领域比较可迁移原理。核验原论文的问题、假设、推导、反例及适用条件，保存取舍和关键证据。给支持与反例路线提供共同的来源与数据权限，保留各自独立推导的空间。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "primary_sources_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "direction_selection_verified",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "to": "independent-analysis"
+        }
+      ]
+    },
+    "independent-analysis": {
+      "owner": "main",
+      "action": "为支持和反例两路提供同一命题、许可边界与共同来源。支持路线推导机制的独有预测和成立条件，反例路线独立寻找反例、竞争解释及不可辨识情形。交换前分别封存首份推导及依据，记录来源、证据路径和哈希。总控核验两份独立提交后进入汇合。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "support_case_bound",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "counterexample_case_bound",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "independent_first_passes_verified",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "to": "design"
+        }
+      ]
+    },
+    "design": {
+      "owner": "main",
+      "action": "核对两条路线的首份推导均已独立封存，再交换对方可复算的推导、反例、子问题结果及适用条件。双方核验交叉证据，记录它解决了哪个未决问题、改变了什么预测及仍存的分歧。没有可迁移结果时，记录复核过的边界或不相容原因。总控与独立评估从剩余分歧中选择最小判别实验，冻结真实开发数据、支持范围、比较臂、评分规则、探索预算和晋级判据。验证范围：${comparison}。复用旧实验时绑定同一命题和口径的冻结规格与实际回执，由评估重新核验数据暴露和适用范围。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "mechanism_prediction_falsifiable",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "cross_review_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "probe_budget_frozen",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "comparison_frozen",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "evaluation_boundary_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "any": [
+              {
+                "fact": "existing_probe_evidence_bound",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "fact": "existing_probe_evidence_bound",
+                "op": "eq",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "when": {
+            "fact": "existing_probe_evidence_bound",
+            "op": "eq",
+            "value": true
+          },
+          "to": "probe-review"
+        },
+        {
+          "to": "probe"
+        }
+      ]
+    },
+    "probe": {
+      "owner": "main",
+      "wait_owner": "supervisor",
+      "action": "在真实许可开发数据上运行已冻结的最小判别实验。按问题使用训练内整行整列或源内留线。保存每次尝试的规格、运行身份、实际耗时或资源、预测、掩码、日志及终态，保留失败和未完成的材料。遵循 ${resource_limits}，长等待走现有运行交接，短作业由总控验证终态。",
+      "acceptance": {
+        "fact": "probe_terminal_verified",
+        "op": "eq",
+        "value": true
+      },
+      "transitions": [
+        {
+          "when": {
+            "fact": "exit_code",
+            "op": "ne",
+            "value": 0
+          },
+          "to": "repair"
+        },
+        {
+          "to": "probe-review"
+        }
+      ]
+    },
+    "probe-review": {
+      "owner": "main",
+      "action": "独立评估从冻结预测、掩码和许可参照复算同一支持范围的判别量与不确定性，逐条核对支持和反例。检查预设的共同响应、幅度校准、容量或错配等竞争解释，汇总已验证的适用范围、负结果和剩余分歧。总控依据结果与实际成本记录算力投向，写明追加算力能裁决的剩余问题和预计成本。只有独有预测得到支持、关键反例已处理且正式训练有明确验证价值时，才核准正式算力。范围需收窄或证据不足时优先选择能区分剩余解释的短测。机制被反驳时归档并换方向。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "mechanism_evidence_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "independent_recompute_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "compute_allocation_recorded",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "any": [
+              {
+                "fact": "formal_compute_justified",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "fact": "formal_compute_justified",
+                "op": "eq",
+                "value": false
+              }
+            ]
+          },
+          {
+            "any": [
+              {
+                "fact": "probe_decision",
+                "op": "eq",
+                "value": "promote"
+              },
+              {
+                "fact": "probe_decision",
+                "op": "eq",
+                "value": "narrow"
+              },
+              {
+                "fact": "probe_decision",
+                "op": "eq",
+                "value": "reject"
+              },
+              {
+                "fact": "probe_decision",
+                "op": "eq",
+                "value": "inconclusive"
+              }
+            ]
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "when": {
+            "all": [
+              {
+                "fact": "probe_decision",
+                "op": "eq",
+                "value": "promote"
+              },
+              {
+                "fact": "formal_compute_justified",
+                "op": "eq",
+                "value": true
+              }
+            ]
+          },
+          "to": "architecture"
+        },
+        {
+          "to": "decide"
+        }
+      ]
+    },
+    "architecture": {
+      "owner": "main",
+      "action": "把经验证的机制落实为联合学习的端到端架构，写清许可对照与靶点怎样生成表达、机制约束如何贯穿模型，以及可检验的适用边界。绑定复核过的晋级和算力决定，冻结完整模型、同信息同预算的直接预测对照、关键机制消融、正式切分及评分合同。正式比较使用 ${comparison}，独立验收绑定 ${target_source}。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "end_to_end_design_frozen",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "formal_protocol_frozen",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "to": "implement"
+        }
+      ]
+    },
+    "implement": {
+      "owner": "main",
+      "action": "实现完整模型和对应消融，预检真实数据入口、切分与读写权限、原推理输入、输出轴和训练预算。为每个正式实验臂冻结源码、配置、训练样本、优化步、配对对照和输出。每臂从头训练 ${epochs} epoch，统一 ${loss}。遵循 ${resource_limits}。",
+      "acceptance": {
+        "fact": "training_preflight_verified",
+        "op": "eq",
+        "value": true
+      },
+      "transitions": [
+        {
+          "to": "experiment"
+        }
+      ]
+    },
+    "experiment": {
+      "owner": "main",
+      "wait_owner": "supervisor",
+      "action": "在仍待验收且适用的任务上运行冻结的端到端模型与消融。保存精确运行身份、实际优化预算和第 ${epochs} epoch 末轮权重；沿原协议冻结预测。长等待走现有运行交接，回传后总控执行独立核验。",
+      "acceptance": {
+        "fact": "terminal_verified",
+        "op": "eq",
+        "value": true
+      },
+      "transitions": [
+        {
+          "when": {
+            "fact": "exit_code",
+            "op": "ne",
+            "value": 0
+          },
+          "to": "repair"
+        },
+        {
+          "to": "evaluate"
+        }
+      ]
+    },
+    "evaluate": {
+      "owner": "main",
+      "action": "独立评估从冻结预测和评估参照独立复算，保留输入版本、逐条件结果和运行回执。用同一条件、基因轴、推理权限、对照参照及有效规则计算 Pearson Δ、响应 MSE、去直接靶点的方向和幅度、覆盖、缺失及配对区间，按项目规定分组报告。核对 ${target_source} 与末轮预测；每项达标分别提交独立验收证据。记录机制收益是否跨留出复现以及评分暴露。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "comparison_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "independent_recompute_verified",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "to": "decide"
+        }
+      ]
+    },
+    "decide": {
+      "owner": "main",
+      "action": "总控登记每次尝试及实际开销，保留负结果、技术故障、无结论及数据暴露。跨轮传递结论时带上证据路径与哈希、验证状态、适用条件、反例和未决问题。根据独立复算登记实质不同的路线是否在可比较的留出条件下反复遇到同一限制。出现共同限制时进入重新审题。已独立验收且哈希有效的任务保留证据，两项都通过才结束循环并关闭对应长期监督。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "decision_recorded",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "attempt_history_updated",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "any": [
+              {
+                "fact": "shared_limitation_repeated",
+                "op": "eq",
+                "value": true
+              },
+              {
+                "fact": "shared_limitation_repeated",
+                "op": "eq",
+                "value": false
+              }
+            ]
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "when": {
+            "overall_accepted": true
+          },
+          "to": "done"
+        },
+        {
+          "when": {
+            "fact": "shared_limitation_repeated",
+            "op": "eq",
+            "value": true
+          },
+          "to": "reframe"
+        },
+        {
+          "to": "diagnose",
+          "new_iteration": true
+        }
+      ]
+    },
+    "reframe": {
+      "owner": "main",
+      "action": "并列导致共同失效的逐条件证据，明确共同现象、成立范围和仍可解释它的原因。把限制本身改写为可检验的问题，写明哪项最小观测能区分竞争解释、要复用哪条已验证结果，以及答案如何改变架构或算力。若许可数据无法裁决，记录缺失的观测和可检验的替代问题。保存推导、反例和复算依据后，从新问题进入下一轮。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "shared_limitation_evidence_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "reframed_question_verified",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "to": "diagnose",
+          "new_iteration": true
+        }
+      ]
+    },
+    "repair": {
+      "owner": "main",
+      "action": "保留失败尝试的配置、运行标识、日志、实际开销和失败原因，区分执行故障与科学反证。仅修复同一科学问题和原判据的短测时，从 design 重新核对两路证据与判别计划。正式实验故障回到实现预检。科学问题或核心机制变化时从诊断开启新一轮。修复重跑使用新运行身份。权限或外部依赖确实阻塞时按既有状态管理处理。",
+      "acceptance": {
+        "all": [
+          {
+            "fact": "failure_review_verified",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "fact": "failed_run_evidence_preserved",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "any": [
+              {
+                "fact": "repair_route",
+                "op": "eq",
+                "value": "probe"
+              },
+              {
+                "fact": "repair_route",
+                "op": "eq",
+                "value": "formal"
+              },
+              {
+                "fact": "repair_route",
+                "op": "eq",
+                "value": "diagnose"
+              }
+            ]
+          }
+        ]
+      },
+      "transitions": [
+        {
+          "when": {
+            "fact": "repair_route",
+            "op": "eq",
+            "value": "probe"
+          },
+          "to": "design"
+        },
+        {
+          "when": {
+            "fact": "repair_route",
+            "op": "eq",
+            "value": "formal"
+          },
+          "to": "implement"
+        },
+        {
+          "to": "diagnose",
+          "new_iteration": true
+        }
+      ]
+    }
+  },
+  "team": {
+    "monitor": {
+      "kind": "heartbeat",
+      "interval_minutes": 20
+    },
+    "roles": {
+      "main": {
+        "title": "科研总控",
+        "model": "gpt-6.1-sol",
+        "reasoning": "xhigh",
+        "steps": [
+          "diagnose",
+          "literature",
+          "independent-analysis",
+          "design",
+          "probe",
+          "probe-review",
+          "architecture",
+          "implement",
+          "experiment",
+          "evaluate",
+          "decide",
+          "reframe",
+          "repair"
+        ],
+        "responsibilities": "冻结共同问题与权限，组织独立推导及交叉复核，审查实际证据，决定算力投入和下一轮。对工作流推进和整体验收负责。",
+        "handoff": "分派时写明同一命题、输入版本、可见范围和预期证据。核验回传和哈希后，通过工作流登记完成与下一步。",
+        "harness": "codex",
+        "creation": "reuse-or-create"
+      },
+      "literature": {
+        "title": "跨学科文献与反例",
+        "model": "gpt-6.1-sol",
+        "reasoning": "high",
+        "steps": [
+          "literature",
+          "independent-analysis",
+          "design",
+          "reframe"
+        ],
+        "responsibilities": "从原论文追溯可迁移原理、假设和反例。负责反例路线，独立检查竞争解释、边界条件和不可辨识性。",
+        "handoff": "先独立封存第一份报告，标注来源、证据路径和哈希。总控核验双方初稿后才交换证据，记录改变的判断和仍存的分歧。",
+        "harness": "codex",
+        "creation": "reuse-or-create"
+      },
+      "methods": {
+        "title": "方法与假设",
+        "model": "gpt-6-astra",
+        "reasoning": "xhigh",
+        "steps": [
+          "independent-analysis",
+          "design",
+          "architecture",
+          "reframe"
+        ],
+        "responsibilities": "负责支持路线，推导机制的独有预测、成立条件和失败条件。把获支持的机制落实到端到端架构及对应消融。",
+        "handoff": "先独立封存推导再参加交叉复核。将最小判别规格交实验工程，将可证伪条件交独立评估。",
+        "harness": "codex",
+        "creation": "reuse-or-create"
+      },
+      "experiments": {
+        "title": "实验工程",
+        "model": "gpt-6.1-terra",
+        "reasoning": "high",
+        "steps": [
+          "probe",
+          "implement",
+          "experiment",
+          "repair"
+        ],
+        "responsibilities": "实现冻结的判别实验、正式训练与消融。核对数据许可、切分、输出轴及预算，保留每次尝试与失败。",
+        "handoff": "经总控授权后启动作业。将 run ID、attempt、配置与终态位置交监督。把冻结预测、掩码、日志及资源回执交独立评估。",
+        "harness": "codex",
+        "creation": "reuse-or-create"
+      },
+      "evaluation": {
+        "title": "独立评估",
+        "model": "gpt-6-astra",
+        "reasoning": "high",
+        "steps": [
+          "design",
+          "probe-review",
+          "evaluate"
+        ],
+        "responsibilities": "预审实验是否能区分竞争解释，独立保管盲测和评估参照。用冻结输入复算结果、覆盖和不确定性。",
+        "handoff": "提交逐条件证据、来源、输入版本与支持、反驳或证据不足的判定。正式评估标签只在获授权的评分环节使用。",
+        "harness": "codex",
+        "creation": "reuse-or-create"
+      },
+      "supervisor": {
+        "title": "运行监督",
+        "model": "gpt-6-luna",
+        "reasoning": "low",
+        "steps": [
+          "probe",
+          "experiment",
+          "repair"
+        ],
+        "responsibilities": "用用户授权的原生定时任务监督当前运行或总控状态。健康时一次只读检查后静默。",
+        "handoff": "按交接 run ID 和 attempt 回传终态或故障。总控空闲且有就绪工作时，用当前阶段提示重定向同一个定时任务。",
+        "harness": "codex",
+        "creation": "reuse-or-create"
+      }
+    }
+  }
+}

@@ -328,6 +328,10 @@ uv run skills/byte-workflow/scripts/workflow.py team-plan --template research-au
 Use `$byte-workflow` to apply the preset to a new project and bind or create its
 team as authorized. See [team setup](skills/byte-workflow/references/format.md#reuse-a-team-and-its-workflow).
 
+The [perturbation research team preset](skills/byte-workflow/templates/perturbation-research-team.yaml)
+defines separate acceptance criteria for within-cell and cross-cell prediction.
+To use it, install that template file and run `team-plan --template perturbation-research-team`.
+
 Templates live at `~/.byte/workflows/<id>/workflow.yaml`. Each project pins a
 snapshot in `.byte-os/workflow.yaml` and uses the existing
 `.byte-os/coordination/state.json` for runtime state. Library edits cannot

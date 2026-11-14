@@ -1,6 +1,6 @@
 schema_version: 1
 id: research-automation
-version: 1
+version: 2
 description: Run an evidence-led research loop with independent argument and critique, staged experiments, and reproducible acceptance.
 start: diagnose
 parameters:
@@ -24,21 +24,28 @@ acceptance:
 steps:
   diagnose:
     owner: main
+    delegations:
+      evidence-brief: {role: evaluation, deliverable: "Verified prior results, failure modes, evidence gaps, and protocol constraints"}
     action: >-
-      Scope ${research_question}. Review prior results and failed attempts, distinguish the observed problem from competing
-      explanations, and freeze the current question, ${evidence_scope}, and ${evaluation_protocol}. Record durable user
+      Scope ${research_question}. Choose the current question from the independent evidence brief and freeze
+      ${evidence_scope} and ${evaluation_protocol}. Record durable user
       changes in project guidance and with record-guidance before acting on them.
     acceptance: {fact: question_and_protocol_registered, op: eq, value: true}
     transitions: [{to: literature}]
   literature:
     owner: main
+    delegations:
+      source-review: {role: literature, deliverable: "Primary-source evidence and a shortlist with assumptions and failure cases"}
     action: >-
-      Review primary sources for relevant methods, assumptions, failure cases, and comparable evidence. Record the choice
-      of direction and citations, or justify why verified sources can be reused. Give both analysis routes the same question and boundaries.
+      Commission the literature brief and choose a direction using the verified sources, assumptions, and failure cases.
+      Give both analysis routes the same question and boundaries.
     acceptance: {fact: source_and_direction_review_verified, op: eq, value: true}
     transitions: [{to: independent-analysis}]
   independent-analysis:
     owner: main
+    delegations:
+      hypothesis: {role: methods, deliverable: "Sealed derivation and distinctive predictions"}
+      counterexamples: {role: literature, deliverable: "Independently sealed critique and competing explanations"}
     action: >-
       Ask the methods role to derive the hypothesis and its distinctive predictions. Ask the literature and critique role to
       independently seek counterexamples and alternative explanations. Preserve both first passes with sources before exchanging them.
@@ -46,9 +53,12 @@ steps:
     transitions: [{to: design}]
   design:
     owner: main
+    delegations:
+      pilot-design: {role: methods, deliverable: "Candidate pilot arms and falsification criteria after cross-review"}
+      pilot-audit: {role: evaluation, deliverable: "Independent protocol and evidence-boundary review of the candidate design"}
     action: >-
-      Exchange the verified analyses, document which predictions changed, and resolve what the evidence permits. With independent
-      evaluation, freeze the smallest discriminating test, controls, exclusions, analysis and decision criteria, and a bounded budget.
+      Exchange the verified analyses and ask methods for the smallest discriminating test. Send that proposal to evaluation for review.
+      Resolve disagreements and approve the final controls, exclusions, analysis, decision criteria, and bounded budget.
       Follow ${comparison} and ${resource_limits}. Reuse prior pilot evidence only when it matches the frozen question and protocol.
     acceptance:
       all:
@@ -64,9 +74,11 @@ steps:
   probe:
     owner: main
     wait_owner: supervisor
+    delegations:
+      pilot-execution: {role: experiments, deliverable: "Pilot outputs or failure evidence with the exact run and attempt"}
     action: >-
-      Run the bounded pilot within ${evidence_scope} and ${resource_limits}. Record inputs, procedure, run or attempt identity,
-      actual cost, outputs, and failures. Use the supervisor handoff for unattended waits.
+      Approve and delegate the bounded pilot within ${evidence_scope} and ${resource_limits}. Verify the returned inputs,
+      run identity, costs and outputs. Use the supervisor handoff for unattended waits.
     acceptance: {fact: pilot_terminal_verified, op: eq, value: true}
     transitions:
       - when: {fact: exit_code, op: ne, value: 0}
@@ -74,6 +86,8 @@ steps:
       - to: probe-review
   probe-review:
     owner: main
+    delegations:
+      pilot-reproduction: {role: evaluation, deliverable: "Independent reproduction with competing explanations and uncertainty"}
     action: >-
       Have independent evaluation reproduce the pilot analysis and check competing explanations. Record whether to promote,
       narrow, reject, or leave the hypothesis inconclusive. Justify any larger study with the remaining question and approved cost.
@@ -97,24 +111,31 @@ steps:
       - to: decide
   study-plan:
     owner: main
+    delegations:
+      confirmatory-design: {role: methods, deliverable: "Candidate formal protocol and discriminating predictions"}
+      confirmatory-audit: {role: evaluation, deliverable: "Independent review of controls and confirmatory acceptance criteria"}
     action: >-
-      Design the confirmatory study for the supported hypothesis. Freeze the intervention or method, comparison arms, controls,
-      measurements, analysis, evidence boundaries, resource limits, and stopping criteria. Bind ${evaluation_protocol} and ${comparison}.
+      Ask methods for the confirmatory design and evaluation for its independent review. Resolve objections and freeze
+      the approved intervention, comparison arms, measurements, evidence boundaries, and stopping criteria under ${evaluation_protocol} and ${comparison}.
     acceptance: {fact: confirmatory_protocol_frozen, op: eq, value: true}
     transitions: [{to: implement}]
   implement:
     owner: main
+    delegations:
+      implementation: {role: experiments, deliverable: "Versioned execution materials and readiness evidence"}
     action: >-
-      Prepare the protocol and execution materials, such as code, instruments, datasets, configurations, or analysis scripts.
-      Verify readiness, access boundaries, provenance, and resource limits before launch. Preserve the versions used.
+      Assign preparation of code, instruments, datasets, configurations, and analysis scripts to experimental execution as needed.
+      Decide readiness from its returned preflight evidence, access boundaries, provenance, and budget.
     acceptance: {fact: study_readiness_verified, op: eq, value: true}
     transitions: [{to: experiment}]
   experiment:
     owner: main
     wait_owner: supervisor
+    delegations:
+      study-execution: {role: experiments, deliverable: "Frozen study outputs or failure evidence with exact execution identity"}
     action: >-
-      Execute the approved study within ${resource_limits}. Preserve primary outputs, logs, deviations, actual resources, and
-      exact execution identity. For unattended work, hand off the exact attempt, verify the wake route, and yield when ready work is exhausted.
+      Authorize experimental execution within ${resource_limits}. Verify its returned primary outputs, logs, deviations, actual resources,
+      and exact identity. For unattended work, verify the supervisor handoff and wake route, then yield when ready work is exhausted.
     acceptance: {fact: study_terminal_verified, op: eq, value: true}
     transitions:
       - when: {fact: exit_code, op: ne, value: 0}
@@ -122,10 +143,11 @@ steps:
       - to: evaluate
   evaluate:
     owner: main
+    delegations:
+      independent-results: {role: evaluation, deliverable: "Reproduced analysis and criterion-specific evidence"}
     action: >-
-      Independently check provenance and reproduce the key analysis from frozen evidence. Report comparability, coverage,
-      uncertainty, negative findings and limitations. Submit criterion-specific receipts against ${evaluation_protocol}.
-      Use confirmatory evidence and access boundaries defined by the project.
+      Request independent evaluation of provenance, reproducibility, uncertainty, negative findings, and limitations. Inspect
+      its criterion-specific evidence against ${evaluation_protocol} and decide whether the overall criteria are satisfied.
     acceptance:
       all:
         - {fact: comparison_verified, op: eq, value: true}
@@ -150,15 +172,19 @@ steps:
       - {to: diagnose, new_iteration: true}
   reframe:
     owner: main
+    delegations:
+      revised-question: {role: methods, deliverable: "Competing explanations and a minimal discriminating observation"}
     action: >-
-      Compare the evidence across failed or inconclusive attempts. Turn the repeated limitation into a testable question
-      and identify the smallest observation that could distinguish the remaining explanations.
+      Ask methods to compare failed or inconclusive attempts and propose a testable question. Decide which unresolved
+      explanation merits another iteration based on the smallest discriminating observation and its cost.
     acceptance: {fact: reframed_question_verified, op: eq, value: true}
     transitions: [{to: diagnose, new_iteration: true}]
   repair:
     owner: main
+    delegations:
+      failure-diagnosis: {role: experiments, deliverable: "Failure evidence and a bounded repair proposal"}
     action: >-
-      Preserve the failed attempt and diagnose the execution issue. Route an in-scope pilot repair to design, a confirmatory
+      Have experimental execution preserve the failed attempt and diagnose the issue. Route an in-scope pilot repair to design, a confirmatory
       repair to implementation, or a change in scientific question to diagnosis. Use a new attempt identity for a rerun.
     acceptance:
       all:
@@ -217,7 +243,7 @@ team:
       model: gpt-6-astra
       reasoning: high
       creation: reuse-or-create
-      steps: [design, probe-review, evaluate]
+      steps: [diagnose, design, probe-review, study-plan, evaluate]
       responsibilities: Audit the frozen protocol and evidence boundaries, independently reproduce the analysis, and assess the registered criteria.
       handoff: Return criterion-specific receipts with inputs, uncertainty, scope, and reproducible evidence.
     supervisor:

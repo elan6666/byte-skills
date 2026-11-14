@@ -196,6 +196,13 @@ one concise state document.
 
 ## Durable agent roles and collaboration
 
+When the user has assigned specialist roles, split substantive work before
+execution and send bounded pieces through the existing authorized route. The
+lead owns decisions and acceptance. Specialists own their literature, design,
+implementation, execution, and independent review deliverables. Reconcile the
+original task before retrying a delayed handoff. Continue with other ready
+pieces while awaiting it. Follow declared workflow delegations when present.
+
 When the project uses agent working documents, follow the shared
 [agent collaboration contract](../byte-plan/references/agent-collaboration.md).
 On joining, resuming or receiving a task, read your explicitly assigned current
