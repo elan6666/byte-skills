@@ -156,10 +156,38 @@ def evaluate(expression, facts, accepted):
             "lt": lambda: value < expected, "le": lambda: value <= expected}[op]()
 
 
+def validate_team(team, steps):
+    require(isinstance(team, dict) and set(team) <= {"roles", "monitor"}, "unsupported team field")
+    roles = team.get("roles")
+    require(isinstance(roles, dict) and {"main", "supervisor"} <= set(roles), "team needs main and supervisor roles")
+    for name, role in roles.items():
+        identifier(name, "team role")
+        require(isinstance(role, dict) and set(role) <= {"title", "harness", "model", "reasoning", "creation", "responsibilities", "steps", "handoff"},
+                "unsupported team role field")
+        for field in ("title", "harness", "responsibilities", "handoff"):
+            nonempty(role.get(field), "team role " + name + "." + field)
+        session(role["harness"] + ":role-validation")
+        require(role.get("creation") in ("reuse-only", "reuse-or-create"), "unsupported team role creation policy")
+        if "model" in role:
+            nonempty(role["model"], "team role model")
+        if "reasoning" in role:
+            require(role["reasoning"] in ("none", "minimal", "low", "medium", "high", "xhigh", "max", "ultra"),
+                    "unsupported team role reasoning level")
+        assignments = role.get("steps", [])
+        require(isinstance(assignments, list) and all(isinstance(step, str) and step in steps for step in assignments),
+                "team role steps must name existing workflow steps")
+        require(len(assignments) == len(set(assignments)), "duplicate team role step")
+    if "monitor" in team:
+        monitor = team["monitor"]
+        require(isinstance(monitor, dict) and set(monitor) == {"kind", "interval_minutes"}, "invalid team monitor")
+        require(monitor["kind"] == "heartbeat" and type(monitor["interval_minutes"]) is int and monitor["interval_minutes"] > 0,
+                "team monitor requires a heartbeat with a positive minute interval")
+
+
 def validate(template):
     require(isinstance(template, dict) and type(template.get("schema_version")) is int
             and template["schema_version"] == 1, "template schema_version must be 1")
-    require(set(template) <= {"schema_version", "id", "version", "description", "start", "parameters", "acceptance", "steps"}, "unsupported template field; do not silently ignore configuration")
+    require(set(template) <= {"schema_version", "id", "version", "description", "start", "parameters", "acceptance", "steps", "team"}, "unsupported template field; do not silently ignore configuration")
     identifier(template.get("id"), "template.id")
     require(type(template.get("version")) is int and template["version"] > 0, "template.version must be positive")
     steps = template.get("steps")
@@ -219,6 +247,8 @@ def validate(template):
     for step in steps.values():
         for name in re.findall(r"\$\{([^}]+)\}", step["action"]):
             require(name in parameters, "undefined action parameter: " + name)
+    if "team" in template:
+        validate_team(template["team"], steps)
     return template
 
 
@@ -227,6 +257,47 @@ def session(value):
     require(separator and harness in ("codex", "claude", "dsh", "zcode", "pi", "hermes", "kimi", "opencode") and native,
             "session must use a supported harness and exact native-id")
     return value
+
+
+def template_path(template, home):
+    path = Path(template).expanduser()
+    return path if path.is_file() else Path(home).expanduser() / template / "workflow.yaml"
+
+
+def team_plan(template, bindings=None, model_preferences=None):
+    team = template.get("team", {})
+    bindings = bindings or {}
+    model_preferences = model_preferences or {}
+    roles = {}
+    for name, role in team.get("roles", {}).items():
+        entry = dict(role, session=bindings.get(name))
+        if model_preferences.get(name):
+            entry["model"] = model_preferences[name]
+        entry["onboarding_prompt"] = (
+            f"You are {role['title']} (Byte workflow role {name}). "
+            f"Your responsibilities: {role['responsibilities']}\n\n"
+            f"Handoff requirements: {role['handoff']}\n\n"
+            "Read the current project's instructions and its pinned Byte workflow once available. "
+            "Confirm your native session identity and role, then wait for an authorized assignment. "
+            "Use the project's existing coordination and evidence rules. The template alone grants no execution authority."
+        )
+        roles[name] = entry
+    return {"template_id": template["id"], "version": template["version"], "roles": roles,
+            "monitor_preference": team.get("monitor")}
+
+
+def team_bindings(template, args, main, supervisor):
+    roles = template.get("team", {}).get("roles", {})
+    bindings = {"main": main, "supervisor": supervisor}
+    for binding in args.role_session:
+        name, separator, value = binding.partition("=")
+        require(separator and name in roles and name not in bindings, "unknown or duplicate team role binding: " + name)
+        bindings[name] = session(value)
+    require(len(set(bindings.values())) == len(bindings), "team roles must bind to distinct sessions")
+    for name, value in bindings.items():
+        if name in roles:
+            require(value.split(":", 1)[0] == roles[name]["harness"], "team role harness mismatch: " + name)
+    return bindings
 
 
 def paths(project):
@@ -1118,16 +1189,17 @@ def mutate(args):
 
 
 def init(args):
-    template_path = Path(args.template).expanduser()
-    if not template_path.is_file():
-        template_path = Path(args.home).expanduser() / args.template / "workflow.yaml"
-    template = validate(load(template_path))
+    source = template_path(args.template, args.home)
+    template = validate(load(source))
     main_session, supervisor = session(args.main_session), session(args.supervisor_session)
     require(main_session != supervisor, "main and supervisor must be distinct")
+    bindings = team_bindings(template, args, main_session, supervisor)
     nonempty(args.authority_ref, "authority reference")
     nonempty(args.objective, "objective")
     require(not args.continuous or args.monitor_id, "continuous mode needs one authorized monitor ID")
-    require(args.interval_minutes > 0, "interval must be positive")
+    default_interval = template.get("team", {}).get("monitor", {}).get("interval_minutes", 20)
+    interval = args.interval_minutes if args.interval_minutes is not None else default_interval
+    require(interval > 0, "interval must be positive")
     parameters = copy.deepcopy(template.get("parameters", {}))
     for binding in args.param:
         key, separator, value = binding.partition("=")
@@ -1141,10 +1213,12 @@ def init(args):
         require(not state.get("overall_outcome"), "existing outcome requires explicit migration, not init")
         require(state.get("owner_session") in (None, main_session), "another session owns project state")
         outcome_id = template["id"] + "-" + uuid.uuid4().hex[:12]
-        snapshot = {"schema_version": 1, "outcome_id": outcome_id, "template_sha256": digest(template_path.read_bytes()),
+        snapshot = {"schema_version": 1, "outcome_id": outcome_id, "template_sha256": digest(source.read_bytes()),
                     "definition": template, "parameters": parameters, "roles": {"main": main_session, "supervisor": supervisor},
                     "model_preferences": {"main": args.main_model, "supervisor": args.supervisor_model},
-                    "monitor": {"continuous": args.continuous, "id": args.monitor_id, "interval_minutes": args.interval_minutes}}
+                    "monitor": {"continuous": args.continuous, "id": args.monitor_id, "interval_minutes": interval}}
+        if "team" in template:
+            snapshot["team_sessions"] = bindings
         acceptance = [dict(c, status="pending") for c in template["acceptance"]]
         state["overall_outcome"] = {
             "schema_version": 1, "id": outcome_id, "objective": args.objective, "authority_ref": args.authority_ref,
@@ -1167,12 +1241,11 @@ def init(args):
 
 def adopt(args):
     """Explicit owner-run migration of a live legacy outcome, without run submission."""
-    source = Path(args.template).expanduser()
-    if not source.is_file():
-        source = Path(args.home).expanduser() / args.template / "workflow.yaml"
+    source = template_path(args.template, args.home)
     template = validate(load(source))
     main_session, supervisor = session(args.main_session), session(args.supervisor_session)
     require(main_session != supervisor, "main and supervisor must be distinct")
+    bindings = team_bindings(template, args, main_session, supervisor)
     nonempty(args.authority_ref, "explicit migration authority reference")
     nonempty(args.event_id, "migration event ID")
     require(args.interval_minutes > 0, "interval must be positive")
@@ -1232,6 +1305,8 @@ def adopt(args):
                     "definition": template, "parameters": parameters, "roles": {"main": main_session, "supervisor": supervisor},
                     "model_preferences": {"main": None, "supervisor": None},
                     "monitor": {"continuous": args.continuous, "id": args.monitor_id, "interval_minutes": args.interval_minutes}}
+        if "team" in template:
+            snapshot["team_sessions"] = bindings
         archive = root / ".byte-os/coordination/receipts" / ("pre-workflow-" + uuid.uuid4().hex + ".json")
         archive.parent.mkdir(parents=True, exist_ok=True)
         with archive.open("xb") as stream:
@@ -1352,6 +1427,10 @@ def main(argv=None):
     install = commands.add_parser("install-template")
     install.add_argument("--file", type=Path, help="Omit to install shipped templates without overwriting custom copies")
     commands.add_parser("list-templates")
+    planner = commands.add_parser("team-plan", help="Read a reusable team or a project's pinned roster without creating chats")
+    plan_source = planner.add_mutually_exclusive_group(required=True)
+    plan_source.add_argument("--template")
+    plan_source.add_argument("--project")
     validator = commands.add_parser("validate")
     validator.add_argument("--file", required=True, type=Path)
     initializer = commands.add_parser("init")
@@ -1364,7 +1443,8 @@ def main(argv=None):
     initializer.add_argument("--supervisor-model", help="Requested preference, not verified runtime provenance")
     initializer.add_argument("--monitor-id")
     initializer.add_argument("--continuous", action="store_true")
-    initializer.add_argument("--interval-minutes", type=int, default=20)
+    initializer.add_argument("--interval-minutes", type=int)
+    initializer.add_argument("--role-session", action="append", default=[], metavar="ROLE=HARNESS:ID")
     initializer.add_argument("--param", action="append", default=[])
     adopter = commands.add_parser("adopt", help="Explicit current-owner migration; preserves a live run and existing acceptance")
     adopter.add_argument("--template", required=True)
@@ -1380,6 +1460,7 @@ def main(argv=None):
     adopter.add_argument("--continuous", action="store_true")
     adopter.add_argument("--interval-minutes", type=int, default=20)
     adopter.add_argument("--param", action="append", default=[])
+    adopter.add_argument("--role-session", action="append", default=[], metavar="ROLE=HARNESS:ID")
     for name in ("status", "doctor", "route", "monitor-prompt", "export"):
         commands.add_parser(name)
     commands.choices["route"].add_argument("--caller-session", required=True)
@@ -1418,7 +1499,7 @@ def main(argv=None):
         if name == "resume":
             sub.add_argument("--evidence", type=Path)
     for name, sub in commands.choices.items():
-        if name not in ("install-template", "list-templates", "validate"):
+        if name not in ("install-template", "list-templates", "validate", "team-plan"):
             sub.add_argument("--project", required=True)
     args = parser.parse_args(argv)
     try:
@@ -1427,6 +1508,13 @@ def main(argv=None):
             result = {"valid": True, "id": template["id"], "steps": len(template["steps"])}
         elif args.command == "list-templates":
             result = {"templates": sorted(p.parent.name for p in Path(args.home).expanduser().glob("*/workflow.yaml"))}
+        elif args.command == "team-plan":
+            if args.template:
+                result = team_plan(validate(load(template_path(args.template, args.home))))
+            else:
+                _, manifest, _, _, _ = opened(args.project)
+                result = team_plan(manifest["definition"], manifest.get("team_sessions", manifest["roles"]),
+                                   manifest.get("model_preferences"))
         elif args.command == "install-template":
             sources = [args.file] if args.file else sorted((Path(__file__).resolve().parents[1] / "templates").glob("*.yaml"))
             installed = []

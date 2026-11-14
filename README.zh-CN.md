@@ -284,12 +284,14 @@ $byte-workflow 创建一个实验研究循环：结果分析、问题表征、�
 保存到本地模板库；新项目复用时重新绑定项目参数和主／监督会话。
 ```
 
-自带 `experiment-research` 模板。安装到本地模板库：
+[通用科研自动化预设](skills/byte-workflow/templates/research-automation.yaml)保存六个岗位及其模型偏好，并包含独立推导与反例、最小判别实验、正式研究、独立复核和迭代。新项目填写自己的研究问题、证据范围、比较方法、验收协议和资源预算。
 
 ```bash
-uv run skills/byte-workflow/scripts/workflow.py install-template
-uv run skills/byte-workflow/scripts/workflow.py list-templates
+uv run skills/byte-workflow/scripts/workflow.py install-template --file skills/byte-workflow/templates/research-automation.yaml
+uv run skills/byte-workflow/scripts/workflow.py team-plan --template research-automation
 ```
+
+在新项目里用 `$byte-workflow` 应用 `research-automation`，按授权复用或创建对应会话。定时监督按项目授权启用。参见[团队配置](skills/byte-workflow/references/format.md#reuse-a-team-and-its-workflow)。
 
 模板在 `~/.byte/workflows/<模板名>/workflow.yaml`。每个项目保存自己的 `.byte-os/workflow.yaml` 快照，并在既有 `.byte-os/coordination/state.json` 中运行。全局模板以后修改，不会改变已启动的项目。
 

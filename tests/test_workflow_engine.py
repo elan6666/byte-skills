@@ -288,6 +288,42 @@ class WorkflowEngineTests(unittest.TestCase):
             self.assertEqual(result[1]["action"], action)
         self.assertEqual(self.call("route", "--caller-session", "codex:main", "--main-status", "active")[1]["action"], "continue_main")
 
+    def test_team_plan_reuses_role_configuration_with_new_bindings(self):
+        template = definition()
+        role = {"title": "Research role", "harness": "codex", "creation": "reuse-or-create",
+                "model": "gpt-6.1-sol", "reasoning": "high", "responsibilities": "Review sources",
+                "handoff": "Return evidence to main", "steps": ["literature"]}
+        template["team"] = {"roles": {name: dict(role) for name in ("main", "supervisor", "literature")},
+                            "monitor": {"kind": "heartbeat", "interval_minutes": 35}}
+        self.template.write_text(json.dumps(template))
+        base = [sys.executable, str(CLI), "--home", str(self.library)]
+        result = subprocess.run(base + ["team-plan", "--template", str(self.template)],
+                                capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        reusable = json.loads(result.stdout)
+        self.assertIsNone(reusable["roles"]["literature"]["session"])
+        self.assertIn("Review sources", reusable["roles"]["literature"]["onboarding_prompt"])
+        self.assertEqual(reusable["roles"]["literature"]["reasoning"], "high")
+
+        self.project = self.root / "team-project"
+        self.state_path = self.project / ".byte-os/coordination/state.json"
+        args = ("--template", str(self.template), "--objective", "Test team reuse", "--authority-ref", "user:team",
+                "--main-session", "codex:new-main", "--supervisor-session", "codex:new-supervisor")
+        self.assertEqual(self.call("init", *args, "--role-session", "literature=codex:new-main")[0], 1)
+        self.assertEqual(self.call("init", *args, "--role-session", "literature=claude:reader")[0], 1)
+        self.assertEqual(self.call("init", *args, "--role-session", "literature=codex:reader")[0], 0)
+        result = subprocess.run(base + ["team-plan", "--project", str(self.project)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(json.loads(result.stdout)["roles"]["literature"]["session"], "codex:reader")
+        monitor = self.call("status")[1]["monitor"]
+        self.assertEqual(monitor["interval_minutes"], 35)
+        self.assertFalse(monitor["continuous"])
+        proof = self.proof("step_result", {"observed": True})
+        self.assertEqual(self.change("advance", actor="codex:reader", evidence=proof)[0], 1)
+        exported = self.root / "team-export.json"
+        self.assertEqual(self.call("export", "--output", str(exported))[0], 0)
+        self.assertEqual(json.loads(exported.read_text()), template)
+
     def test_scheduled_goal_wake_summary_tracks_revision_and_preserves_monitor(self):
         before = self.state_path.read_bytes()
         _, base = self.call("monitor-prompt")

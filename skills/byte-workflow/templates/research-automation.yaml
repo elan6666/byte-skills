@@ -1,0 +1,231 @@
+schema_version: 1
+id: research-automation
+version: 1
+description: Run an evidence-led research loop with independent argument and critique, staged experiments, and reproducible acceptance.
+start: diagnose
+parameters:
+  research_question: Use the project's registered research question and intended deliverable.
+  evidence_scope: Use the project's authorized data, materials, tools, and access boundaries.
+  comparison: Use the project's registered comparators, controls, and uncertainty analysis.
+  evaluation_protocol: Use the project's preregistered outcomes, decision criteria, and independent verification procedure.
+  resource_limits: Use the project's approved budgets, execution environment, and stopping conditions.
+acceptance:
+  - id: research-outcome
+    description: Independent evidence satisfies the registered overall outcome and its stopping criteria.
+    scope: workflow
+    checks:
+      all:
+        - {fact: protocol_matched, op: eq, value: true}
+        - {fact: registered_outcome_met, op: eq, value: true}
+  - id: reproducibility
+    description: Independently verify provenance, execution, key results, and limitations.
+    scope: workflow
+    checks: {fact: independent_reproduction_verified, op: eq, value: true}
+steps:
+  diagnose:
+    owner: main
+    action: >-
+      Scope ${research_question}. Review prior results and failed attempts, distinguish the observed problem from competing
+      explanations, and freeze the current question, ${evidence_scope}, and ${evaluation_protocol}. Record durable user
+      changes in project guidance and with record-guidance before acting on them.
+    acceptance: {fact: question_and_protocol_registered, op: eq, value: true}
+    transitions: [{to: literature}]
+  literature:
+    owner: main
+    action: >-
+      Review primary sources for relevant methods, assumptions, failure cases, and comparable evidence. Record the choice
+      of direction and citations, or justify why verified sources can be reused. Give both analysis routes the same question and boundaries.
+    acceptance: {fact: source_and_direction_review_verified, op: eq, value: true}
+    transitions: [{to: independent-analysis}]
+  independent-analysis:
+    owner: main
+    action: >-
+      Ask the methods role to derive the hypothesis and its distinctive predictions. Ask the literature and critique role to
+      independently seek counterexamples and alternative explanations. Preserve both first passes with sources before exchanging them.
+    acceptance: {fact: independent_first_passes_verified, op: eq, value: true}
+    transitions: [{to: design}]
+  design:
+    owner: main
+    action: >-
+      Exchange the verified analyses, document which predictions changed, and resolve what the evidence permits. With independent
+      evaluation, freeze the smallest discriminating test, controls, exclusions, analysis and decision criteria, and a bounded budget.
+      Follow ${comparison} and ${resource_limits}. Reuse prior pilot evidence only when it matches the frozen question and protocol.
+    acceptance:
+      all:
+        - {fact: cross_review_verified, op: eq, value: true}
+        - {fact: pilot_protocol_frozen, op: eq, value: true}
+        - any:
+            - {fact: matching_pilot_evidence_verified, op: eq, value: true}
+            - {fact: matching_pilot_evidence_verified, op: eq, value: false}
+    transitions:
+      - when: {fact: matching_pilot_evidence_verified, op: eq, value: true}
+        to: probe-review
+      - to: probe
+  probe:
+    owner: main
+    wait_owner: supervisor
+    action: >-
+      Run the bounded pilot within ${evidence_scope} and ${resource_limits}. Record inputs, procedure, run or attempt identity,
+      actual cost, outputs, and failures. Use the supervisor handoff for unattended waits.
+    acceptance: {fact: pilot_terminal_verified, op: eq, value: true}
+    transitions:
+      - when: {fact: exit_code, op: ne, value: 0}
+        to: repair
+      - to: probe-review
+  probe-review:
+    owner: main
+    action: >-
+      Have independent evaluation reproduce the pilot analysis and check competing explanations. Record whether to promote,
+      narrow, reject, or leave the hypothesis inconclusive. Justify any larger study with the remaining question and approved cost.
+    acceptance:
+      all:
+        - {fact: independent_pilot_review_verified, op: eq, value: true}
+        - any:
+            - {fact: formal_study_justified, op: eq, value: true}
+            - {fact: formal_study_justified, op: eq, value: false}
+        - any:
+            - {fact: pilot_decision, op: eq, value: promote}
+            - {fact: pilot_decision, op: eq, value: narrow}
+            - {fact: pilot_decision, op: eq, value: reject}
+            - {fact: pilot_decision, op: eq, value: inconclusive}
+    transitions:
+      - when:
+          all:
+            - {fact: pilot_decision, op: eq, value: promote}
+            - {fact: formal_study_justified, op: eq, value: true}
+        to: study-plan
+      - to: decide
+  study-plan:
+    owner: main
+    action: >-
+      Design the confirmatory study for the supported hypothesis. Freeze the intervention or method, comparison arms, controls,
+      measurements, analysis, evidence boundaries, resource limits, and stopping criteria. Bind ${evaluation_protocol} and ${comparison}.
+    acceptance: {fact: confirmatory_protocol_frozen, op: eq, value: true}
+    transitions: [{to: implement}]
+  implement:
+    owner: main
+    action: >-
+      Prepare the protocol and execution materials, such as code, instruments, datasets, configurations, or analysis scripts.
+      Verify readiness, access boundaries, provenance, and resource limits before launch. Preserve the versions used.
+    acceptance: {fact: study_readiness_verified, op: eq, value: true}
+    transitions: [{to: experiment}]
+  experiment:
+    owner: main
+    wait_owner: supervisor
+    action: >-
+      Execute the approved study within ${resource_limits}. Preserve primary outputs, logs, deviations, actual resources, and
+      exact execution identity. For unattended work, hand off the exact attempt, verify the wake route, and yield when ready work is exhausted.
+    acceptance: {fact: study_terminal_verified, op: eq, value: true}
+    transitions:
+      - when: {fact: exit_code, op: ne, value: 0}
+        to: repair
+      - to: evaluate
+  evaluate:
+    owner: main
+    action: >-
+      Independently check provenance and reproduce the key analysis from frozen evidence. Report comparability, coverage,
+      uncertainty, negative findings and limitations. Submit criterion-specific receipts against ${evaluation_protocol}.
+      Use confirmatory evidence and access boundaries defined by the project.
+    acceptance:
+      all:
+        - {fact: comparison_verified, op: eq, value: true}
+        - {fact: independent_reproduction_verified, op: eq, value: true}
+    transitions: [{to: decide}]
+  decide:
+    owner: main
+    action: >-
+      Record what the evidence supports, what failed, the actual resource use, and the next unresolved question. Complete the
+      workflow after overall acceptance passes. Otherwise refine the hypothesis, reframe a repeated limitation, or start a new iteration.
+    acceptance:
+      all:
+        - {fact: decision_and_attempt_history_recorded, op: eq, value: true}
+        - any:
+            - {fact: shared_limitation_repeated, op: eq, value: true}
+            - {fact: shared_limitation_repeated, op: eq, value: false}
+    transitions:
+      - when: {overall_accepted: true}
+        to: done
+      - when: {fact: shared_limitation_repeated, op: eq, value: true}
+        to: reframe
+      - {to: diagnose, new_iteration: true}
+  reframe:
+    owner: main
+    action: >-
+      Compare the evidence across failed or inconclusive attempts. Turn the repeated limitation into a testable question
+      and identify the smallest observation that could distinguish the remaining explanations.
+    acceptance: {fact: reframed_question_verified, op: eq, value: true}
+    transitions: [{to: diagnose, new_iteration: true}]
+  repair:
+    owner: main
+    action: >-
+      Preserve the failed attempt and diagnose the execution issue. Route an in-scope pilot repair to design, a confirmatory
+      repair to implementation, or a change in scientific question to diagnosis. Use a new attempt identity for a rerun.
+    acceptance:
+      all:
+        - {fact: failure_review_verified, op: eq, value: true}
+        - any:
+            - {fact: repair_route, op: eq, value: pilot}
+            - {fact: repair_route, op: eq, value: formal}
+            - {fact: repair_route, op: eq, value: diagnose}
+    transitions:
+      - when: {fact: repair_route, op: eq, value: pilot}
+        to: design
+      - when: {fact: repair_route, op: eq, value: formal}
+        to: implement
+      - {to: diagnose, new_iteration: true}
+team:
+  monitor: {kind: heartbeat, interval_minutes: 20}
+  roles:
+    main:
+      title: Research lead
+      harness: codex
+      model: gpt-6.1-sol
+      reasoning: xhigh
+      creation: reuse-or-create
+      responsibilities: Define the research question and acceptance, coordinate independent analyses, verify evidence, and decide the next iteration.
+      handoff: Give each role versioned inputs and an evidence contract. Record verified outputs and active guidance in the workflow.
+    literature:
+      title: Literature and critique
+      harness: codex
+      model: gpt-6.1-sol
+      reasoning: high
+      creation: reuse-or-create
+      steps: [literature, independent-analysis, design, reframe]
+      responsibilities: Review primary sources and independently develop counterexamples, rival explanations, and boundary conditions.
+      handoff: Preserve the first critique with citations and evidence before exchanging it with methods.
+    methods:
+      title: Methods and hypothesis
+      harness: codex
+      model: gpt-6-astra
+      reasoning: xhigh
+      creation: reuse-or-create
+      steps: [independent-analysis, design, study-plan, reframe]
+      responsibilities: Derive distinctive predictions and failure conditions, then design a discriminating pilot and the confirmatory protocol.
+      handoff: Preserve the independent first pass. Give execution the frozen procedure and evaluation the falsification criteria.
+    experiments:
+      title: Experimental execution
+      harness: codex
+      model: gpt-6.1-terra
+      reasoning: high
+      creation: reuse-or-create
+      steps: [probe, implement, experiment, repair]
+      responsibilities: Prepare and execute authorized studies. Preserve provenance, deviations, actual costs, and failed attempts.
+      handoff: Give supervision the exact run and attempt, and evaluation the frozen outputs, protocol version, and evidence paths.
+    evaluation:
+      title: Independent evaluation
+      harness: codex
+      model: gpt-6-astra
+      reasoning: high
+      creation: reuse-or-create
+      steps: [design, probe-review, evaluate]
+      responsibilities: Audit the frozen protocol and evidence boundaries, independently reproduce the analysis, and assess the registered criteria.
+      handoff: Return criterion-specific receipts with inputs, uncertainty, scope, and reproducible evidence.
+    supervisor:
+      title: Run supervisor
+      harness: codex
+      model: gpt-6-luna
+      reasoning: low
+      creation: reuse-or-create
+      steps: [probe, experiment, repair]
+      responsibilities: During authorized scheduled checks, inspect the assigned run once or check whether the lead can resume ready work.
+      handoff: Stay quiet while healthy. Return a terminal result or blocker once. For an idle lead, use the current workflow wake summary.

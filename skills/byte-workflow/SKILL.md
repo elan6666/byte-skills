@@ -20,6 +20,12 @@ transitions; it does not run arbitrary commands or control the app scheduler.
    conditional transitions, failure routes and loop boundaries. Preserve the
    requested order. Review unknown conditions and unreachable steps before use.
 2. Bind project-specific objective, parameters and exact existing sessions.
+   For a template with a team, read `team-plan --template <id>` first. Reuse
+   verified project chats for the named roles. If the user asks to create the
+   team, create only missing roles allowed by their creation policy. Use the
+   recorded title, requested model and reasoning when the client supports them,
+   and onboard with the role prompt. Disclose any model substitution. Pin actual
+   identities through `init` and verify each role and handoff before assignment.
    Initialize only a new/inactive outcome. For an explicitly requested live
    migration, the exact current owner uses `adopt` with a fresh state hash,
    immutable observation evidence and a coordinated state-write boundary;

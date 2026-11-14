@@ -51,6 +51,38 @@ The exported JSON text is valid YAML. The target must not already exist.
 V1 pins one instance per project; changing an active definition or migrating
 another existing outcome is never implicit.
 
+## Reuse a team and its workflow
+
+A template can include a `team` mapping with `roles` and an optional `monitor`
+preference. `roles` includes `main` and `supervisor` and can name specialist
+chats. Each role declares `title`, `harness`, `creation`, `responsibilities`,
+and `handoff`. `model`, `reasoning`, and `steps` are optional. `steps` names
+workflow steps the specialist contributes to. The existing `owner` field still
+controls who can advance a step. Use `reuse-only` or `reuse-or-create` for
+`creation`. A monitor preference has `kind: heartbeat` and `interval_minutes`.
+The template contains no native session IDs, account details or automation IDs.
+
+```bash
+uv run <skill>/scripts/workflow.py team-plan --template <template-id>
+uv run <skill>/scripts/workflow.py team-plan --project <project>
+```
+
+The template plan returns role titles, settings and onboarding prompts. When
+the user requests a team, check the target project's existing bindings, reuse
+matching chats, and create missing allowed roles with the native client. Confirm
+the actual session identities and accepted model settings before dispatch. A
+model preference alone does not verify which model ran. Once the roles are
+ready, pass the primary IDs to `init` with `--main-session` and
+`--supervisor-session`. Repeat `--role-session <role>=<harness>:<native-id>` for
+each specialist. The pinned project plan shows these bindings. Unbound roles
+remain pending. Specialists collaborate through the project's handoff path and
+the primary owner records verified progress. Export keeps the role definitions
+and requested settings. The next project supplies its own IDs and authority.
+
+The monitor interval is a default when initializing a team template. Set
+`--continuous` only for user-authorized scheduled work. Register and verify the
+heartbeat in the native client before relying on unattended continuation.
+
 ## Explicit adoption of an existing active outcome
 
 When the user explicitly requests migration, coordinate the exact main and

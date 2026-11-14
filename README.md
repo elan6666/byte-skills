@@ -314,12 +314,19 @@ literature, solution design, implementation, experiment, and renewed analysis.
 Reuse it in other projects with separate parameters and main/supervisor bindings.
 ```
 
-Install the bundled `experiment-research` template into your local library:
+The [research-automation preset](skills/byte-workflow/templates/research-automation.yaml)
+includes six session roles, independent hypothesis and critique, a bounded pilot,
+confirmatory study, independent evaluation, and iteration. Bind your question,
+evidence boundaries, comparators, evaluation protocol, and resource limits in
+each project. The role models and heartbeat interval are preferences.
 
 ```bash
-uv run skills/byte-workflow/scripts/workflow.py install-template
-uv run skills/byte-workflow/scripts/workflow.py list-templates
+uv run skills/byte-workflow/scripts/workflow.py install-template --file skills/byte-workflow/templates/research-automation.yaml
+uv run skills/byte-workflow/scripts/workflow.py team-plan --template research-automation
 ```
+
+Use `$byte-workflow` to apply the preset to a new project and bind or create its
+team as authorized. See [team setup](skills/byte-workflow/references/format.md#reuse-a-team-and-its-workflow).
 
 Templates live at `~/.byte/workflows/<id>/workflow.yaml`. Each project pins a
 snapshot in `.byte-os/workflow.yaml` and uses the existing
