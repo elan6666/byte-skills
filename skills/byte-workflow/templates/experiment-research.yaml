@@ -1,63 +1,57 @@
 schema_version: 1
 id: experiment-research
-version: 1
-description: Evidence-led research from results to diagnosis, literature, solutions and new experiments.
-start: diagnose
+version: 18
+description: 通用实验研究。研究者围绕共同目标连续探索，根据观测决定下一步，在有值得讨论的结论时交付整批证据。
+start: research-batch
 parameters:
-  problem: Describe the unresolved scientific problem
-  baseline: Identify the fixed comparison baseline
-  resource_limits: Use only the project's authorized resources
+  research_question: 项目共同研究目标
+  evidence_scope: 项目许可的材料、数据和工具
+  comparison: 项目已约定的比较
+  evaluation_protocol: 项目约定的测量与验收口径
+  resource_limits: 当前获准资源
+  problem: 见项目目标
+  baseline: 见项目比较约定
 acceptance:
-  - id: representation
-    description: Task-relevant representation improvement supported by matched evidence
-    scope: iteration
-  - id: prediction
-    description: Prediction quality satisfies the preregistered comparison criteria
-    scope: iteration
-  - id: reproducibility
-    description: Results, source, configuration and limitations independently verified
-    scope: iteration
+  - id: research-outcome
+    scope: workflow
+    description: 证据回答了项目登记的问题，满足用户约定的交付。
+    checks: {fact: registered_outcome_met, op: eq, value: true}
+  - id: evidence-verification
+    scope: workflow
+    description: 关键主张经过相称的独立核验，结论说明适用范围与不确定性。
+    checks: {fact: key_evidence_independently_verified, op: eq, value: true}
 steps:
-  diagnose:
+  research-batch:
     owner: main
-    action: Analyze ${problem} against ${baseline}; characterize the unresolved observation.
-    acceptance: {fact: problem_characterized, op: eq, value: true}
-    transitions: [{to: literature}]
-  literature:
-    owner: main
-    action: Inspect relevant primary sources, or justify reuse of already verified sources.
-    acceptance: {fact: sources_reviewed, op: eq, value: true}
-    transitions: [{to: design}]
-  design:
-    owner: main
-    action: Specify one falsifiable intervention, predicted observations and a matched experiment.
-    acceptance: {fact: hypothesis_preregistered, op: eq, value: true}
-    transitions: [{to: implement}]
-  implement:
-    owner: main
-    action: Implement the intervention and run meaningful checks within ${resource_limits}.
-    acceptance: {fact: checks_passed, op: eq, value: true}
-    transitions: [{to: experiment}]
-  experiment:
-    owner: main
-    action: Launch the authorized experiment, then independently verify its returned terminal result.
-    wait_owner: supervisor
-    acceptance: {fact: terminal_verified, op: eq, value: true}
+    action: >-
+      将共同目标 ${research_question}、已有事实和证据入口交给研究者；补充问题为 ${problem}。
+      研究者在 ${evidence_scope} 和 ${resource_limits} 内自主决定问题、方法、次序和工具。
+      沿同一任务追踪有意义的观察，依据结果继续、深入、改题或收束。日常进展写在原记录。
+      可复核结果改变研究判断或投入、足以回答问题，或现有证据已到极限时集中交付。
+      需要其他岗位解决的权限、资源或数据依赖可随时协调，解决后沿原任务继续。
+    acceptance:
+      any:
+        - {fact: batch_evidence_ready, op: eq, value: true}
+        - {fact: supervised_run_required, op: eq, value: true}
     transitions:
-      - when: {fact: exit_code, op: ne, value: 0}
-        to: repair
-      - to: evaluate
-  evaluate:
+      - when: {fact: batch_evidence_ready, op: eq, value: true}
+        to: review
+      - to: supervised-run
+  supervised-run:
     owner: main
-    action: Compare the new result to ${baseline}; verify overall criteria and interpret uncertainty.
-    acceptance: {fact: comparison_verified, op: eq, value: true}
+    wait_owner: supervisor
+    action: 按授权交接实际作业；收到终态后回到同批研究，依据输出或故障继续判断。
+    acceptance: {fact: run_result_recorded, op: eq, value: true}
+    transitions: [{to: research-batch}]
+  review:
+    owner: main
+    action: >-
+      复核本批主张、关键证据和适用范围，记录对下一步的影响。
+      确认性研究使用项目的 ${evaluation_protocol} 与 ${comparison}，基线补充为 ${baseline}。
+      达到总目标时验收；还有值得追的问题时，沿既有证据继续下一批。
+    acceptance: {fact: decision_and_evidence_recorded, op: eq, value: true}
     transitions:
       - when: {overall_accepted: true}
         to: done
-      - to: diagnose
+      - to: research-batch
         new_iteration: true
-  repair:
-    owner: main
-    action: Diagnose the execution fault, preserve its evidence and verify a bounded repair.
-    acceptance: {fact: repair_verified, op: eq, value: true}
-    transitions: [{to: experiment}]

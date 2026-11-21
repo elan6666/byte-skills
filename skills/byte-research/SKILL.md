@@ -1,12 +1,22 @@
 ---
 name: byte-research
-description: "Research external evidence for a product or project decision within a Byte workflow."
+description: "Investigate a scientific question or a product decision using relevant evidence."
 ---
 
 # Byte Research
 
 Research the questions that affect the decision; do not perform a generic market
 survey by default.
+
+## Scientific research
+
+Start where the uncertainty is. A failed prediction, an unusual observation, a
+published result or a simple model can each be a useful entry point. Trace why
+a result occurred. When several explanations fit, look for an observation on
+which they diverge. Follow a promising lead across experiments or retire it
+when the evidence warrants. Reuse the same record to explain what changed your
+judgment and what you pursued as a result. Before a confirmatory comparison,
+bind the claim and evaluation under the project's protocol.
 
 ## Approach
 
@@ -46,16 +56,7 @@ questions/jobs as evidence arrives; use a Goal only for authorized substantive
 reasoning or implementation, not routine searches and polling.
 
 
-## Durable agent roles and collaboration
-
-When the project uses agent working documents, follow the shared
-[agent collaboration contract](../byte-plan/references/agent-collaboration.md).
-On joining, resuming or receiving a task, read your explicitly assigned current
-role document and task contract. Main may create/customize these documents;
-users can edit them directly. Keep task IDs across dispatch and recovery, return
-actual evidence for main review, and continue the next authorized action after
-acceptance. Use existing workboard/Bridge/workflow state; do not require agent
-files for ordinary work or claim universal app hooks or native permissions.
+For assigned roles and handoffs, follow the [shared collaboration contract](../byte-plan/references/agent-collaboration.md).
 
 ## Source And Updates
 

@@ -8,6 +8,8 @@ description: "Review a Byte project, plan, or deliverable for material issues an
 Review the actual artifact and evidence. Choose review dimensions based on what
 could realistically make the result wrong, harmful, confusing, or incomplete.
 
+For research, review a batch when the evidence could change the claim, investment or next decision. Check the strongest competing explanation and what the observations can distinguish. Routine experiments stay with their researcher.
+
 ## Method
 
 - Establish the intended behavior and scope.
@@ -39,16 +41,7 @@ requirement misunderstanding, update the matching `.byte-os/LESSONS.md` entry
 with evidence and a prevention rule, not blame.
 
 
-## Durable agent roles and collaboration
-
-When the project uses agent working documents, follow the shared
-[agent collaboration contract](../byte-plan/references/agent-collaboration.md).
-On joining, resuming or receiving a task, read your explicitly assigned current
-role document and task contract. Main may create/customize these documents;
-users can edit them directly. Keep task IDs across dispatch and recovery, return
-actual evidence for main review, and continue the next authorized action after
-acceptance. Use existing workboard/Bridge/workflow state; do not require agent
-files for ordinary work or claim universal app hooks or native permissions.
+For assigned roles and handoffs, follow the [shared collaboration contract](../byte-plan/references/agent-collaboration.md).
 
 ## Source And Updates
 

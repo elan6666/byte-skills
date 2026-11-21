@@ -18,6 +18,13 @@ Act as the adaptive front door to the Byte skills. Optimize for the user's outco
 - Learn from confirmed mistakes and corrected requirement misunderstandings.
 - Use subagents only when explicitly requested and supported. Use ordinary task state unless Goal mode is requested.
 
+## Research assignments
+
+Give an assigned researcher the shared objective, relevant facts and existing authority.
+The researcher chooses the question and method, follows evidence within one batch,
+and reports when findings change a judgment or resource decision. Coordinate a
+dependency when it arises. Reuse the original record for routine progress.
+
 ## Capability Choice
 
 Honor an explicit `$byte-*` selection. Otherwise use only the capabilities that
@@ -100,32 +107,10 @@ apply the shared [evidence contract](references/evidence-contract.md).
 
 ## Adaptive execution
 
-For the requested combined workflow, use
-[adaptive execution](references/long-running-work.md): one overall outcome,
-ordinary core-work turns by default, and evolving scheduled checks for
-authorized routine follow-up. Use a Goal only when explicitly requested. For
-a main chat plus separate long-run supervisor, use
-[$byte-bridge](../byte-bridge/SKILL.md). The older `byte-design-supervise` name
-remains a compatible training preset.
-Prefer an authorized same-task subagent for a bounded wait expected within
-about one hour and the current turn; use cross-chat supervision for longer or
-unattended work, not merely because a test needs waiting. A duration estimate
-does not authorize creating a new task or monitor.
-In that cross-chat lane, end per-run checks after each handback. Pause a
-run-only monitor; if the user requested a continuous scheduled research loop,
-retarget the same outcome monitor to main progress and preserve it until the
-overall exit condition. Never keep querying an unowned old run. Do not
-call the handoff armed until the exact supervisor acknowledges and the saved
-future wake path is verified active. Do not call a return automatic until the
-main task actually acknowledges the handed-back run and starts owned work;
-a cross-task message or empty reply is not that proof.
-Choose from live evidence; do not create a new Goal after every finished job.
-When a scheduled check verifies that stage A is complete, continue its already
-authorized dependent stage B in that same run when prerequisites permit. If A
-reveals a repair stage C, record C as remaining work, resolve or schedule it,
-and update the existing monitor's scope and interval. A status report alone is
-not a handoff to the next stage. Never infer authority for a new experiment,
-cost, or irreversible action from this continuity rule.
+For supervised or scheduled work, use the [continuation guide](references/long-running-work.md)
+and [Byte Bridge](../byte-bridge/SKILL.md). Preserve authorized monitoring scope,
+accepted handoffs and the user's stop condition. Create a Goal or schedule only
+on request. For unsupervised work, use ordinary task state.
 
 ## Outcome continuity
 

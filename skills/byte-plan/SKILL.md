@@ -8,6 +8,8 @@ description: "Create a project execution plan or roadmap when planning is the re
 Plan only to the depth that improves execution. Inspect relevant context before
 planning, and prefer a short actionable plan over project-management theater.
 
+For exploratory research, plan as far as the next decision. Revise the plan in place when evidence changes it. Use a frozen plan for confirmatory work under the project protocol.
+
 ## Choose The Planning Depth
 
 - Small, clear task: a few ordered actions in chat.
@@ -66,16 +68,7 @@ closing core work, including allowed repairs and when to return to a Goal.
 Planning alone does not authorize launching jobs or enabling monitoring.
 
 
-## Durable agent roles and collaboration
-
-When the project uses agent working documents, follow the shared
-[agent collaboration contract](../byte-plan/references/agent-collaboration.md).
-On joining, resuming or receiving a task, read your explicitly assigned current
-role document and task contract. Main may create/customize these documents;
-users can edit them directly. Keep task IDs across dispatch and recovery, return
-actual evidence for main review, and continue the next authorized action after
-acceptance. Use existing workboard/Bridge/workflow state; do not require agent
-files for ordinary work or claim universal app hooks or native permissions.
+For assigned roles and handoffs, follow the [shared collaboration contract](../byte-plan/references/agent-collaboration.md).
 
 ## Source And Updates
 

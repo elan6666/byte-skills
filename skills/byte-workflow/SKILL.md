@@ -5,6 +5,8 @@ description: Define, save, reuse and execute a local Byte workflow with custom s
 
 # Byte Workflow
 
+For open-ended research, assign one batch. The researcher can revisit activities in any order and returns at a substantive decision or dependency. Preserve project evaluation protocols and existing pins.
+
 Use the user's chosen method as a versioned local workflow. Templates live in
 `~/.byte/workflows/`; each project pins its own definition and role bindings in
 `.byte-os/workflow.yaml`. Runtime state stays in the existing
