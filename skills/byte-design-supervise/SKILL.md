@@ -5,6 +5,16 @@ description: Coordinate a main chat and separate supervisor through Byte Bridge 
 
 # Byte Design and Supervise
 
+## Maintain project guidance
+
+At each invocation, first read the project's `AGENTS.md` or existing `agent.md` and the current role document explicitly assigned to this chat, if any. Follow their links to the documents relevant to the task. Apply the user's latest direction when it updates older guidance.
+
+When edits are in scope, incorporate confirmed goals, requirements, and workflow changes as they become clear. Apply the change to the current work and update the linked plan or workflow when it is the source of truth. Update shared guidance in the project file and role-specific guidance in the assigned role document. Reread the affected section before saving, merge duplicates, replace superseded instructions, and preserve unrelated content. Keep durable rules and links in the agent guidance, with detailed goals, workflows, and evidence in their maintained documents. Keep one-off requests and progress in the task record. Leave the guidance as-is when it already fits.
+
+Reuse the project's existing default skill rule. If it has none, record the rule below in its guidance file, creating `AGENTS.md` if needed. Link `$byte-do` to its installed skill file.
+
+> Use $byte-do as the default entry for new tasks. Read and apply it first, and honor any skill or workflow explicitly selected by the user.
+
 This is the independently callable training/ablation preset of
 [$byte-bridge](../byte-bridge/SKILL.md). Use Bridge for all cross-chat connection,
 notification, supervision and return operations; do not send another manual
@@ -25,6 +35,7 @@ receipts, and legacy handoffs; Bridge imports engine-managed transfers.
 Prefer an authorized same-task subagent for a bounded
 wait expected under about one hour; it keeps the main chat's ownership. Use
 this cross-chat route when the job is longer or the main turn must end.
+When zero-token local waiting is supported (background command Reactive Wakeup or local `launchd`/`cron`), prefer `byte-workflow/scripts/zero_token_loop.py` (`wait-run`, `wait-signal`, `tick`) over periodic LLM heartbeat polling; see [zero-token loop guide](../byte-workflow/references/zero-token-loop.md).
 
 The main chat must verify that the real job started and has a durable run ID
 before transferring ownership. It ends its turn instead of polling only after
