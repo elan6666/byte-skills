@@ -35,7 +35,11 @@ Replaces periodic LLM heartbeat polling (which burns context tokens even when no
      - Unanswered `@mention` to a worker -> wakes that exact worker directly (skipping unnecessary lead roundtrips); escalates to `lead` only if the worker fails to respond across retries.
      - **Anti-spam & Dormancy**: stops alerting after `max_stall_alerts` (default 3) on the same stop signature, and enters `dormant` after `dormant_after_noop_ticks` (default 5) until new board activity arrives.
 
-5. **Built-in Periodic Self-Reflection & Workflow Iteration**
+5. **Sandboxed Worker Remote Job Launcher & Permission-Blocker Rule**
+   - A worker blocked by sandbox/interactive permissions (e.g. `permission check failed for unsandboxed ssh`) is a **first-class workflow stall**.
+   - Instead of waiting for manual UI approval, have the worker write a declarative job request under `.byte-os/server-job-requests/<job_id>.json` (strictly validated local `upload_files` + remote `/data/...` paths), let the host `launchd` watcher upload/launch via `nohup` and register `.byte-os/active-runs.json`, and wake the worker automatically via `ag-wake.json` / `worker-wake.json` on completion.
+
+6. **Built-in Periodic Self-Reflection & Workflow Iteration**
    - Every `retrospective_every_n_wakes` cycles (default 3) or upon any `idle_recovery` wakeup, `tick` appends a reflection prompt instructing the lead and workers to audit recent friction/stalls, record root causes in `.byte-os/coordination/workflow-retrospective.md`, and directly apply reversible improvements to project workflow scripts and guidance.
 
 ## Quick Setup for Any Project
