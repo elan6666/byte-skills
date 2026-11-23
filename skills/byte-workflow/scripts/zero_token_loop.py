@@ -313,32 +313,160 @@ def cmd_tick(args):
             print(json.dumps({"action": "notified_run_alert", "alerts": run_alerts, "transport": transport}, ensure_ascii=False, indent=2))
             return 0
 
-    # 3. Anti-stall joint idle recovery
+    # 3. Anti-stall: Swarm-style board attribution + joint idle recovery + dormant cap
     if active_runs == 0:
-        idle_thresh = float(cfg.get("idle_threshold_minutes", 8.0))
-        cooldown = float(cfg.get("idle_cooldown_minutes", 15.0))
+        idle_thresh = float(cfg.get("idle_threshold_minutes", 20.0))
+        cooldown = float(cfg.get("idle_cooldown_minutes", 30.0))
+        max_alerts = int(cfg.get("max_stall_alerts", 3))
+        dormant_after = int(cfg.get("dormant_after_noop_ticks", 5))
         codex_ids = [lead_id] + [
             sid for h, sid in (strip_harness(w) for w in cfg.get("worker_sessions", [])) if h == "codex" and sid
         ]
         statuses = [get_codex_thread_idle(tid) for tid in codex_ids]
         if all(s is not None and s["idle_minutes"] >= idle_thresh for s in statuses):
-            stop_sig = ":".join(f"{s['id']}@{s['updated_at']}" for s in statuses)
+            board_posts, cursors = load_board_and_cursors(project)
+            head_seq = board_posts[-1]["seq"] if board_posts else 0
+            stop_sig = f"seq={head_seq}:" + ":".join(f"{s['id']}@{s['updated_at']}" for s in statuses)
             last_idle = loop_state.get("last_idle_wake", {})
             now = time.time()
-            if not (last_idle.get("stop_sig") == stop_sig and (now - float(last_idle.get("sent_at", 0))) < cooldown * 60):
-                summary = "，".join(f"{s['name']} 空闲 {s['idle_minutes']} 分钟" for s in statuses)
-                msg = (
-                    f"【零Token守望·防停摆自动唤醒】当前总目标仍为 active，但无在跑长任务且所有 Codex 会话已共同空闲（{summary}）。"
-                    f"请立即核对最新进展并唤醒主力开启下一轮有判别力的行动；同时复盘本次空等根因，直接优化可逆流程并记录至 {retro_file}。目标达成前不停止。"
-                )
-                transport = deliver_bridge_say(project, lead_id, msg, dry_run=args.dry_run)
-                if not args.dry_run and transport.get("ok"):
-                    loop_state["last_idle_wake"] = {"stop_sig": stop_sig, "sent_at": now}
-                    write_json_atomic(counter_path, loop_state)
-                print(json.dumps({"action": "notified_idle_recovery", "statuses": statuses, "transport": transport}, ensure_ascii=False, indent=2))
+
+            # Reset alert counter if board or threads moved
+            if last_idle.get("stop_sig") != stop_sig:
+                alert_count = 0
+            else:
+                alert_count = int(last_idle.get("alert_count", 0))
+
+            if alert_count >= max_alerts:
+                print(json.dumps({"action": "dormant", "reason": "max_stall_alerts_reached", "stop_sig": stop_sig}, ensure_ascii=False))
                 return 0
 
-    print(json.dumps({"action": "noop", "reason": "healthy_or_cooldown", "active_runs": active_runs}, ensure_ascii=False))
+            if not (last_idle.get("stop_sig") == stop_sig and (now - float(last_idle.get("sent_at", 0))) < cooldown * 60):
+                target_role, target_id, reason_msg = diagnose_board_stall(board_posts, cursors, cfg, lead_id)
+                summary = "，".join(f"{s['name']} 空闲 {s['idle_minutes']} 分钟" for s in statuses)
+                if alert_count == max_alerts - 1 and target_id != lead_id:
+                    # Escalate on final retry if a worker stayed unresponsive (e.g. quota/stuck)
+                    target_id = lead_id
+                    reason_msg = f"成员 {target_role} 多次唤醒未响应（{reason_msg}），请总控介入排查或切换模型/任务。"
+
+                msg = (
+                    f"【零Token守望·Swarm精准防停摆 ({alert_count + 1}/{max_alerts})】{reason_msg} "
+                    f"当前状态：{summary}。请立即接续并复盘本次空等根因，记录至 {retro_file}。"
+                )
+                transport = deliver_bridge_say(project, target_id, msg, dry_run=args.dry_run)
+                if not args.dry_run and transport.get("ok"):
+                    loop_state["last_idle_wake"] = {
+                        "stop_sig": stop_sig,
+                        "sent_at": now,
+                        "alert_count": alert_count + 1,
+                        "target_id": target_id,
+                    }
+                    loop_state["noop_streak"] = 0
+                    write_json_atomic(counter_path, loop_state)
+                print(json.dumps({
+                    "action": "notified_idle_recovery",
+                    "target_role": target_role,
+                    "target_id": target_id,
+                    "alert_count": alert_count + 1,
+                    "reason": reason_msg,
+                    "transport": transport,
+                }, ensure_ascii=False, indent=2))
+                return 0
+
+    noop_streak = int(loop_state.get("noop_streak", 0)) + 1
+    if not args.dry_run:
+        loop_state["noop_streak"] = noop_streak
+        write_json_atomic(counter_path, loop_state)
+    dormant_after = int(cfg.get("dormant_after_noop_ticks", 5))
+    status_label = "dormant" if (active_runs == 0 and noop_streak >= dormant_after) else "healthy_or_cooldown"
+    print(json.dumps({"action": "noop", "reason": status_label, "noop_streak": noop_streak, "active_runs": active_runs}, ensure_ascii=False))
+    return 0
+
+
+def board_paths(project):
+    coord = project / ".byte-os/coordination"
+    return coord / "board.jsonl", coord / "board-cursors.json"
+
+
+def load_board_and_cursors(project):
+    bpath, cpath = board_paths(project)
+    posts = []
+    if bpath.is_file():
+        for raw in bpath.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not raw.strip():
+                continue
+            try:
+                posts.append(json.loads(raw))
+            except json.JSONDecodeError:
+                continue
+    cursors = read_json(cpath, {})
+    return posts, cursors if isinstance(cursors, dict) else {}
+
+
+def diagnose_board_stall(posts, cursors, cfg, lead_id):
+    """Swarm-monitor attribution: find the exact member who can unstick the loop."""
+    if not posts:
+        return "lead", lead_id, "共享消息板尚无记录且双方均已空闲，请总控核对进展并分配下一阶段任务。"
+
+    latest = posts[-1]
+    latest_seq = latest.get("seq", 0)
+    lead_cursor = int((cursors.get("lead") or {}).get("last_read_seq", 0))
+    if latest_seq > lead_cursor and latest.get("from") != "lead":
+        return "lead", lead_id, f"板上 #{latest_seq}（来自 {latest.get('from')}）尚未被总控读取（last_read_seq={lead_cursor}）。"
+
+    # Check if a Codex worker was @mentioned after its last post
+    workers = cfg.get("worker_sessions", [])
+    role_map = cfg.get("role_sessions", {})
+    for role, session_ref in role_map.items():
+        h, sid = strip_harness(session_ref)
+        if h != "codex" or not sid or sid == lead_id:
+            continue
+        last_post_seq = int((cursors.get(role) or {}).get("last_post_seq", 0))
+        pending_mentions = [
+            p for p in posts
+            if p.get("seq", 0) > last_post_seq and role in (p.get("mentions") or [])
+        ]
+        if pending_mentions:
+            mseq = pending_mentions[-1]["seq"]
+            return role, sid, f"成员 @{role} 在 #{mseq} 被点名后尚未回复（last_post_seq={last_post_seq}）。"
+
+    return "lead", lead_id, f"全员在 #{latest_seq} 后均已停下，请总控判断是验收推进还是触发阶段复盘。"
+
+
+def cmd_post(args):
+    project = Path(args.project).resolve()
+    bpath, cpath = board_paths(project)
+    bpath.parent.mkdir(parents=True, exist_ok=True)
+    posts, cursors = load_board_and_cursors(project)
+    seq = (posts[-1]["seq"] + 1) if posts else 1
+    mentions = [m.strip().lstrip("@") for m in (args.to or "").split(",") if m.strip()]
+    entry = {
+        "seq": seq,
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "from": args.sender,
+        "mentions": mentions,
+        "kind": args.kind,
+        "text": args.text,
+    }
+    with bpath.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    cur = cursors.setdefault(args.sender, {})
+    cur["last_post_seq"] = seq
+    cur["last_read_seq"] = max(int(cur.get("last_read_seq", 0)), seq)
+    write_json_atomic(cpath, cursors)
+    print(json.dumps({"ok": True, "entry": entry}, ensure_ascii=False, indent=2))
+    return 0
+
+
+def cmd_board(args):
+    project = Path(args.project).resolve()
+    posts, cursors = load_board_and_cursors(project)
+    filtered = [p for p in posts if p.get("seq", 0) > args.since]
+    if args.reader and filtered:
+        _, cpath = board_paths(project)
+        cur = cursors.setdefault(args.reader, {})
+        cur["last_read_seq"] = filtered[-1]["seq"]
+        write_json_atomic(cpath, cursors)
+    print(json.dumps({"posts": filtered[-args.limit:], "cursors": cursors}, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -454,6 +582,21 @@ def main():
     p_sig.add_argument("--interval", type=int, default=15)
     p_sig.add_argument("--once", action="store_true")
     p_sig.set_defaults(func=cmd_wait_signal)
+
+    p_post = sub.add_parser("post", help="Post a #seq-indexed message to the shared coordination board")
+    p_post.add_argument("--project", required=True)
+    p_post.add_argument("--from", dest="sender", required=True, help="Sender role name, e.g. lead, codex-methods")
+    p_post.add_argument("--to", default="", help="Comma-separated @mentions, e.g. codex-methods,lead")
+    p_post.add_argument("--kind", default="note", choices=["brief", "milestone", "verify", "stall", "done", "note"])
+    p_post.add_argument("--text", required=True)
+    p_post.set_defaults(func=cmd_post)
+
+    p_board = sub.add_parser("board", help="Read shared board messages and optionally advance reader cursor")
+    p_board.add_argument("--project", required=True)
+    p_board.add_argument("--since", type=int, default=0)
+    p_board.add_argument("--limit", type=int, default=20)
+    p_board.add_argument("--reader", default=None, help="Role name to advance last_read_seq cursor")
+    p_board.set_defaults(func=cmd_board)
 
     args = parser.parse_args()
     return args.func(args)

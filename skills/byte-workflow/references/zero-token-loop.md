@@ -28,7 +28,14 @@ Replaces periodic LLM heartbeat polling (which burns context tokens even when no
      ```
    - Exits immediately when the lead or another worker updates `.byte-os/coordination/worker-wake.json`, `.byte-os/coordination/ag-wake.json`, or matching verification/review artifacts.
 
-4. **Built-in Periodic Self-Reflection & Workflow Iteration**
+4. **Swarm-Inspired Shared Board & Exact Stall Attribution (`post` + `board`)**
+   - Inspired by `swarm_monitor`, agents can post `#seq`-indexed updates to `.byte-os/coordination/board.jsonl` (`post --from lead --to codex-methods --kind brief --text "..."`) and read with cursor tracking (`board --reader lead`).
+   - On joint idle, `tick` diagnoses **who** actually stalled the chain:
+     - Unread post from a worker -> wakes `lead` citing `#seq`.
+     - Unanswered `@mention` to a worker -> wakes that exact worker directly (skipping unnecessary lead roundtrips); escalates to `lead` only if the worker fails to respond across retries.
+     - **Anti-spam & Dormancy**: stops alerting after `max_stall_alerts` (default 3) on the same stop signature, and enters `dormant` after `dormant_after_noop_ticks` (default 5) until new board activity arrives.
+
+5. **Built-in Periodic Self-Reflection & Workflow Iteration**
    - Every `retrospective_every_n_wakes` cycles (default 3) or upon any `idle_recovery` wakeup, `tick` appends a reflection prompt instructing the lead and workers to audit recent friction/stalls, record root causes in `.byte-os/coordination/workflow-retrospective.md`, and directly apply reversible improvements to project workflow scripts and guidance.
 
 ## Quick Setup for Any Project
