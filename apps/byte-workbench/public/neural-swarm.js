@@ -11,6 +11,7 @@ export function createNeuralSwarmView(root) {
     replaying: false,
     replayIdx: -1,
     drawer: null, // { path, content }
+    legendOpen: null, // null = auto (>=980px open, <980px collapsed)
   };
 
   let rafId = 0;
@@ -44,14 +45,28 @@ export function createNeuralSwarmView(root) {
     return n;
   }
 
+  function isLegendVisible(w) {
+    if (state.legendOpen !== null) return state.legendOpen;
+    return w >= 980;
+  }
+
   function layoutPositions(w, h, clusters) {
-    const cx = w * 0.41;
-    const cy = h * 0.47;
-    const rx = Math.min(w * 0.25, 255);
-    const ry = Math.min(h * 0.23, 180);
+    const legendReserved = isLegendVisible(w) ? 268 : 20;
+    const leftPad = 84;
+    const availW = Math.max(360, w - legendReserved - leftPad);
+    const cx = leftPad + availW * 0.5;
+
+    const topSafe = 128;
+    const bottomSafe = 148;
+    const availH = Math.max(240, h - topSafe - bottomSafe);
+    const cy = topSafe + availH * 0.5;
+
+    // Guarantee outer cards (width 146, height ~76) stay strictly inside safe box
+    const rx = Math.max(120, Math.min(availW * 0.5 - 78, 250));
+    const ry = Math.max(96, Math.min(availH * 0.5 - 42, 175));
     const pos = { core: { x: cx, y: cy, color: "#a78bfa" } };
     clusters.forEach((c, idx) => {
-      const angle = -Math.PI / 2 + (idx * Math.PI * 2) / clusters.length + 0.18;
+      const angle = -Math.PI / 2 + (idx * Math.PI * 2) / clusters.length + 0.14;
       pos[c.id] = {
         x: cx + Math.cos(angle) * rx,
         y: cy + Math.sin(angle) * ry,
@@ -342,11 +357,20 @@ export function createNeuralSwarmView(root) {
       render();
     };
     controls.append(replayBtn, pauseBtn);
+    if (!state.selectedCluster) {
+      const legendBtn = el("button", `ns-pill-btn`, "☷ 图例");
+      legendBtn.onclick = () => {
+        const w = shell.getBoundingClientRect().width || window.innerWidth;
+        state.legendOpen = !isLegendVisible(w);
+        render();
+      };
+      controls.append(legendBtn);
+    }
     topRight.append(controls);
 
+    const legendEl = el("div", "ns-legend-card");
     if (!state.selectedCluster) {
-      const legend = el("div", "ns-legend-card");
-      legend.append(el("div", "ns-legend-head", `${d.clusters.length} 个作战集群`));
+      legendEl.append(el("div", "ns-legend-head", `${d.clusters.length} 个作战集群`));
       const list = el("div", "ns-legend-list");
       for (const c of d.clusters) {
         const item = el("button", "ns-legend-item");
@@ -371,8 +395,8 @@ export function createNeuralSwarmView(root) {
         };
         filterRow.append(chip);
       }
-      legend.append(list, filterRow);
-      topRight.append(legend);
+      legendEl.append(list, filterRow);
+      topRight.append(legendEl);
     }
     shell.append(topRight);
 
@@ -389,10 +413,13 @@ export function createNeuralSwarmView(root) {
       const nodeLayer = el("div", "ns-node-layer");
       shell.append(nodeLayer);
 
-      // Position cards after layout
+      // Position cards and toggle legend visibility after layout
       requestAnimationFrame(() => {
         const rect = shell.getBoundingClientRect();
+        legendEl.hidden = !isLegendVisible(rect.width);
         const pos = layoutPositions(rect.width, rect.height, d.clusters);
+        coreCard.style.left = `${pos.core.x}px`;
+        coreCard.style.top = `${pos.core.y}px`;
         nodeLayer.replaceChildren();
         const q = state.query.toLowerCase();
         for (const c of d.clusters) {

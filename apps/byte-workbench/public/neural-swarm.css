@@ -122,19 +122,26 @@
 /* Top right controls & Legend panel */
 .ns-top-right {
   position: absolute;
-  top: 22px;
-  right: 24px;
-  z-index: 6;
+  top: 20px;
+  right: 20px;
+  z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 12px;
-  width: 280px;
+  gap: 10px;
+  width: 248px;
+  pointer-events: none;
+}
+
+.ns-top-right > * {
+  pointer-events: auto;
 }
 
 .ns-controls {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .ns-pill-btn {
@@ -257,8 +264,8 @@
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: auto;
-  min-width: 136px;
-  padding: 8px 12px;
+  width: 146px;
+  padding: 8px 11px;
   border-radius: 14px;
   background: rgba(13, 16, 28, 0.66);
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -337,23 +344,23 @@
 
 .ns-jelly-sub {
   margin-top: 2px;
-  font-size: 11px;
+  font-size: 10.5px;
   color: rgba(148, 163, 184, 0.85);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 170px;
+  max-width: 124px;
 }
 
-/* Center Core Card */
+/* Center Core Card (coordinates synced dynamically by JS) */
 .ns-core-card {
   position: absolute;
-  left: 41%;
-  top: 47%;
+  left: 50%;
+  top: 50%;
   transform: translate(-50%, -50%);
   z-index: 4;
-  width: 180px;
-  padding: 10px 13px;
+  width: 172px;
+  padding: 10px 12px;
   border-radius: 18px;
   text-align: center;
   background: rgba(14, 17, 31, 0.62);
