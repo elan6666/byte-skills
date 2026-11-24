@@ -3,6 +3,9 @@ name: byte-future
 description: "Record a project idea for later when the user requests deferral without implementation."
 ---
 
+For an actionable follow-up, use [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry).
+Keep a discussion-only or read-only request within its requested scope.
+
 # Byte Future
 
 Record the idea faithfully and keep it separate from active work.

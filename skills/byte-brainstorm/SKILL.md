@@ -3,6 +3,9 @@ name: byte-brainstorm
 description: Generate and compare distinct product, feature, or strategy directions. Use when the user explicitly asks to brainstorm, expand options, or escape a prematurely fixed solution.
 ---
 
+For an actionable follow-up, use [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry).
+Keep a discussion-only or read-only request within its requested scope.
+
 # Byte Brainstorm
 
 Expand the possibility space before committing to a direction.

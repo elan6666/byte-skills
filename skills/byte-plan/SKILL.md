@@ -3,6 +3,10 @@ name: byte-plan
 description: "Create a project execution plan or roadmap when planning is the requested deliverable."
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Plan
 
 Plan only to the depth that improves execution. Inspect relevant context before

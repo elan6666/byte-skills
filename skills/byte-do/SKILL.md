@@ -3,6 +3,34 @@ name: byte-do
 description: Use as the default entry for projects configured to use Byte, or when asked to choose and execute a Byte workflow.
 ---
 
+## Activate the project at entry
+
+After reading project guidance, run the bundled activation for an actionable
+task in a Byte-enabled project. Run it from the task's actual checkout or
+worktree so the registered project root can be resolved correctly.
+
+```bash
+node "$HOME/.agents/skills/byte-do/scripts/activate.mjs"
+```
+
+Use the installed path for this client. Add `--project` only for a verified
+Workbench root of the same repository. The helper uses the native Codex
+thread ID. For another harness, supply its exact observed
+`--session harness:native-id`. If an active workboard task already records
+the verified participants, pass its `--task-id` to register those sessions
+alongside the current one. Repeat activation safely when a real participant
+joins. Existing project registration and task roles are the opt-in boundary
+for automatic display. For an explicitly read-only task, read evidence
+without changing display state.
+
+Apply the useful capability as soon as the task qualifies. Persist actionable
+steps in an enabled workboard. On a verified long run, attach the
+[zero-token run registration and watcher](../byte-workflow/references/zero-token-loop.md#register-and-watch-a-real-run)
+using the same project root. Reuse the current owner on completion, stall, or
+failure, independently verify the evidence, then execute the next authorized
+step. An explicit multi-chat task uses Bridge for delivery. A single-chat
+task waits and resumes in that chat. Keep paused workflows paused.
+
 # Byte Do
 
 ## Maintain project guidance
@@ -90,8 +118,9 @@ instructions, permissions, or proof that an earlier task remains active.
 For a project with `.byte-os/workboard.json`, automatically maintain its concise
 [task plan and progress](../byte-plan/references/workboard.md) when an actionable
 task is discussed, designed or executed. Reuse the task ID, record solution,
-steps and acceptance, and update evidence-backed step states after work. Display
-registration is opt-in; never add all past chats. Tracking is not authorization
+steps and acceptance, and update evidence-backed step states after work.
+Register the current session and verified task participants through entry
+activation. Tracking is not authorization
 to execute a discussion-only proposal or delegate across chats.
 
 Before related work, read active entries in `.byte-os/LESSONS.md` when it exists

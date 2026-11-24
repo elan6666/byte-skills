@@ -3,6 +3,10 @@ name: byte-research
 description: "Investigate a scientific question or a product decision using relevant evidence."
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Research
 
 Research the questions that affect the decision; do not perform a generic market

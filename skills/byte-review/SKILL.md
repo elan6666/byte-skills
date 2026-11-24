@@ -3,6 +3,10 @@ name: byte-review
 description: "Review a Byte project, plan, or deliverable for material issues and readiness."
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Review
 
 Review the actual artifact and evidence. Choose review dimensions based on what

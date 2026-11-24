@@ -3,6 +3,10 @@ name: byte-build
 description: "Implement a requested deliverable within an existing Byte workflow or execution plan."
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Build
 
 When `.byte-os/workboard.json` is enabled, keep the existing

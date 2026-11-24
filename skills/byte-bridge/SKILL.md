@@ -3,6 +3,10 @@ name: byte-bridge
 description: Connect agent chats, assign main and supervisor roles, delegate scoped work, supervise an identified long run, and return results through the bundled Byte Bridge runtime. Use for same-app or cross-app collaboration; short same-task helpers remain native subagents.
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Bridge
 
 Use existing shared project documents for detailed instructions, progress, decisions, and evidence. Update the relevant section before sending a short notification with the task identity, what changed or needs action, and the document path or link. Confirm the receiver can read the reference. For a simple one-line request or result, reply directly.

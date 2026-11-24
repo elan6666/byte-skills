@@ -3,6 +3,10 @@ name: byte-design-supervise
 description: Coordinate a main chat and separate supervisor through Byte Bridge for training or ablations expected to last about an hour or outlive the main turn, within each native client's supported mode. Short bounded waits belong to the same-task subagent route.
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Design and Supervise
 
 ## Maintain project guidance

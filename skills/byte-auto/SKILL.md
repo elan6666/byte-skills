@@ -3,6 +3,10 @@ name: byte-auto
 description: "Use the Byte workflow for end-to-end completion of a multi-stage project request."
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Auto
 
 For projects with `.byte-os/workboard.json`, maintain the

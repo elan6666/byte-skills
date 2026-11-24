@@ -17,13 +17,16 @@ import hashlib
 import json
 from pathlib import Path
 import plistlib
+import re
 import shlex
 import sqlite3
 import subprocess
 import sys
 import time
 
-BRIDGE_SCRIPT = Path.home() / ".agents/skills/byte-bridge/scripts/bridge.py"
+from zero_token_runs import observe, update_run
+
+BRIDGE_SCRIPT = Path(__file__).resolve().parents[2] / "byte-bridge/scripts/bridge.py"
 CODEX_STATE_DB = Path.home() / ".codex/state_5.sqlite"
 DEFAULT_ERROR_REGEX = "Traceback|CUDA out of memory|RuntimeError|OutOfMemoryError|NaN|nan"
 
@@ -137,6 +140,8 @@ def check_registered_runs(project):
         if not isinstance(run, dict) or run.get("status") in ("done", "failed", "ignored"):
             continue
         active_count += 1
+        if run.get("observer") == "wait-run":
+            continue
         run_id = run.get("id", "unknown")
         host = run.get("host")
         pid = run.get("pid")
@@ -228,7 +233,7 @@ def cmd_init(args):
             "StandardOutPath": str(log_dir / f"{label}.out"),
             "StandardErrorPath": str(log_dir / f"{label}.err"),
             "EnvironmentVariables": {
-                "PATH": "/Users/elan/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+                "PATH": f"{Path.home()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
             },
         }
         with plist_path.open("wb") as fh:
@@ -479,39 +484,92 @@ def cmd_board(args):
 
 
 def cmd_wait_run(args):
+    if bool(args.project) != bool(args.run_id):
+        raise ValueError("--project and --run-id must be supplied together")
+    if args.project and (not args.pid or not args.owner_session):
+        raise ValueError("registered runs require an exact PID and owner session")
+    if args.host and not args.pid:
+        raise ValueError("remote runs require a PID")
+    if args.pid is not None and args.pid <= 0:
+        raise ValueError("PID must be positive")
+    if args.attempt <= 0:
+        raise ValueError("attempt must be positive")
+    if args.timeout is not None and args.timeout < 1:
+        raise ValueError("timeout must be positive")
+    if not (args.pid or args.done_file or args.log_file):
+        raise ValueError("supply a process, a completion file, or a log")
+    if bool(args.start_ticks) != bool(args.command_sha256) or (
+        args.start_ticks and (not args.host or not args.start_ticks.isdecimal()
+                              or not re.fullmatch("[0-9a-f]{64}", args.command_sha256))
+    ):
+        raise ValueError("remote process identity requires start ticks and a SHA-256 command digest")
+    if args.project and args.host and not args.start_ticks:
+        raise ValueError("registered remote runs require a verified process identity")
+    if args.stall_timeout is not None and (args.stall_timeout < 1 or not args.progress_file):
+        raise ValueError("stall detection requires a real progress file")
+    expected = json.loads(args.expect_json) if args.expect_json else {}
+    if not isinstance(expected, dict) or (expected and not args.done_file):
+        raise ValueError("--expect-json needs a completion file and a JSON object")
+    re.compile(args.error_regex)
+    entry = {
+        "id": args.run_id, "attempt": args.attempt, "host": args.host, "pid": args.pid,
+        "start_ticks": args.start_ticks, "command_sha256": args.command_sha256,
+        "owner_session": args.owner_session, "gpu": args.gpu,
+        "done_file": args.done_file, "log_file": args.log_file, "observer": "wait-run",
+        "observer_state": "active",
+    }
     deadline = time.monotonic() + args.timeout if args.timeout else None
+    last_progress = time.monotonic()
+    progress = None
+    connection_failures = 0
+    attached = False
     while True:
-        if args.done_file and not args.host and Path(args.done_file).is_file():
-            print(json.dumps({"state": "done_file", "path": args.done_file}, ensure_ascii=False))
-            return 0
-        if args.host and args.pid:
-            cmd = f"ps -p {int(args.pid)} >/dev/null 2>&1 && echo ALIVE || echo EXITED"
-            if args.done_file:
-                cmd += f"; test -f {shlex.quote(args.done_file)} && echo DONE_FILE"
-            if args.log_file:
-                cmd += f"; tail -n 30 -- {shlex.quote(args.log_file)} 2>/dev/null | grep -E {shlex.quote(args.error_regex)} | tail -n 3"
-            ssh_args = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8"]
-            if args.ssh_key:
-                ssh_args += ["-i", str(Path(args.ssh_key).expanduser()), "-o", "IdentitiesOnly=yes"]
-            proc = subprocess.run(ssh_args + ["--", args.host, cmd], capture_output=True, text=True, timeout=20)
-            if proc.returncode == 0:
-                out = proc.stdout.strip()
-                if "EXITED" in out or "DONE_FILE" in out:
-                    print(json.dumps({"state": "exited", "detail": out}, ensure_ascii=False))
-                    return 0
-                if out and "ALIVE" not in out.splitlines()[-1]:
-                    print(json.dumps({"state": "error_in_log", "detail": out}, ensure_ascii=False))
-                    return 1
-        elif args.pid:
-            proc = subprocess.run(["ps", "-p", str(int(args.pid))], capture_output=True)
-            if proc.returncode != 0:
-                print(json.dumps({"state": "exited", "pid": args.pid}, ensure_ascii=False))
-                return 0
-
-        if deadline and time.monotonic() >= deadline:
-            print(json.dumps({"state": "timeout"}, ensure_ascii=False))
-            return 2
-        time.sleep(max(5, args.interval))
+        if args.project:
+            enabled, reason = is_outcome_active(Path(args.project).resolve())
+            if not enabled:
+                event = {"state": "paused", "reason": reason}
+                if attached:
+                    update_run(args.project, entry, observer_state="returned", last_observation=event)
+                print(json.dumps(event))
+                return 2
+        event = observe(args, expected)
+        state = event["state"]
+        if state == "connection_unverified":
+            connection_failures += 1
+            if connection_failures < 3:
+                state = "retry"
+        else:
+            connection_failures = 0
+        if state == "running":
+            if args.project:
+                existing = update_run(args.project, entry)
+                attached = True
+                if existing["status"] in ("done", "failed"):
+                    print(json.dumps(existing.get("terminal_event") or {"state": existing["status"]}))
+                    return 0 if existing["status"] == "done" else 1
+            if event.get("progress") != progress:
+                progress = event["progress"]
+                last_progress = time.monotonic()
+            if args.stall_timeout and time.monotonic() - last_progress >= args.stall_timeout:
+                state = "stalled"
+                event = {"state": state, "progress_file": args.progress_file}
+        if state in ("running", "retry") and deadline and time.monotonic() >= deadline:
+            state = "timeout"
+            event = {"state": state, "last_observation": event["state"]}
+        if state not in ("running", "retry"):
+            if args.project:
+                if state in ("done_file", "exited"):
+                    update_run(args.project, entry, status="done", observer_state="returned", terminal_event=event)
+                elif state in ("missing_receipt", "invalid_receipt"):
+                    update_run(args.project, entry, status="failed", observer_state="returned", terminal_event=event)
+                elif attached:
+                    update_run(args.project, entry, observer_state="returned", last_observation=event)
+            print(json.dumps(event, ensure_ascii=False))
+            return 0 if state in ("done_file", "exited") else 2 if state in (
+                "connection_unverified", "probe_error", "timeout", "stalled"
+            ) else 1
+        delay = max(5, args.interval)
+        time.sleep(min(delay, max(0, deadline - time.monotonic())) if deadline else delay)
 
 
 def cmd_wait_signal(args):
@@ -573,6 +631,16 @@ def main():
 
     p_run = sub.add_parser("wait-run", help="Zero-token blocker for local/SSH training or long jobs")
     p_run.add_argument("--pid", type=int)
+    p_run.add_argument("--project", help="Exact project directory as displayed in the Workbench")
+    p_run.add_argument("--run-id")
+    p_run.add_argument("--attempt", type=int, default=1)
+    p_run.add_argument("--owner-session")
+    p_run.add_argument("--gpu")
+    p_run.add_argument("--start-ticks")
+    p_run.add_argument("--command-sha256")
+    p_run.add_argument("--expect-json")
+    p_run.add_argument("--progress-file")
+    p_run.add_argument("--stall-timeout", type=int)
     p_run.add_argument("--host")
     p_run.add_argument("--ssh-key")
     p_run.add_argument("--done-file")

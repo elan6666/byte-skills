@@ -3,6 +3,9 @@ name: byte-discuss
 description: "Discuss product or project requirements and tradeoffs when the user wants to settle direction before implementation."
 ---
 
+For an actionable follow-up, use [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry).
+Keep a discussion-only or read-only request within its requested scope.
+
 # Byte Discuss
 
 Help the user reach a clearer decision through a natural conversation. Do not

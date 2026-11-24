@@ -3,6 +3,9 @@ name: byte-status
 description: "Inspect progress, blockers, and remaining work in a Byte project."
 ---
 
+For an actionable follow-up, use [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry).
+Keep a discussion-only or read-only request within its requested scope.
+
 # Byte Status
 
 For connected cross-chat tasks, use `byte-bridge` status and the existing

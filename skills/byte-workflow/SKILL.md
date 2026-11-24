@@ -3,6 +3,10 @@ name: byte-workflow
 description: Use when defining or running a saved workflow with roles and acceptance.
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Workflow
 
 At each invocation, read the project and assigned role guidance first. Follow [Byte Do](../byte-do/SKILL.md#maintain-project-guidance) to keep the guidance and related documents aligned with the user's decisions.

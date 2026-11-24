@@ -3,6 +3,10 @@ name: byte-relay
 description: Maintain local Byte identity, ownership, handoff records and evidence, including legacy relay projects. Use byte-bridge for live cross-chat connection, delegation, supervision and result delivery.
 ---
 
+For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn. Use the current project and exact native session. If this skill
+was selected by Byte Do after activation, reuse its registration.
+
 # Byte Relay
 
 Live cross-chat cooperation now uses [$byte-bridge](../byte-bridge/SKILL.md).
