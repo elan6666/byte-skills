@@ -19,7 +19,12 @@ Keep one current objective per project. Record local directions as guidance; use
 
 Use the [continuation guide](references/long-running-work.md) for supervised runs, waiting, and resumption. A valid return can resume the owner, who checks the evidence and executes the next action.
 
-Prefer the [zero-token loop engine](references/zero-token-loop.md) (`scripts/zero_token_loop.py`) over periodic LLM polling heartbeats: combine local file events (`WatchPaths`) with anti-stall idle checks (`StartInterval`), use `wait-run` for 0-token training/job supervision, use `wait-signal` for self-looping clients without an external Bridge wake adapter, and run periodic self-reflection (`.byte-os/coordination/workflow-retrospective.md`) to iteratively refine the workflow.
+Prefer the [zero-token loop engine](references/zero-token-loop.md) (`scripts/zero_token_loop.py`) over periodic LLM polling heartbeats:
+- `init --install-launchd`: bind local `WatchPaths` + `StartInterval` daemon with 20m anti-fragmentation batch-coalescing (`min_batch_interval_minutes`).
+- `tick`: 0-token local check with Swarm shared board (`board.jsonl`) stall attribution, 3-alert cap, and automatic `dormant` mode until new activity.
+- `wait-run` / `wait-signal`: 0-token background blockers for local/SSH training (`Reactive Wakeup`) and self-looping clients without an external Bridge wake adapter.
+- `post` / `board`: `#seq`-indexed shared coordination board with reader/poster cursors; pair with `scripts/ag_say.py` (`ls` / `tail` / `say`) for Antigravity ACP sessions and `.byte-os/server-job-requests/` for sandboxed workers.
+- Periodic self-reflection: automatically prompts workflow audit and updates `.byte-os/coordination/workflow-retrospective.md`.
 
 For open-ended research, make one batch the unit of ownership and handoff.
 Let the researcher choose and revisit activities inside it. Record evidence

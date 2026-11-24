@@ -35,7 +35,7 @@ receipts, and legacy handoffs; Bridge imports engine-managed transfers.
 Prefer an authorized same-task subagent for a bounded
 wait expected under about one hour; it keeps the main chat's ownership. Use
 this cross-chat route when the job is longer or the main turn must end.
-When zero-token local waiting is supported (background command Reactive Wakeup or local `launchd`/`cron`), prefer `byte-workflow/scripts/zero_token_loop.py` (`wait-run`, `wait-signal`, `tick`) over periodic LLM heartbeat polling; see [zero-token loop guide](../byte-workflow/references/zero-token-loop.md).
+When zero-token local waiting is supported (background command Reactive Wakeup or local `launchd`/`cron`), **always prefer `byte-workflow/scripts/zero_token_loop.py`** (`wait-run`, `wait-signal`, `tick`, `post`/`board`) and the `.byte-os/server-job-requests/` launcher queue over periodic LLM heartbeat polling; see [zero-token loop guide](../byte-workflow/references/zero-token-loop.md). Do not assign low-quota external models to internal subagents/swarms (`inherit` or `flash` only), and treat any permission/sandbox blocker as a first-class workflow stall.
 
 The main chat must verify that the real job started and has a durable run ID
 before transferring ownership. It ends its turn instead of polling only after

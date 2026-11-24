@@ -1,9 +1,19 @@
 ---
 name: byte-do
-description: Choose and execute the useful Byte capabilities for a mixed product or project request. Use when the user explicitly invokes $byte-do or asks Byte to select the workflow; focused requests should use the matching skill.
+description: Use as the default entry for projects configured to use Byte, or when asked to choose and execute a Byte workflow.
 ---
 
 # Byte Do
+
+## Maintain project guidance
+
+At each invocation, first read the project's `AGENTS.md` or existing `agent.md` and the current role document explicitly assigned to this chat, if any. Follow their links to the documents relevant to the task. Apply the user's latest direction when it updates older guidance.
+
+When edits are in scope, incorporate confirmed goals, requirements, and workflow changes as they become clear. Apply the change to the current work and update the linked plan or workflow when it is the source of truth. Update shared guidance in the project file and role-specific guidance in the assigned role document. Reread the affected section before saving, merge duplicates, replace superseded instructions, and preserve unrelated content. Keep durable rules and links in the agent guidance, with detailed goals, workflows, and evidence in their maintained documents. Keep one-off requests and progress in the task record. Leave the guidance as-is when it already fits.
+
+Reuse the project's existing default skill rule. If it has none, record the rule below in its guidance file, creating `AGENTS.md` if needed. Link `$byte-do` to its installed skill file.
+
+> Use $byte-do as the default entry for new tasks. Read and apply it first, and honor any skill or workflow explicitly selected by the user.
 
 Act as the adaptive front door to the Byte skills. Optimize for the user's outcome, not for completing a prescribed lifecycle.
 
@@ -24,6 +34,8 @@ Give an assigned researcher the shared objective, relevant facts and existing au
 The researcher chooses the question and method, follows evidence within one batch,
 and reports when findings change a judgment or resource decision. Coordinate a
 dependency when it arises. Reuse the original record for routine progress.
+
+For work across chats, keep details and evidence in shared project documents. Send a short result or request with the task identity and document reference.
 
 ## Capability Choice
 
@@ -46,6 +58,16 @@ as connection. A one-time worker permission grant stays local to that task.
 For a reusable local workflow with custom steps, loops, acceptance and role
 bindings, use [$byte-workflow](../byte-workflow/SKILL.md). Its pinned definition
 and engine-managed state take precedence over ad hoc phase descriptions.
+When the user asks for a goal that persists across scheduled checks and role
+handoffs, use its [scheduled goal mode](../byte-workflow/references/format.md#scheduled-goal-mode)
+and **prefer the zero-token loop engine** (`../byte-workflow/scripts/zero_token_loop.py`
+with `init --install-launchd`, `tick`, `wait-run`, `wait-signal`, `post`/`board`)
+over periodic LLM polling cron jobs.
+
+For visual monitoring and interactive inspection, launch the bundled
+[Neural Swarm Workbench](../../apps/byte-workbench/README.md) (`view=graph` default
+operating network, live `.byte-os/coordination/board.jsonl` & `active-runs.json`
+topology, and 3-level fiber drilldown).
 
 ## State
 
@@ -114,13 +136,15 @@ on request. For unsupervised work, use ordinary task state.
 
 ## Outcome continuity
 
-Keep the overall outcome separate from stage or run acceptance. During an
-already authorized iterative task, status questions and candidate discussions
-do not silently revoke execution authority. Reconcile the latest explicit user
-scope, complete the requested substep, then start the next authorized action.
-A report or platform update is a dependency, not a stopping point. Follow the
-[shared continuation contract](references/long-running-work.md); ordinary turns
-remain the default, and Goals require explicit user request.
+When a project has an authorized long-term outcome, recover its current owner,
+acceptance criteria and next action from the existing state before classifying
+a follow-up. A status request, correction or temporary priority normally applies
+to the current step or short task. A pause or change to the overall outcome
+requires user intent that applies to that outcome. Handle the follow-up, then
+start the next ready, authorized action for the same outcome in the same turn.
+Keep an already-authorized wake route active if the chat must yield. Follow the
+[shared continuation contract](references/long-running-work.md). Ordinary turns
+remain the default. Goals require explicit user request.
 
 
 ## Durable agent roles and collaboration

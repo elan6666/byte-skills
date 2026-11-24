@@ -5,6 +5,18 @@ description: Connect agent chats, assign main and supervisor roles, delegate sco
 
 # Byte Bridge
 
+Use existing shared project documents for detailed instructions, progress, decisions, and evidence. Update the relevant section before sending a short notification with the task identity, what changed or needs action, and the document path or link. Confirm the receiver can read the reference. For a simple one-line request or result, reply directly.
+
+## Maintain project guidance
+
+At each invocation, first read the project's `AGENTS.md` or existing `agent.md` and the current role document explicitly assigned to this chat, if any. Follow their links to the documents relevant to the task. Apply the user's latest direction when it updates older guidance.
+
+When edits are in scope, incorporate confirmed goals, requirements, and workflow changes as they become clear. Apply the change to the current work and update the linked plan or workflow when it is the source of truth. Update shared guidance in the project file and role-specific guidance in the assigned role document. Reread the affected section before saving, merge duplicates, replace superseded instructions, and preserve unrelated content. Keep durable rules and links in the agent guidance, with detailed goals, workflows, and evidence in their maintained documents. Keep one-off requests and progress in the task record. Leave the guidance as-is when it already fits.
+
+Reuse the project's existing default skill rule. If it has none, record the rule below in its guidance file, creating `AGENTS.md` if needed. Link `$byte-do` to its installed skill file.
+
+> Use $byte-do as the default entry for new tasks. Read and apply it first, and honor any skill or workflow explicitly selected by the user.
+
 ## 快速模式（默认先走这里）
 
 绝大多数“让某个对话做件事”只需要一句话，不需要 setup / 角色 / 验收字段：
@@ -18,6 +30,13 @@ byte-bridge stop                                  # 停止本机 hub
 
 实现：单机常驻 hub（默认 ~/.byte-bridge，可用 BYTE_BRIDGE_HOME 覆盖）；项目只是标签，不再阻断跨目录协作。
 来源侧原生身份证明、投递去重与审计仍然保留；下面的 delegate / supervise / return 是进阶模式，仅在需要验收、监督或结果回收时使用。
+
+用 `say` 分派会产生投递回执里的 `delivery`，任务名由分派方约定。
+分派方在消息中写明回传会话，保存原投递回执。执行方完成后，通过
+`say` 回传到该会话，附原任务名、原投递 ID、产物路径、SHA-256 和结果。
+`status --task` 查询进阶任务台账。仅用 `say` 投递时，按已保存的投递回执核对；
+按约定任务名查到 `task_missing` 属于预期结果。通过 `delegate` 分派时，
+按回执里的 `task_id` 查询和回传，保留原任务身份。
 
 ## 进阶模式
 
@@ -95,7 +114,12 @@ Inspect `context` and query `sessions` by the user's alias. Require a unique
 native identity including app, host, profile and runtime generation. Never fill
 in another session's identity, borrow its environment, or use a “latest” file.
 Other apps enroll using their own native plugin/extension. A newly managed ACP
-session is a different mode from attaching an existing TUI.
+session is a different mode from attaching an existing TUI. When targeting an
+Antigravity desktop session and `bridge.py` reports `unsupported_harness`, use
+the companion ACP/transcript bridge `../byte-workflow/scripts/ag_say.py` (`ls`,
+read-only `tail`, or `say`) together with `.byte-os/coordination/ag-wake.json`
++ `zero_token_loop.py wait-signal` (prefer signal files when a native desktop
+session is already waiting, so its interactive permissions stay intact).
 
 Use `exec describe --query request.<operation> --json` and the bundled
 [generated command reference](runtime/skills/sessionbridge-do/references/commands.generated.md)
