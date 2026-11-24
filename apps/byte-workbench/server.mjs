@@ -11,6 +11,7 @@ import { collectRecall, queryRecall } from "../../skills/byte-status/scripts/rec
 import { taskHistory } from "./lib/history.mjs";
 import { displaySnapshot } from './lib/workboard.mjs';
 import { readBoard, writeBoard, changeBoard, sessionKey } from '../../skills/byte-plan/scripts/workboard.mjs';
+import { buildDemoNeuralSwarm, buildNeuralSwarm, appendNeuralBoardPost } from './lib/neural-swarm.mjs';
 const dir = dirname(fileURLToPath(import.meta.url));
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -92,6 +93,41 @@ export function createWorkbench({
       }
       if (req.method === "GET" && url.pathname === "/api/snapshot")
         return send(res, 200, snapshot(id));
+      if (req.method === "GET" && url.pathname === "/api/neural-swarm") {
+        if (demoOnly || id === demoProject.id)
+          return send(res, 200, buildDemoNeuralSwarm(demoStep));
+        const p = catalog.get(id);
+        return send(res, 200, buildNeuralSwarm(p.root, snapshot(id)));
+      }
+      if (req.method === "GET" && url.pathname === "/api/neural-swarm/file") {
+        if (demoOnly || id === demoProject.id)
+          return send(res, 200, { path: "demo", content: "演示模式不读取本地真实文件内容。" });
+        const p = catalog.get(id);
+        const relPath = url.searchParams.get("path") || "";
+        const ext = extname(relPath).toLowerCase();
+        if (![".md", ".json", ".jsonl", ".py", ".log", ".txt", ".yaml", ".yml", ".mjs"].includes(ext))
+          throw Error("不支持预览此类型文件");
+        const file = scoped(p.root, relPath);
+        if (!existsSync(file) || !statSync(file).isFile())
+          return send(res, 404, { error: "文件不存在" });
+        const raw = readFileSync(file, "utf8");
+        return send(res, 200, { path: relPath, content: raw.slice(0, 65536), truncated: raw.length > 65536 });
+      }
+      if (req.method === "POST" && url.pathname === "/api/neural-swarm/post") {
+        if (demoOnly || id === demoProject.id)
+          return send(res, 403, { error: "示例模式不写入真实共享板" });
+        let raw = "";
+        for await (const chunk of req) {
+          raw += chunk;
+          if (Buffer.byteLength(raw) > 64 * 1024) return send(res, 413, { error: "请求过大" });
+        }
+        const payload = JSON.parse(raw || "{}");
+        if (!String(payload.text || "").trim())
+          return send(res, 400, { error: "消息内容不能为空" });
+        const p = catalog.get(id);
+        const entry = appendNeuralBoardPost(p.root, payload);
+        return send(res, 201, { ok: true, entry });
+      }
       if (req.method === 'POST' && url.pathname === '/api/workboard') {
         if(demoOnly || id===demoProject.id)return send(res,403,{error:'示例不修改真实登记'});
         let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>1024*1024)return send(res,413,{error:'请求过大'});}
