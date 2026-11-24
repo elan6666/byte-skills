@@ -8,7 +8,7 @@ Replaces periodic LLM heartbeat polling (which burns context tokens even when no
    - Uses macOS `launchd` with both `WatchPaths` (instant wakeup when a sealed manifest lands) and `StartInterval` (e.g., 180s local check to prevent joint-idle deadlocks when a turn produces analysis without a new manifest).
    - **Stops automatically** when `overall_outcome.status != "active"` or `.byte-os/coordination/paused.flag` exists.
    - **Priority order on each tick**:
-     1. New unverified manifests (`*-steer-input.json` not yet in `*-mentor-verified.json`) -> wake `lead` immediately (deduped by SHA-256).
+     1. New unverified manifests (`*-steer-input.json` not yet in `*-mentor-verified.json`) -> wake `lead` immediately if `milestone: true`/`urgent: true` or `>= min_batch_interval_minutes` (default 20 min) since last wake (anti-fragmentation coalescing gate).
      2. Registered long runs in `.byte-os/active-runs.json` reaching exit, `done_file`, or log error pattern -> wake `lead`.
      3. Joint idle recovery: if no registered run is active and `lead` + Codex `workers` are all idle >= `idle_threshold_minutes` (default 8 min), wake `lead` once per cooldown window (default 15 min).
 

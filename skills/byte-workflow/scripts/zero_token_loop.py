@@ -269,12 +269,19 @@ def cmd_tick(args):
     retro_every = max(1, int(cfg.get("retrospective_every_n_wakes", 3)))
     retro_file = cfg.get("retrospective_file", ".byte-os/coordination/workflow-retrospective.md")
 
-    # 1. Pending manifests
+    # 1. Pending manifests (with 20m batch-coalescing gate unless marked milestone/urgent)
     pending = find_pending_manifests(project, cfg)
+    min_batch_min = float(cfg.get("min_batch_interval_minutes", 20.0))
+    last_pending_ts = float(loop_state.get("last_pending_wake_ts", 0))
+    now_ts = time.time()
     sent = []
     for item in pending:
         digest = item["manifest_sha256"]
         if digest in loop_state.get("notified_manifests", {}):
+            continue
+        mdata = read_json(project / item["manifest"], {})
+        is_milestone = bool(isinstance(mdata, dict) and (mdata.get("milestone") or mdata.get("urgent")))
+        if not is_milestone and last_pending_ts > 0 and (now_ts - last_pending_ts) < min_batch_min * 60:
             continue
         next_count = int(loop_state.get("wake_count", 0)) + 1
         retro_note = ""
@@ -292,6 +299,7 @@ def cmd_tick(args):
         sent.append(rec)
         if not args.dry_run and transport.get("ok"):
             loop_state["wake_count"] = next_count
+            loop_state["last_pending_wake_ts"] = time.time()
             loop_state.setdefault("notified_manifests", {})[digest] = time.time()
 
     if sent:
