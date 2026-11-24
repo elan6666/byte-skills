@@ -34,7 +34,7 @@ export async function startClaudeChild(context, options) {
         throw new Error('Native host identity mismatch');
     const nativeInfo = lstatSync(nativeSocket);
     // SessionStart precedes the native transcript's first write. Wait for that writer; never create its file.
-    const transcriptDeadline = Date.now() + 5000;
+    const transcriptDeadline = Date.now() + 60000;
     let transcriptInfo;
     for (;;) {
         try {

@@ -3,7 +3,12 @@ import { randomUUID } from 'node:crypto';
 import { hostname } from 'node:os';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { join } from 'node:path';
-import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+const _sbDebug = (message) => { if (!process.env.SESSIONBRIDGE_DEBUG)
+    return; try {
+    appendFileSync(process.env.SESSIONBRIDGE_DEBUG, new Date().toISOString() + ' [' + process.pid + '] ' + message + '\n');
+}
+catch { /* debug only */ } };
 import { privateDirectory } from '../../core/private-paths.js';
 import { openStore, transaction } from '../../core/database.js';
 import { BindingService, issueEnrollment } from '../../core/bindings.js';
@@ -19,13 +24,63 @@ function diagnostic(input, state, reason) { try {
     writeFileSync(join(dir, 'claude-' + digest(input.session_id) + '.json'), JSON.stringify({ state, reason, session_id_sha256: digest(input.session_id), at: new Date().toISOString() }), { mode: 0o600 });
 }
 catch { /* Diagnostics never change native execution. */ } }
-async function nativeOwner() { let pid = process.ppid; for (let i = 0; i < 12 && pid > 1; i++) {
-    const owner = await readCodexOwner(pid);
-    if (/(?:claude|claude\.exe)$/.test(owner.executable))
+async function resolveNativeOwner(pid) {
+    _sbDebug('resolve pid=' + pid);
+    let owner;
+    try {
+        owner = await readCodexOwner(pid);
+    }
+    catch (error) {
+        _sbDebug('readOwner failed pid=' + pid + ' ' + error.message.slice(0, 80));
+    }
+    if (owner && /(?:claude|claude\.exe)$/.test(owner.executable))
         return owner;
-    pid = Number(execFileSync('ps', ['-p', String(pid), '-o', 'ppid='], { encoding: 'utf8', timeout: 3000 }).trim());
-} throw new Error('Original Claude owner is unavailable'); }
+    try {
+        const command = execFileSync('ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8', timeout: 3000 }).trim();
+        _sbDebug('cmd pid=' + pid + ' ' + command.slice(0, 120));
+        const candidate = command.split(/\s+/)[0]?.replace(/^['"]|['"]$/g, '') ?? '';
+        let shim = null;
+        if (candidate.includes('/')) {
+            if (/(?:^|\/)claude(?:\.js|\.cjs)?$/.test(candidate) && existsSync(candidate))
+                shim = candidate;
+        }
+        else if (/^claude(?:\.js|\.cjs)?$/.test(candidate)) {
+            try {
+                const found = execFileSync('which', [candidate.replace(/\.(?:js|cjs)$/, '')], { encoding: 'utf8', timeout: 3000 }).trim();
+                if (found && existsSync(found))
+                    shim = found;
+            }
+            catch { /* not on PATH */ }
+        }
+        const token = shim;
+        if (token && existsSync(token)) {
+            const shim = token.replace(/^['"]|['"]$/g, '');
+            const started = owner?.started_at ?? execFileSync('ps', ['-p', String(pid), '-o', 'lstart='], { encoding: 'utf8', timeout: 3000 }).trim();
+            return { pid, started_at: started, executable: shim };
+        }
+    }
+    catch { /* keep looking up the tree */ }
+    return owner ?? null;
+}
+async function nativeOwner() {
+    let pid = process.ppid;
+    for (let i = 0; i < 12 && pid > 1; i++) {
+        const owner = await resolveNativeOwner(pid);
+        if (owner && /(?:claude|claude\.exe)$/.test(owner.executable))
+            return owner;
+        try {
+            pid = Number(execFileSync('ps', ['-p', String(pid), '-o', 'ppid='], { encoding: 'utf8', timeout: 3000 }).trim());
+            _sbDebug('next pid=' + pid);
+        }
+        catch {
+            _sbDebug('ppid failed');
+            break;
+        }
+    }
+    throw new Error('Original Claude owner is unavailable');
+}
 async function child(input) {
+    _sbDebug('child:enter owner=' + String(Boolean(input.owner)) + ' token=' + String(Boolean(input.startup_token)));
     const root = realpathSync(input.cwd), store = openStore(root), socket = process.env.CLAUDE_CODE_MESSAGING_SOCKET;
     if (!socket || !input.owner || !input.startup_token) {
         store.close();
@@ -33,8 +88,8 @@ async function child(input) {
     }
     const token = input.startup_token;
     try {
-        const original = await readCodexOwner(input.owner.pid);
-        if (digest(original) !== digest(input.owner))
+        const original = await resolveNativeOwner(input.owner.pid);
+        if (!original || digest(original) !== digest(input.owner))
             throw new Error('Native owner changed');
         const version = execFileSync(original.executable, ['--version'], { encoding: 'utf8', timeout: 5000 }).trim().split(' ')[0];
         requireMinimumVersion('Claude', version, '2.1.306');
@@ -81,6 +136,7 @@ async function child(input) {
     }
 }
 export async function claudeSessionStart(input) {
+    _sbDebug('start:' + String(input.hook_event_name) + ' socket=' + String(Boolean(process.env.CLAUDE_CODE_MESSAGING_SOCKET)) + ' token=' + String(Boolean(process.env.CLAUDE_CODE_MESSAGING_TOKEN)) + ' transcript=' + String(Boolean(input.transcript_path)));
     if (!['SessionStart', 'SessionEnd', 'UserPromptSubmit'].includes(input.hook_event_name) || !input.session_id)
         return;
     if (!process.env.CLAUDE_CODE_MESSAGING_SOCKET) {
@@ -116,9 +172,11 @@ export async function claudeSessionStart(input) {
     finally {
         store.close();
     }
+    _sbDebug('reserved start=' + String(reservation?.start));
     if (!input.transcript_path || !process.env.CLAUDE_CODE_MESSAGING_TOKEN || !reservation)
         return;
     if (reservation.start) {
+        _sbDebug('spawn:begin');
         diagnostic(input, 'starting', 'native_inbox_available');
         const owner = await nativeOwner(), checkStore = openStore(input.cwd);
         try {
@@ -130,6 +188,7 @@ export async function claudeSessionStart(input) {
         const processChild = spawn(process.execPath, [fileURLToPath(import.meta.url), '--child'], { cwd: input.cwd, env: process.env, stdio: ['pipe', 'ignore', 'ignore'], detached: true });
         processChild.stdin.end(JSON.stringify({ ...input, owner, startup_token: reservation.token }));
         processChild.unref();
+        _sbDebug('spawn:pid=' + String(processChild.pid));
     }
     // A warm conversation already has a transcript. Wait for its private child so
     // the first model tool after native /reload-plugins sees the new connection.
@@ -166,6 +225,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
             await claudeSessionStart(input);
     }
     catch (error) {
+        _sbDebug('ERR ' + (error instanceof Error ? (error.stack ?? error.message) : String(error)));
         try {
             if (parsedInput)
                 diagnostic(parsedInput, 'failed', error instanceof Error ? error.message.slice(0, 200) : 'native_child_failed');

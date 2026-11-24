@@ -30,7 +30,10 @@ CREATE TABLE task_cancellations(task_id TEXT PRIMARY KEY,source_session_key TEXT
 CREATE TABLE task_results(task_id TEXT PRIMARY KEY,sha256 TEXT NOT NULL,result_json TEXT NOT NULL,reported_at TEXT NOT NULL);
 CREATE TABLE task_returns(task_id TEXT PRIMARY KEY,state TEXT NOT NULL,result_sha256 TEXT NOT NULL,authority_json TEXT,message_id TEXT NOT NULL UNIQUE,created_at TEXT NOT NULL,baseline_json TEXT,verified_at TEXT,verification_json TEXT,continuation_json TEXT);
 CREATE TABLE continuation_plans(task_id TEXT PRIMARY KEY,plan_json TEXT NOT NULL);
-`, `ALTER TABLE requests ADD COLUMN delegate_journal_json TEXT;`];
+`, `ALTER TABLE requests ADD COLUMN delegate_journal_json TEXT;`, `
+CREATE TABLE hub_messages(message_id TEXT PRIMARY KEY,target TEXT NOT NULL,harness TEXT NOT NULL,text_sha256 TEXT NOT NULL,created_at TEXT NOT NULL,state TEXT NOT NULL,reply_preview TEXT);
+CREATE INDEX hub_messages_target ON hub_messages(harness,target,created_at);
+`];
 export function openStore(projectRoot, options = {}) {
     const root = realpathSync(projectRoot), dir = join(root, '.session-bridge');
     const info = lstatSync(dir);

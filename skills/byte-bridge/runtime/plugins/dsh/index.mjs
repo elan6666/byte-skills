@@ -16,6 +16,7 @@ export function apply(ctx, config = {}) {
   const core = locateCore(directory);
   const { installDsh } = await import(pathToFileURL(join(core, 'dist/src/adapters/dsh/extension.js')).href);
   const { sessionKey } = await import(pathToFileURL(join(core, 'dist/src/protocol/canonical.js')).href);
-  return installDsh(ctx, { sessions: selected.sessions ?? [] }, (envelope, text) => createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'sessionbridge', form: 'relay', message_id: envelope.message_id, sender_session_key: sessionKey(envelope.sender) } }));
+  const hubRoot = process.env.BYTE_BRIDGE_HOME ?? (process.env.HOME ? join(process.env.HOME, '.byte-bridge') : join(directory, '..', '..', '.byte-bridge'));
+  return installDsh(ctx, { sessions: selected.sessions ?? 'auto', root: hubRoot }, (envelope, text) => createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'sessionbridge', form: 'relay', message_id: envelope.message_id, sender_session_key: sessionKey(envelope.sender) } }));
  }, 'sessionbridge-native');
 }

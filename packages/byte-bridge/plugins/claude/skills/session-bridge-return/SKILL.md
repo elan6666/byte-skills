@@ -3,6 +3,8 @@ name: session-bridge-return
 description: Use when a delegated or supervised task has evidence to report, needs handback to its exact main conversation, or requires verification of main continuation.
 ---
 
+> **快速模式已并入 [byte-bridge](../byte-bridge/SKILL.md)。** 本文件仅作兼容入口：日常优先使用 byte-bridge say "<目标>" "任务" --wait；需要验收、监督、回传时再按本文的进阶流程。
+
 # 向原主会话回报
 
 使用任务原先选定的 Bridge 回程，不再用 CUA 或直接跨聊天消息补发。
