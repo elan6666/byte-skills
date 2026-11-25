@@ -155,7 +155,7 @@ export function projectSnapshot(project, catalog, now = Date.now()) {
     const version = Number(
       db.prepare("PRAGMA user_version").get().user_version,
     );
-    if (version < 1 || version > 8) throw Error("unsupported schema");
+    if (version < 1 || version > 9) throw Error("unsupported schema");
     out.source.bridge = true;
     const byKey = new Map();
     for (const r of rows(db, "bindings")) {
@@ -336,7 +336,7 @@ export function projectSnapshot(project, catalog, now = Date.now()) {
         if (s && !observedTargets.has(key)) {
           observedTargets.add(key);
           s.nativeObservation = o.state;
-          // Observations have no timestamp in schema 8. A stored running observation
+          // Observations in schema 8 and 9 have no timestamp. A stored running observation
           // is evidence of a past observation, never proof of current liveness.
           if (
             task &&

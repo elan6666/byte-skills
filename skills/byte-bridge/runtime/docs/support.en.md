@@ -42,6 +42,8 @@ The observation does not establish native permissions, task execution or wakeup.
 
 Versions identify interface adaptation conditions, not an instruction to upgrade. Plugin installation does not restart applications or take over other conversations. Attaching an existing session and launching a new managed worker are distinct modes.
 
+On macOS, Codex result returns prefer the thread's current desktop owner. The adapter steers an active turn and attempts to start a turn only after the desktop explicitly reports that the active turn ended. If no compatible owner is found, the original native queue is used. An uncertain direct delivery is reconciled by the original message ID without a second enqueue. Queue confirmation, receipt in the original chat, and independent verification are distinct states.
+
 ## Original sessions versus dedicated new sessions
 
 These are version-specific boundaries, not claims about every GUI or main/worker combination:

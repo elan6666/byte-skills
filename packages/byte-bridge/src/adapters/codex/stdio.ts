@@ -2,7 +2,7 @@ import { spawn,type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { BridgeError } from '../../protocol/errors.js';
 export const CODEX_WRITER_METHODS=new Set(['initialize','thread/read','thread/loaded/list','thread/queue/list','thread/queue/add','thread/turns/list']);
-export interface CodexStdioOptions {binary:string;codexHome:string;cwd:string;trace?:(method:string)=>void}
+export interface CodexStdioOptions {binary:string;codexHome:string;cwd:string;trace?:(method:string)=>void;allowReturnPromotion?:boolean}
 export class CodexStdio {
  private child:ChildProcessWithoutNullStreams|null=null;private serial=0;private ready:Promise<unknown>|null=null;private closed=false;
  private pending=new Map<number,{method:string;resolve:(value:unknown)=>void;reject:(error:Error)=>void;timer:ReturnType<typeof setTimeout>}>();
@@ -39,7 +39,7 @@ export class CodexStdio {
   return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.pending.delete(id);reject(new BridgeError('native_timeout','Native observer RPC timed out','Reconcile the same message ID; do not blindly resend',5));},20_000);this.pending.set(id,{method,resolve,reject,timer});this.child!.stdin.write(line);});
  }
  async request(method:string,params:unknown):Promise<unknown>{
-  if(!CODEX_WRITER_METHODS.has(method))throw new BridgeError('writer_method_forbidden','Writer method is forbidden by the queue-only allowlist','Use only metadata/history/queue reads or queue/add',3);
+  if(!CODEX_WRITER_METHODS.has(method) && !(this.options.allowReturnPromotion && method==='thread/queue/delete'))throw new BridgeError('writer_method_forbidden','Writer method is forbidden by the native allowlist','Use the scoped native adapter operations',3);
   const initialized=await this.initialize();if(method==='initialize')return initialized;
   return this.rawRequest(method,params);
  }

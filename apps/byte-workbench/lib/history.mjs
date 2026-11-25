@@ -17,7 +17,7 @@ export function taskHistory(root, taskId, {before, limit = 40} = {}) {
   try {
     db.exec('PRAGMA query_only=ON; PRAGMA busy_timeout=300; BEGIN');
     const schema = Number(db.prepare('PRAGMA user_version').get().user_version);
-    if (schema < 1 || schema > 8) throw Error('Unsupported Bridge schema');
+    if (schema < 1 || schema > 9) throw Error('Unsupported Bridge schema');
     const task = db.prepare('SELECT input_json FROM tasks WHERE task_id=?').get(taskId);
     if (!task) throw Error('Task is not in this project');
     const input = JSON.parse(task.input_json);

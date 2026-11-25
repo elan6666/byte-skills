@@ -200,7 +200,7 @@ ZCode 已打开原会话的插件工具另用 zcode.attach / zcode.wait / zcode.
 
 入口：`session-bridge request --stdin --json`
 
-输入契约摘要：`7d77894349fd74edd314b2e67c83a1b99cfa45a189226ed0f240d76edf62a610`
+输入契约摘要：`aab4bd2d39934a7488a2ccef49c7329b9cf082acdf8a060b0a626e130f580e4b`
 
 | 字段 | 类型 | 必填／默认值 |
 | --- | --- | --- |
@@ -209,6 +209,7 @@ ZCode 已打开原会话的插件工具另用 zcode.attach / zcode.wait / zcode.
 | `dry_run` | `boolean` | 可选 |
 | `operation` | `"recover"` | 必填 |
 | `message_id` | `string` | 必填 |
+| `promote_queued_return` | `boolean` | 可选 |
 
 结构示例：structure-1
 
@@ -663,7 +664,7 @@ ZCode 已打开原会话的插件工具另用 zcode.attach / zcode.wait / zcode.
 
 入口：`ZCode original-session MCP sessionbridge_request(input)`
 
-输入契约摘要：`eeef3ef6df3bdc8e323966c82afb8d0febf29f2d228a21cf31257c037e68d8de`
+输入契约摘要：`dedd762f2ee4d6dd3f9f880c24afcb00b96fc250603a77f308d99f16c5d23f94`
 
 | 字段 | 类型 | 必填／默认值 |
 | --- | --- | --- |

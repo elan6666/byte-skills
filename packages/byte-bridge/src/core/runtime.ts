@@ -20,14 +20,12 @@ import { scopeDigest,StandaloneWorkflow } from '../workflows/standalone.js';
 import type { TaskInput,Actor } from '../protocol/types.js';
 export function createRuntimeRegistry(store:BridgeStore):AdapterRegistry{
  const registry=new AdapterRegistry(),bindings=new BindingService(store);
- const select:Adapter['deliver']=async e=>{
+ const select=async(e:Parameters<Adapter['deliver']>[0])=>{
   const binding=await exactBinding(store,e.target),path=join(store.root,'.session-bridge','connectors','codex',digest(binding.binding_id)+'.json');
-  const config=codexConfigSchema.parse(JSON.parse(readFileSync(path,'utf8'))),adapter=createCodexAdapter({...config,resolveBinding:async id=>(await bindings.resolve({query:'',harness:'codex',profile_id:id.profile_id})).find(b=>sessionKey(b.identity)===sessionKey(id))??null});
-  return adapter.deliver(e);
+  const config=codexConfigSchema.parse(JSON.parse(readFileSync(path,'utf8')));
+  return createCodexAdapter({...config,resolveBinding:async()=>binding});
  };
- const codex:Adapter={probe:async()=>({harness:'codex',version:null,modes:{attached:{supported:true,evidence:'explicit original-host enrollment',constraints:['Requires matching version, profile, owner and scope map']}},capabilities:[]}),discover:()=>bindings.resolve({query:'',harness:'codex'}),enroll:async()=>{throw new Error('Use connect inside the native Codex session');},deliver:select,reconcile:async e=>{
-  const b=await exactBinding(store,e.target),c=codexConfigSchema.parse(JSON.parse(readFileSync(join(store.root,'.session-bridge','connectors','codex',digest(b.binding_id)+'.json'),'utf8')));return createCodexAdapter({...c,resolveBinding:async()=>b}).reconcile(e);
- },observe:async function*(){},disconnect:async()=>{}};
+ const codex:Adapter={probe:async()=>({harness:'codex',version:null,modes:{attached:{supported:true,evidence:'explicit original-host enrollment',constraints:['Requires matching version, profile, owner and scope map']}},capabilities:[]}),discover:()=>bindings.resolve({query:'',harness:'codex'}),enroll:async()=>{throw new Error('Use connect inside the native Codex session');},deliver:async e=>(await select(e)).deliver(e),reconcile:async e=>(await select(e)).reconcile(e),promoteReturn:async(e,id)=>(await select(e)).promoteReturn!(e,id),observe:async function*(){},disconnect:async()=>{}};
  registry.register('codex',codex);registry.register('claude',createClaudeAdapter({helper:createRegisteredHelperClient(store)}));
  for(const name of ['pi','hermes','dsh','zcode','kimi','opencode'])registry.register(name,createPluginAdapter(name,createPluginBindingClient(store)));
  return registry;

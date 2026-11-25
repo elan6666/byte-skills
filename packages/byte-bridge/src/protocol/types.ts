@@ -29,7 +29,7 @@ export type BridgeRequest =
  | (RequestBase & {operation:'supervise';task_id:string;run:RunIdentity;supervisor:SessionTarget;interval_seconds:number;deadline_at:string;repair_paths:string[]})
  | (RequestBase & {operation:'status';task_id?:string;for_request?:string})
  | (RequestBase & {operation:'return';task_id:string;summary?:string})
- | (RequestBase & {operation:'recover';message_id:string})
+ | (RequestBase & {operation:'recover';message_id:string;promote_queued_return?:boolean})
  | (RequestBase & {operation:'cancel_pending';task_id:string;stop_supervision?:boolean});
 export interface RoleAssignment {main:SessionIdentity;supervisor:SessionIdentity;updated_at:string}
 export type SessionCandidate = Omit<BindingRecord,'endpoint_ref'>;

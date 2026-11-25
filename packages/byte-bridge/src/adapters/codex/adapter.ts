@@ -8,6 +8,7 @@ import { digest,sessionKey } from '../../protocol/canonical.js';
 import { BridgeError } from '../../protocol/errors.js';
 import { readCodexOwner,validateCodexBinary } from './version.js';
 import { CodexStdio } from './stdio.js';
+import { openDesktopReturnOwner } from './desktop-return.js';
 export interface CodexAdapterOptions {desktopBinary:string;codexHome:string;expectedVersion:string;projectRoot?:string;nativeCwd?:string;owner?:NativeProcessOwner;verifyContext?:(proof:NativeContextProof)=>Promise<SessionIdentity>;resolveBinding?:(identity:SessionIdentity)=>Promise<BindingRecord|null>;trace?:(method:string)=>void}
 interface NativeThread {id:string;cwd:string;status:{type:string}}
 interface NativeItem {type:string;clientId?:string;content?:{type:string;text?:string}[];text?:string}
@@ -34,11 +35,11 @@ type CodexEndpoint=z.infer<typeof endpointSchema>;
 class CodexAdapter implements Adapter {
  private bindings=new Map<string,BindingRecord>();private tracked=new Map<string,Envelope>();private clients=new Set<CodexStdio>();
  constructor(private options:CodexAdapterOptions){}
- private async withClient<T>(fn:(client:CodexStdio)=>Promise<T>):Promise<T>{
+ private async withClient<T>(fn:(client:CodexStdio)=>Promise<T>,allowReturnPromotion=false):Promise<T>{
   await validateCodexBinary(this.options.desktopBinary,this.options.expectedVersion);
   if(!this.options.projectRoot)throw new BridgeError('project_missing','Codex connector needs an explicit project root','Connect the native session to the intended project',3);
   await realpath(this.options.codexHome);
-  const client=new CodexStdio({binary:this.options.desktopBinary,codexHome:this.options.codexHome,cwd:this.options.projectRoot,trace:this.options.trace});this.clients.add(client);
+  const client=new CodexStdio({binary:this.options.desktopBinary,codexHome:this.options.codexHome,cwd:this.options.projectRoot,trace:this.options.trace,allowReturnPromotion});this.clients.add(client);
   try{return await fn(client);}finally{await client.close();this.clients.delete(client);}
  }
  private async validateEndpoint(endpoint:CodexEndpoint):Promise<void>{
@@ -53,7 +54,7 @@ class CodexAdapter implements Adapter {
   const version=await validateCodexBinary(this.options.desktopBinary,this.options.expectedVersion),endpoint:CodexEndpoint={transport:'codex_stdio',profile_sha256:digest(await realpath(this.options.codexHome)),binary_sha256:version.sha256,owner:this.options.owner,native_cwd:await realpath(this.options.nativeCwd??this.options.projectRoot!),scope_root:await realpath(this.options.projectRoot!)};
   await this.validateEndpoint(endpoint);return endpoint;
  }
- async probe():Promise<CapabilityReport>{const proof=await validateCodexBinary(this.options.desktopBinary,this.options.expectedVersion);return {harness:'codex',version:proof.version,modes:{attached:{supported:true,evidence:'version/hash-matched native queue protocol',constraints:['Requires exact enrolled generation and original loaded host; live acceptance is separate']}},capabilities:[{name:'deliver_followup',supported:true,evidence:'thread/queue/add in compatible experimental protocol',constraints:['No load, resume, interrupt or native tool execution']},{name:'idle_wake',supported:false,evidence:null,constraints:['An unloaded or closed desktop is not guaranteed to wake']}]};}
+ async probe():Promise<CapabilityReport>{const proof=await validateCodexBinary(this.options.desktopBinary,this.options.expectedVersion);return {harness:'codex',version:proof.version,modes:{attached:{supported:true,evidence:'version/hash-matched native queue protocol',constraints:['Requires exact enrolled generation and original loaded host; live acceptance is separate']}},capabilities:[{name:'deliver_followup',supported:true,evidence:'thread/queue/add in compatible experimental protocol',constraints:['No load, resume, interrupt or native tool execution']},{name:'desktop_return',supported:process.platform==='darwin' && proof.source==='desktop_bundle',evidence:'The exact macOS desktop owner must advertise its live capability before dispatch',constraints:['Return envelopes only; idle start only after explicit inactive-turn rejection']} ]};}
  async discover():Promise<BindingRecord[]>{return [...this.bindings.values()].filter(b=>b.active && Date.parse(b.expires_at)>Date.now());}
  async enroll(context:EnrollmentContext):Promise<BindingRecord>{
   if(!this.options.verifyContext || Date.parse(context.native_proof.expires_at)<=Date.now() || context.setup.kind!=='local_setup' || Date.parse(context.setup.expires_at)<=Date.now())throw new BridgeError('native_proof_required','Native enrollment proof is missing or expired','Invoke connect from the selected trusted native host',3);
@@ -77,12 +78,20 @@ class CodexAdapter implements Adapter {
    return await this.withClient(async client=>{
     const read=await client.request('thread/read',{threadId:envelope.target.native_session_id,includeTurns:false}) as {thread:NativeThread};
     if(read.thread.id!==envelope.target.native_session_id || await realpath(read.thread.cwd)!==await realpath(endpoint.native_cwd??this.options.projectRoot!))throw new BridgeError('native_identity_mismatch','Native thread or project changed','Reconnect the intended native session',3);
+    if(envelope.kind==='return' && this.options.desktopBinary.includes('.app/Contents/')){
+     const owner=await openDesktopReturnOwner(this.options.codexHome,envelope.target.native_session_id,read.thread.cwd);
+     if(owner){
+      attempted=true;
+      try{return {state:'confirmed',native_receipt:await owner.send(envelope.message_id,wireText(envelope))};}
+      finally{owner.close();}
+     }
+    }
     attempted=true;
     const result=await client.request('thread/queue/add',{threadId:envelope.target.native_session_id,clientUserMessageId:envelope.message_id,input:[{type:'text',text:wireText(envelope),text_elements:[]}]}) as {queuedSubmission:NativeQueue};
     if(result.queuedSubmission.clientUserMessageId!==envelope.message_id || text(result.queuedSubmission.input)!==wireText(envelope))return {state:'uncertain',reason:'Native queue receipt did not match the immutable payload'};
     return {state:'confirmed',native_receipt:result.queuedSubmission.id};
    });
-  }catch(error){return {state:attempted?'uncertain':'refused',reason:error instanceof BridgeError?error.message:'Native delivery could not be established; reconcile before retrying'};}
+  }catch(error){return {state:attempted?'uncertain':'refused',reason:error instanceof Error?error.message:'Native delivery could not be established; reconcile before retrying'};}
  }
  async reconcile(input:Envelope):Promise<Observation[]>{
   const envelope=parseEnvelope(input),unknown:Observation={state:'unknown',message_id:envelope.message_id,session:envelope.target,native_receipt:null,artifacts:[]};
@@ -101,13 +110,37 @@ class CodexAdapter implements Adapter {
      for(const turn of result.data){const user=turn.items.find(i=>i.type==='userMessage' && i.clientId===envelope.message_id);if(!user)continue;
       if(!matchesWireText(text(user.content??[]),envelope))return [unknown];
       const completed=turn.status==='completed' && !turn.error && turn.items.some(i=>i.type==='agentMessage' && Boolean(i.text?.trim()));
-      return [{...unknown,state:completed?'accepted':'unknown',native_receipt:'turn:'+turn.id}];
+      // An exact result message in persisted history proves receipt, not that the
+      // original main finished verification or the scientific next action.
+      return [{...unknown,state:completed || envelope.kind==='return'?'accepted':'unknown',native_receipt:'turn:'+turn.id}];
      }
      cursor=result.nextCursor??null;if(!cursor)break;
     }
     return [unknown];
    });
   }catch{return [unknown];}
+ }
+ async promoteReturn(input:Envelope,queueId:string):Promise<DeliveryOutcome>{
+  const envelope=parseEnvelope(input);
+  if(envelope.kind!=='return' || !this.options.desktopBinary.includes('.app/Contents/'))return {state:'refused',reason:'Only an enrolled desktop result return can be promoted'};
+  const observed=await this.reconcile(envelope);
+  if(observed.length!==1 || observed[0]?.state!=='queued' || observed[0].native_receipt!==queueId)
+   return {state:'refused',reason:'Original queue or turn evidence does not permit promotion'};
+  const enrolled=await this.binding(envelope.target),endpoint=endpointSchema.parse(JSON.parse(enrolled.endpoint_ref));
+  const cwd=await this.withClient(async client=>{
+   const read=await client.request('thread/read',{threadId:envelope.target.native_session_id,includeTurns:false}) as {thread:NativeThread};
+   if(read.thread.id!==envelope.target.native_session_id || await realpath(read.thread.cwd)!==await realpath(endpoint.native_cwd??this.options.projectRoot!))
+    throw new BridgeError('native_identity_mismatch','Native thread or project changed','Reconnect the intended native session',3);
+   return read.thread.cwd;
+  });
+  const owner=await openDesktopReturnOwner(this.options.codexHome,envelope.target.native_session_id,cwd);
+  if(!owner)return {state:'refused',reason:'The exact desktop owner is unavailable; original queue item was retained'};
+  try {
+   const deleted=await this.withClient(async client=>client.request('thread/queue/delete',{threadId:envelope.target.native_session_id,queuedSubmissionId:queueId}) as Promise<{deleted:boolean}>,true);
+   if(deleted.deleted!==true)return {state:'refused',reason:'Original queue item was no longer available for promotion'};
+   return {state:'confirmed',native_receipt:await owner.send(envelope.message_id,wireText(envelope))};
+  }catch(error){return {state:'uncertain',reason:error instanceof Error?error.message:'Desktop promotion outcome is unknown'};}
+  finally{owner.close();}
  }
  async *observe(binding:BindingRecord,signal:AbortSignal):AsyncIterable<Observation>{
   const seen=new Set<string>(),deadline=Date.now()+30_000;

@@ -1,8 +1,9 @@
-import { drawAgent, drawHouse, drawMachine } from "./art.js";
+import { drawAgent, drawMachine } from "./art.js";
 import { OfficeGame } from "./office-game.js";
 import { mountWorklog } from "./worklog.js";
 import { matchingSessions, sessionLocation } from "./session-navigation.js";
-import { mountMission } from './mission.js';
+import { mountMission } from "./mission.js";
+import { mountCollaboration } from "./collaboration.js";
 const $ = (s) => document.querySelector(s),
   $$ = (s) => [...document.querySelectorAll(s)];
 const el = (tag, cls, value) => {
@@ -13,6 +14,7 @@ const el = (tag, cls, value) => {
 };
 const names = {
   codex: "Codex",
+  antigravity: "Antigravity",
   zcode: "Zcode",
   claude: "Claude",
   opencode: "OpenCode",
@@ -22,6 +24,7 @@ const names = {
   pi: "Pi",
 };
 const stateNames = {
+  idle: "空闲记录",
   unknown: "状态未知",
   waiting: "等待返还",
   verifying: "等待核验",
@@ -67,6 +70,7 @@ const attentionStates = new Set([
 ]);
 const workflowLabels = {
   active: "进行中",
+  paused: "已暂停",
   waiting: "等待",
   recorded: "保存的协调记录",
   accepted: "已验收记录",
@@ -75,6 +79,7 @@ const workflowLabels = {
   training_wait: "训练等待",
   diagnosis: "诊断",
   research: "研究",
+  literature: "文献与研究",
   planning: "规划",
   build: "构建",
   review: "评审",
@@ -202,6 +207,8 @@ function showInspector() {
 function loadProjects() {
   return api("/api/projects").then((data) => {
     projects = data.projects;
+    $("#add-project").hidden = data.mode === "demo";
+    $("#demo").hidden = data.mode === "demo";
     $("#project-count").textContent = projects.length;
     renderProjects();
     return data;
@@ -211,6 +218,7 @@ function renderProjects() {
   const list = $("#projects"),
     q = $("#project-search").value.trim().toLowerCase();
   list.replaceChildren();
+  $("#demo").setAttribute("aria-current", String(selected === "demo-office"));
   for (const p of projects.filter((p) =>
     (p.name + " " + p.root).toLowerCase().includes(q),
   )) {
@@ -221,6 +229,7 @@ function renderProjects() {
     );
     b.title = p.root;
     b.setAttribute("aria-label", p.name);
+    if (selected === p.id) b.setAttribute("aria-current", "true");
     b.append(el("span", "project-icon", p.bridge ? "▦" : "⌂"));
     const copy = el("span", "project-copy");
     copy.append(
@@ -247,6 +256,9 @@ function renderProjects() {
 async function selectProject(id) {
   const version = ++selectionVersion;
   worklog.clear();
+  mission.clear();
+  $("#office").hidden = true;
+  setProjectsOpen(false);
   source?.close();
   source = null;
   selected = id;
@@ -279,6 +291,7 @@ async function selectProject(id) {
       streamState(data.demo ? "示例连接" : "本地状态已同步", true);
     });
     source.addEventListener("unavailable", () => {
+      if (version !== selectionVersion) return;
       streamState("来源暂不可读");
       $("#warnings").replaceChildren(
         note("来源暂不可读；下方保留上次快照，不表示当前状态。"),
@@ -312,11 +325,6 @@ function applySnapshot(data) {
   $("#project-root").textContent = data.project.root;
   $("#copy-root").hidden = data.demo;
   $("#demo-banner").hidden = !data.demo;
-  $("#clock").textContent = new Date().toLocaleDateString("zh-CN", {
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  });
   $("#updated").textContent = "快照 " + time(data.observedAt);
   $("#warnings").replaceChildren(...data.warnings.map(note));
   const w = data.workflow;
@@ -336,6 +344,7 @@ function applySnapshot(data) {
     ? `${data.counts.verified} / ${data.tasks.length}`
     : "—";
   $("#verified-caption").textContent = "已核验任务 / 已登记任务";
+  coordination.update(data);
   renderRooms();
   renderRuns();
   renderEvents();
@@ -917,15 +926,58 @@ $("#project-form").onsubmit = async (e) => {
   }
 };
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") $("#inspector").classList.add("closed");
+  if (e.key === "Escape") {
+    $("#inspector").classList.add("closed");
+    if ($(".app").classList.contains("projects-open")) {
+      setProjectsOpen(false);
+      $("#projects-toggle").focus();
+    }
+  }
 });
-const mission=mountMission({root:$('#mission-root'),api,onSnapshot:applySnapshot,toast,onSession:id=>{selectedDesk=id;panel='session';showInspector();renderDetails();},onView:view=>{
-  for(const selector of ['.game-shell','.behavior-key','#roster-panel','.room-toolbar'])$(selector).hidden=view==='tech';
-}});
-$('#todo-root').append($('#mission-todos'));
-const worklog = mountWorklog({api, element: $("#worklog-root"), toast});
-$("#tasks-toggle").onclick = () => worklog.open('tasks');
-$("#recall-toggle").onclick = () => worklog.open('memory');
+const mission = mountMission({ root: $("#mission-root"), api, onSnapshot: applySnapshot, toast });
+$("#todo-root").append($("#mission-todos"));
+const worklog = mountWorklog({ api, element: $("#worklog-root"), toast });
+$("#recall-toggle").onclick = () => worklog.open("memory");
+
+function setProjectsOpen(open) {
+  $(".app").classList.toggle("projects-open", open);
+  $("#projects-toggle").setAttribute("aria-expanded", String(open));
+}
+$("#projects-toggle").onclick = () => setProjectsOpen(!$(".app").classList.contains("projects-open"));
+const coordination = mountCollaboration({
+  root: $("#coordination-nav"),
+  panels: Object.fromEntries(["overview", "board", "members", "graph", "office"].map((id) => [id, $("#wb-" + id)])),
+  onView(view) {
+    $("#sound").hidden = view !== "office";
+    if (view === "office" && snapshot) renderRooms();
+    const url = new URL(location);
+    if (view === "overview") url.searchParams.delete("view");
+    else url.searchParams.set("view", view);
+    history.replaceState(null, "", url);
+  },
+  onMember(id) {
+    selectedDesk = id;
+    panel = "session";
+    showInspector();
+    renderDetails();
+  },
+  onRecord(record) {
+    if (record.kind === "plan") {
+      coordination.view("board");
+      mission.showPlan(record.id);
+    } else {
+      worklog.open("tasks", record.id);
+    }
+  },
+  onGoal: () => $("#goal-board").click(),
+  onRegister: () => mission.register(),
+  onTimeline: () => toggleSupport("#activity-panel", true),
+  onHistory: () => worklog.open("tasks"),
+  formatEvent: (kind) => eventNames[kind] || kind,
+  workflowLabel,
+  memberStatus: displayState,
+});
+coordination.view(new URL(location).searchParams.get("view"));
 const search = el("input", "desk-search");
 search.placeholder = "⌕ 查找对话";
 search.setAttribute("aria-label", "查找项目对话");
@@ -935,7 +987,6 @@ search.addEventListener("input", () => {
   renderRooms();
 });
 $(".room-toolbar").append(search);
-drawHouse($("#welcome-house"));
 const game = new OfficeGame($("#rooms"), {
   onSelect: (id) => {
     selectedDesk = id;
@@ -977,22 +1028,13 @@ $("#fullscreen").onclick = () => {
   if (document.fullscreenElement) document.exitFullscreen();
   else $(".game-shell").requestFullscreen?.();
 };
-$("#runs-toggle").onclick = () => {
-  $("#equipment-panel").open = !$("#equipment-panel").open;
-  if ($("#equipment-panel").open)
-    $("#equipment-panel").scrollIntoView({
-      behavior: reduced ? "instant" : "smooth",
-      block: "nearest",
-    });
-};
-$("#events-toggle").onclick = () => {
-  $("#activity-panel").open = !$("#activity-panel").open;
-  if ($("#activity-panel").open)
-    $("#activity-panel").scrollIntoView({
-      behavior: reduced ? "instant" : "smooth",
-      block: "nearest",
-    });
-};
+function toggleSupport(selector, open) {
+  const element = $(selector);
+  element.open = open ?? !element.open;
+  if (element.open) element.scrollIntoView({ behavior: reduced ? "instant" : "smooth", block: "start" });
+}
+$("#runs-toggle").onclick = () => toggleSupport("#equipment-panel");
+$("#events-toggle").onclick = () => toggleSupport("#activity-panel");
 setMotion();
 setInterval(() => {
   if (

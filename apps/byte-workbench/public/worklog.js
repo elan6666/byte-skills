@@ -136,5 +136,15 @@ export function mountWorklog({api, element, toast}) {
       clear();
     }
     snapshot=next;renderTasks();if(taskId)renderHistory();
-  },open(which){const target=which==='memory'?memory:tasks;target.open=true;target.scrollIntoView({behavior:'smooth',block:'start'});}};
+  },open(which,id){
+    const target=which==='memory'?memory:tasks;
+    target.open=true;
+    if(which==='tasks' && id && snapshot?.tasks.some(t=>t.id===id)){
+      openTask(id);
+      detail.scrollIntoView({block:'start'});
+    }else{
+      target.scrollIntoView({block:'start'});
+    }
+  }};
+
 }

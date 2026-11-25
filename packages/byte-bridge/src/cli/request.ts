@@ -101,7 +101,7 @@ export class RequestService {
     store.db.prepare('UPDATE requests SET state=?,task_id=?,message_id=?,delegate_journal_json=? WHERE request_id=?').run('dispatching',task.task_id,envelope.message_id,JSON.stringify(draft),request.request_id);
     result=executed({task,delivery:await this.deliveries.send(actor,envelope)});
     }
-   }else if(request.operation==='recover')result=executed(await this.deliveries.recover(actor,request.message_id));
+   }else if(request.operation==='recover')result=executed(request.promote_queued_return?await this.deliveries.promoteQueuedReturn(actor,request.message_id):await this.deliveries.recover(actor,request.message_id));
    else if(request.operation==='supervise')result=executed(await this.options.handlers!.supervise!(actor,request,supervisor!));
    else if(request.operation==='return')result=executed(this.options.handlers?.return?await this.options.handlers.return(actor,request):await this.returns.returnToMain(actor,request.task_id));
    else {

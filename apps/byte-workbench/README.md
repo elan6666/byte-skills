@@ -1,13 +1,15 @@
-# Byte Office
+# Byte Workbench
 
 [简体中文](README.zh-CN.md) · English
 
-A living, top-down **2D pixel office** for Byte Skills. A project becomes an office
-map, each harness has a room, and each chat becomes a character with its own desk.
-Characters walk through doors and corridors, work, read, water plants, get coffee,
-and meet their collaborators. Maps, sprites and furniture are original artwork.
+A local collaboration dashboard for Byte Skills. The overview shows the recorded
+objective, progress, follow-ups, collaboration threads and team. Open the board
+to search tasks or inspect evidence, the members view to filter by chat, and the
+graph to trace saved project relationships.
 
-![Byte Office, showing synthetic example data](docs/office-preview.png)
+The **Pixel Office** tab is a living, top-down map with original artwork. Each
+harness has a room and each chat has a character. Confirmed handoffs can trigger
+a meeting in the scene.
 
 ## Run
 
@@ -68,7 +70,7 @@ only react to source updates.
 | View | Source and meaning |
 | --- | --- |
 | Project map | Explicitly pinned directories and local Codex/Zcode catalog metadata. A project must be selected; no implicit first project. |
-| Harness zones and desks | Codex/Zcode titles, IDs, model metadata when provided, and parent-child relationships. Any harness with exact Bridge bindings also appears. |
+| Harness zones and desks | Codex, Zcode and Antigravity titles, IDs, model metadata when provided, and parent-child relationships. Any harness with exact Bridge bindings also appears. |
 | Collaboration | Bridge tasks, delivery receipts, native observation records, results, verification and main-chat continuation. |
 | Project noticeboard | Saved Byte workflow step, iteration, acceptance checklist and next action. Checklist entries are recorded claims, not freshly reverified scientific results. |
 | Experiment equipment | Registered run identity, PID, supervision configuration and scheduled check time. A stored PID is not a live process probe. |
@@ -115,7 +117,7 @@ No new dependencies, model calls, monitors or execution authority are added.
 
 - A recently edited catalog entry does **not** prove that its chat is running.
 - An unexpired Bridge registration does **not** prove that an agent is online.
-- Bridge schema 8 observations lack timestamps. A stored `running` observation is
+- Bridge schema 8 and 9 observations lack timestamps. A stored `running` observation is
   displayed as a historical execution record. Stale or uncertain records use
   synchronization-waiting behavior; work poses describe recorded task state.
   This version does not offer a live token stream or tool transcript.
@@ -125,7 +127,7 @@ No new dependencies, model calls, monitors or execution authority are added.
   or that the remote process is alive. Existing Byte supervision still owns those
   checks; this workbench does not create or run them.
 - Claude, OpenCode, DSH, Hermes, Pi and Kimi are visible when registered through
-  Bridge. Automatic native catalog import is currently limited to Codex and Zcode.
+  Bridge. The selected project's native catalog also supports Codex, Zcode and Antigravity.
 - Projects are scoped by canonical directory. Worktrees and different host paths
   are not silently merged into the same office.
 
@@ -137,6 +139,7 @@ migrates or repairs them. It reads metadata, not full native chat transcripts:
 ```text
 ~/.codex/state_5.sqlite
 ~/.zcode/cli/db/db.sqlite
+~/.gemini/antigravity/conversation_summaries.db
 SELECTED_PROJECT/.session-bridge/{project.json,bridge.sqlite}
 SELECTED_PROJECT/.byte-os/coordination/state.json
 ```
@@ -191,15 +194,18 @@ locates any loaded chat across floors/pages. Search by name or native ID; select
 a result brings its character into view and opens details. Six desks per room
 remain a map capacity, not the total conversation count.
 
-## Display registration, plans and Mission Control (v0.4)
+## Display registration, plans and collaboration
 
 Live projects now show only explicitly registered chats. Use **登记展示会话** to
 select participants, or uncheck them to remove them from display. Catalog discovery
 is only a candidate picker; it grants no execution permissions.
 
-Pixel Office and **协作指挥台** share the selected participants. Solid edges show
-actual project Bridge tasks; dashed edges show registered collaboration plans.
-Matching participants alone never proves that a particular saved plan executed.
+The overview, board, members, graph and Pixel Office use the same project and
+registered sessions. On the graph, solid edges represent actual Bridge task
+records, dashed edges represent saved collaboration plans, and dotted edges
+represent unambiguous parent-child relationships from the session catalog. A collaboration
+thread shows explicitly linked plans and Bridge task IDs. Other Bridge tasks
+are grouped by their recorded source chat.
 
 The task board records objectives, solutions, steps and acceptance criteria. Done
 steps require evidence references. Progress is a count of recorded completed steps,

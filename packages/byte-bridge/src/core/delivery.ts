@@ -67,6 +67,34 @@ export class DeliveryService {
   });
   return this.get(envelope.message_id)!;
  }
+ async promoteQueuedReturn(actor:Actor,messageId:string):Promise<DeliveryRecord>{
+  const record=this.get(messageId);
+  if(!record)throw new BridgeError('delivery_missing','No durable intent exists for this message','Select an existing return',3);
+  const {envelope}=record,task=readTask(this.store,envelope.task_id);
+  requireActor(this.store,actor,'recover_delivery',task.task_id,this.clock);
+  if(envelope.kind!=='return' || envelope.target.harness!=='codex' || sessionKey(actor.session)!==sessionKey(task.input.return_to) || sessionKey(actor.session)!==sessionKey(envelope.target))throw new BridgeError('scope_denied','Only the exact Codex return owner may promote its queued result','Reconcile from the original return target',3);
+  const returned=this.store.db.prepare('SELECT message_id FROM task_returns WHERE task_id=?').get(task.task_id);
+  if(returned?.message_id!==messageId || Date.parse(envelope.expires_at)<=this.clock.now().getTime() || this.store.db.prepare('SELECT task_id FROM task_cancellations WHERE task_id=?').get(task.task_id))throw new BridgeError('return_not_promotable','Return identity, expiry or cancellation prevents promotion','Inspect the existing result',3);
+  for(const ref of envelope.body.artifacts)if(!await verifyArtifact(this.store.root,ref))throw new BridgeError('invalid_artifact','Original return artifact no longer matches','Reconcile the original result',6);
+  const adapter=this.adapters.get('codex'),route=this.store.db.prepare('SELECT route_id FROM deliveries WHERE message_id=?').get(messageId)?.route_id;
+  if(route!=='adapter:codex' || !adapter?.promoteReturn)throw new BridgeError('route_blocked','The original route does not support queued-return promotion','Reconcile the original delivery',3);
+  const claim=transaction(this.store,()=>{
+   const current=this.get(messageId)!;
+   if(!current.native_receipt || current.native_receipt.startsWith('desktop:') || Date.parse(envelope.expires_at)<=this.clock.now().getTime() || this.store.db.prepare('SELECT 1 FROM task_cancellations WHERE task_id=?').get(task.task_id))return null;
+   if(current.state!=='transport_confirmed' || this.store.db.prepare("SELECT 1 FROM events WHERE subject_id=? AND kind='return_promotion_intent'").get(messageId))return null;
+   appendEvent(this.store,'return_promotion_intent',messageId,{queue_id:current.native_receipt});
+   return current.native_receipt;
+  });
+  if(!claim)return this.get(messageId)!;
+  let outcome:DeliveryOutcome;
+  try{outcome=await adapter.promoteReturn(envelope,claim);}catch{outcome={state:'uncertain',reason:'Promotion outcome is unknown; reconcile the original message'};}
+  transaction(this.store,()=>{
+   const seq=appendEvent(this.store,'return_promotion_outcome',messageId,outcome);
+   if(outcome.state==='refused')this.store.db.prepare('UPDATE deliveries SET reason=?,event_seq=? WHERE message_id=?').run(outcome.reason,seq,messageId);
+   else this.store.db.prepare("UPDATE deliveries SET state=CASE WHEN state='receiver_accepted' THEN state ELSE ? END,native_receipt=COALESCE(?,native_receipt),reason=?,event_seq=? WHERE message_id=?").run(outcome.state==='confirmed'?'transport_confirmed':'uncertain',outcome.state==='confirmed'?outcome.native_receipt:null,outcome.state==='confirmed'?null:outcome.reason,seq,messageId);
+  });
+  return this.get(messageId)!;
+ }
  async recover(actor:Actor,messageId:string):Promise<DeliveryRecord>{
   const record=this.get(messageId);
   if(!record)throw new BridgeError('delivery_missing','No durable intent exists for this message','Select an existing delivery; recovery does not send a new message',3);

@@ -10,7 +10,7 @@ export const requestSchema = z.discriminatedUnion('operation', [
     z.strictObject({ ...requestBase, operation: z.literal('supervise'), task_id: nonempty, run: runIdentityInput, supervisor: selectorSchema, interval_seconds: z.number().int().min(1).max(86400), deadline_at: timestamp, repair_paths: z.array(nonempty) }),
     z.strictObject({ ...requestBase, operation: z.literal('status'), task_id: nonempty.optional(), for_request: nonempty.optional() }),
     z.strictObject({ ...requestBase, operation: z.literal('return'), task_id: nonempty, summary: z.string().optional() }),
-    z.strictObject({ ...requestBase, operation: z.literal('recover'), message_id: nonempty }),
+    z.strictObject({ ...requestBase, operation: z.literal('recover'), message_id: nonempty, promote_queued_return: z.boolean().optional() }),
     z.strictObject({ ...requestBase, operation: z.literal('cancel_pending'), task_id: nonempty, stop_supervision: z.boolean().optional() })
 ]);
 export const roleToolSchema = z.strictObject({ ...requestBase, supervisor_query: nonempty, supervisor_harness: nonempty.optional(), supervisor_profile: nonempty.optional() });

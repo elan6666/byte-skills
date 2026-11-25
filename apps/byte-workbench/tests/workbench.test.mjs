@@ -9,6 +9,8 @@ import {
   statSync,
 } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import { DatabaseSync } from "node:sqlite";
 import { request } from "node:http";
 import { fixture, nativeFixture } from "./fixtures.mjs";
 import { NativeCatalog } from "../lib/native.mjs";
@@ -17,6 +19,8 @@ import { projectSnapshot, workflow } from "../lib/projection.mjs";
 import { identityKey, hash } from "../lib/files.mjs";
 import { createWorkbench } from "../server.mjs";
 import { demoSnapshot } from "../lib/demo.mjs";
+import { taskHistory } from "../lib/history.mjs";
+import { displaySnapshot } from "../lib/workboard.mjs";
 import { writeBoard, changeBoard } from '../../../skills/byte-plan/scripts/workboard.mjs';
 const empty = { sessions: () => ({ sessions: [], warnings: [] }) };
 test("project counts combine native harness catalogs without double counting project metadata", (t) => {
@@ -96,6 +100,53 @@ test("native discovery is exact-project, excludes archives and preserves parent/
   assert.equal(s.sessions[0].model, "test-model");
   assert(c.projects().some((x) => x.root === f.other));
 });
+test("Antigravity imports metadata for the exact project and never reads previews", (t) => {
+  const f = fixture();
+  t.after(() => f.cleanup());
+  const root = join(f.root, "项目");
+  const dir = join(f.home, ".gemini", "antigravity");
+  mkdirSync(dir, { recursive: true });
+  mkdirSync(root);
+  const filename = join(dir, "conversation_summaries.db");
+  const db = new DatabaseSync(filename);
+  db.exec(`PRAGMA user_version=3;
+    CREATE TABLE conversation_summaries (conversation_id TEXT, title TEXT, agent_name TEXT,
+      parent_conversation_id TEXT, last_modified_time TEXT, workspace_uris TEXT, killed INTEGER, preview TEXT);`);
+  const row = db.prepare("INSERT INTO conversation_summaries VALUES(?,?,?,?,?,?,?,?)");
+  const workspace = (path) => JSON.stringify([pathToFileURL(path).href]);
+  row.run("ag-main", "Antigravity 主力", "", "", f.now, workspace(root), 0, "PRIVATE_PREVIEW");
+  row.run("ag-child", "", "reviewer", "ag-main", f.now, workspace(root), 0, "PRIVATE_PREVIEW");
+  row.run("foreign", "其他项目", "", "", f.now, workspace(f.other), 0, "");
+  row.run("hidden", "已停止", "", "", f.now, workspace(root), 1, "");
+  row.run("invalid", "", "", "", f.now, "invalid JSON", 0, "");
+  db.close();
+  const before = hash(readFileSync(filename));
+  const s = projectSnapshot({ ...project(f), root }, new NativeCatalog({ home: f.home }));
+  assert.deepEqual(s.sessions.map((x) => x.nativeId).sort(), ["ag-child", "ag-main"]);
+  assert.equal(s.sessions.find((x) => x.nativeId === "ag-child").parentNativeId, "ag-main");
+  assert(s.sessions.every((x) => x.workState === "unknown" && x.locator === null));
+  assert(!JSON.stringify(s).includes("PRIVATE_PREVIEW"));
+  assert.equal(hash(readFileSync(filename)), before);
+});
+
+test("Bridge schema 9 snapshots and task history are read-only and keep precise generations", (t) => {
+  const f = fixture();
+  t.after(() => f.cleanup());
+  nativeFixture(f);
+  f.bind({ ...f.main, runtime_generation: "generation-2" }, "历史代次", undefined, 0);
+  f.db.exec("PRAGMA user_version=9");
+  writeBoard(f.root, 0, (board) => changeBoard(board, "display",
+    [f.main, f.worker].map((identity) => ({ harness: identity.harness, nativeId: identity.native_session_id }))));
+  const before = hash(readFileSync(f.path));
+  const raw = projectSnapshot(project(f), new NativeCatalog({ home: f.home }));
+  assert.equal(raw.source.bridge, true);
+  assert.equal(raw.sessions.filter((s) => s.nativeId === f.main.native_session_id).length, 2);
+  assert.equal(displaySnapshot(raw).sessions.length, 2);
+  assert.equal(displaySnapshot(raw).tasks.length, 1);
+  assert(taskHistory(f.root, "task-1").events.length > 0);
+  assert.equal(hash(readFileSync(f.path)), before);
+});
+
 test("read-only snapshot never changes the database or reveals private transport material", (t) => {
   const f = fixture();
   t.after(() => f.cleanup());

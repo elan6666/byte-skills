@@ -173,7 +173,7 @@ export class RequestService {
                 }
             }
             else if (request.operation === 'recover')
-                result = executed(await this.deliveries.recover(actor, request.message_id));
+                result = executed(request.promote_queued_return ? await this.deliveries.promoteQueuedReturn(actor, request.message_id) : await this.deliveries.recover(actor, request.message_id));
             else if (request.operation === 'supervise')
                 result = executed(await this.options.handlers.supervise(actor, request, supervisor));
             else if (request.operation === 'return')

@@ -139,8 +139,8 @@ try {
     writeFileSync(join(out, name + ".png"), Buffer.from(result.data, "base64"));
   };
   await call("Emulation.setDeviceMetricsOverride", {
-    width: 1600,
-    height: 1120,
+    width: 1536,
+    height: 1024,
     deviceScaleFactor: 1,
     mobile: false,
   });
@@ -155,6 +155,29 @@ try {
     "!document.querySelector('#office').hidden && !document.querySelector('#demo-banner').hidden",
     "demo",
   );
+  await until(
+    "!document.querySelector('#wb-overview').hidden && document.querySelector('.wb-thread')?.open",
+    "overview opens by default with a recorded thread",
+  );
+  await shot("overview");
+  await evaluate("document.querySelector('#wb-tab-board').click()");
+  assert.equal(await evaluate("document.querySelectorAll('.wb-lane .wb-record').length"), 1);
+  await evaluate(`(()=>{const q=document.querySelector('[aria-label="搜索看板"]');q.value='不匹配';q.dispatchEvent(new Event('input'));})()`);
+  assert.equal(await evaluate("document.querySelectorAll('.wb-lane .wb-record').length"), 0);
+  await evaluate(`(()=>{const q=document.querySelector('[aria-label="搜索看板"]');q.value='';q.dispatchEvent(new Event('input'));})()`);
+  await shot("tasks");
+  await evaluate("document.querySelector('#wb-tab-members').click()");
+  assert.equal(await evaluate("document.querySelectorAll('#wb-members .wb-profile').length"), 6);
+  await evaluate("document.querySelector('#wb-members .wb-member-info button').click()");
+  assert.equal(await evaluate("document.querySelectorAll('#wb-members .wb-profile').length"), 1);
+  await evaluate("document.querySelector('#wb-tab-graph').click()");
+  assert.equal(await evaluate("document.querySelectorAll('.wb-graph-node').length"), 3);
+  await evaluate("document.querySelector('.wb-graph-node').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter'}))");
+  assert.equal(await evaluate("document.querySelector('#detail h2').textContent"), "实验设计与核心实现");
+  await evaluate("document.querySelector('#close-inspector').click()");
+  await shot("graph");
+  checks.push("Default overview, searchable lanes, cross-view member filter and keyboard graph profile");
+  await evaluate("document.querySelector('#wb-tab-office').click()");
   await shot("demo-office");
   assert.equal(
     await evaluate("!!document.querySelector('.office-canvas')"),
@@ -262,6 +285,12 @@ try {
   const projects = await (await fetch(base + "/api/projects")).json(),
     id = projects.projects.find((p) => p.root === f.root).id;
   await go(base + "/?project=" + id);
+  await until("!document.querySelector('#office').hidden", "native project snapshot");
+  assert.equal(await evaluate("document.querySelector('#session-count').textContent"), "0");
+  await evaluate(`(()=>{document.querySelector('.wb-register').click();
+    const picker=document.querySelector('.mission-picker');
+    picker.querySelectorAll('input[type=checkbox]').forEach(input=>input.checked=true);
+    picker.querySelector('button').click();})()`);
   await until(
     "document.querySelector('#session-count').textContent==='3'",
     "native fixture",
@@ -270,7 +299,43 @@ try {
     await evaluate("document.querySelector('#demo-banner').hidden"),
     true,
   );
-  checks.push("Real catalog+Bridge data; clear demo/live separation");
+  checks.push("Catalog/Bridge sessions appear after explicit display registration");
+  const taskRow = "document.querySelector('.wb-lane[data-state=attention] .wb-record')";
+  await evaluate("document.querySelector('#wb-tab-board').click()");
+  assert.equal(await evaluate("document.querySelectorAll('.wb-lane[data-state=active] .wb-record').length"), 1);
+  await evaluate("document.querySelector('.wb-lane[data-state=active] .wb-record').click()");
+  await until("document.querySelector('.task-history')?.childElementCount > 0", "exact SQLite task history");
+  await evaluate("document.querySelector('#tasks-panel').open=false");
+  await evaluate(`(()=>{const button=[...document.querySelectorAll('.mission-actions button')].find(b=>b.textContent.includes('新建任务方案'));button.click();
+    document.querySelector('[aria-label="任务名称"]').value='受控验证方案';
+    document.querySelector('[aria-label="目标与方案"]').value='验证跨视图保存';
+    document.querySelector('[aria-label="执行步骤（每行一步）"]').value='保存证据';
+    document.querySelector('.mission-editor button').click();})()`);
+  await until("document.querySelector('.wb-lane[data-state=todo] .wb-record strong')?.textContent==='受控验证方案'", "saved plan on board");
+  await evaluate("document.querySelector('.wb-lane[data-state=todo] .wb-record').click()");
+  await until("!!document.querySelector('.mission-step')", "board opens exact plan details");
+  await evaluate(`(()=>{const row=document.querySelector('.mission-step');row.querySelector('select').value='done';
+    row.querySelector('textarea').value=['reports/result.json','reports/check.md'].join(String.fromCharCode(10));
+    row.querySelector('button').click();})()`);
+  await until("document.querySelector('.wb-lane[data-state=done] .wb-record strong')?.textContent==='受控验证方案'", "evidence-backed plan status");
+  await until("document.querySelector('.mission-step textarea')?.value.split(String.fromCharCode(10)).length===2", "multiple saved evidence references");
+  await evaluate("window.scrollTo(0,0)");
+  checks.push("Board opens exact Bridge history and saves plan status with multiple evidence references");
+  await evaluate(`(()=>{document.querySelector('.mission-actions button:last-child').click();
+    const editor=document.querySelector('.mission-editor');
+    editor.querySelector('[aria-label="合作名称"]').value='验证小组';
+    const rows=[...editor.querySelectorAll('.mission-session')].filter(row=>['main-session','worker-session'].includes(row.querySelector('[type=checkbox]').dataset.nativeId));
+    rows.forEach(row=>{row.querySelector('[type=checkbox]').checked=true;row.querySelector('[aria-label]').value='验证';});
+    [...editor.querySelectorAll('.mission-checks')].at(-1).querySelector('input').checked=true;
+    editor.querySelector('button').click();})()`);
+  await until("document.querySelector('.mission-editor').hidden", "collaboration saved");
+  await evaluate("document.querySelector('#wb-tab-graph').click()");
+  assert.equal(await evaluate("document.querySelectorAll('.wb-edge.planned').length"), 1);
+  assert.equal(await evaluate("document.querySelectorAll('.wb-edge.bridge').length"), 1);
+  await evaluate("document.querySelector('#wb-tab-overview').click()");
+  assert.equal(await evaluate("document.querySelectorAll('.wb-thread').length"), 2);
+  checks.push("Explicit collaboration plan and actual Bridge history display as separate graph edges and threads");
+  await evaluate("document.querySelector('#wb-tab-office').click()");
   await evaluate(
     "document.querySelector('[data-session=\"catalog:codex:child-session\"]').click()",
   );
@@ -314,18 +379,25 @@ try {
   checks.push(
     "SSE updates UI from actual SQLite change; external titles are text, not executable markup",
   );
+  await evaluate("document.querySelector('#close-inspector').click();document.querySelector('#wb-tab-board').click()");
+  await until(taskRow + "?.textContent.includes('需要输入')", "SSE task changes board lanes");
+  checks.push("A Bridge state change moves the live record into the attention lane");
+  await evaluate("document.querySelector('#wb-tab-overview').click()");
   await call("Emulation.setDeviceMetricsOverride", {
     width: 390,
     height: 844,
     deviceScaleFactor: 1,
     mobile: true,
   });
+  const fitsMobile = "document.documentElement.clientWidth === 390 && document.documentElement.scrollWidth <= 390 && Math.abs(visualViewport.scale - 1) < .01";
+  await until(fitsMobile, "unscaled mobile overview");
   await shot("mobile");
-  assert.equal(
-    await evaluate("document.documentElement.scrollWidth <= innerWidth"),
-    true,
-  );
-  checks.push("390px viewport has no horizontal page overflow");
+  await evaluate("document.querySelector('#wb-tab-board').click()");
+  await until(fitsMobile, "unscaled mobile board");
+  await evaluate("document.querySelector('#wb-tab-graph').click()");
+  await until(fitsMobile, "unscaled mobile graph");
+  await evaluate("document.querySelector('#wb-tab-overview').click()");
+  checks.push("390px overview, board and graph have no horizontal page overflow");
   await evaluate("document.querySelector('#close-inspector').click()");
   assert.equal(
     await evaluate(
@@ -333,6 +405,8 @@ try {
     ),
     true,
   );
+  await evaluate("document.querySelector('#projects-toggle').click()");
+  assert.equal(await evaluate("getComputedStyle(document.querySelector('#project-sidebar')).display"), "flex");
   await evaluate("document.querySelector('#add-project').click()");
   assert.equal(
     await evaluate("document.querySelector('#project-dialog').open"),
@@ -349,7 +423,7 @@ try {
       mobile: false,
     });
     await go(args[liveAt + 1]);
-    await evaluate("document.querySelector('#demo').click()");
+    await evaluate("(document.querySelector('#demo').hidden ? document.querySelector('#welcome-demo') : document.querySelector('#demo')).click()");
     await until(
       "!document.querySelector('#office').hidden",
       "live service demo",
@@ -387,9 +461,25 @@ try {
           ),
           `${expected.counts.verified} / ${expected.tasks.length}`,
         );
-      await shot("live-office");
+      await evaluate(`(() => {
+        const search = document.querySelector("#project-search");
+        search.value = ${JSON.stringify(expected.project.name)};
+        search.dispatchEvent(new Event("input"));
+      })()`);
+      assert.equal(
+        await evaluate("document.querySelector('#wb-overview .wb-panel .wb-profile')?.closest('section').querySelectorAll('.wb-profile').length || 0"),
+        Math.min(expected.sessions.length, 4),
+      );
+      await shot("live-overview");
+      await evaluate("document.querySelector('#wb-tab-board').click()");
+      assert.equal(await evaluate("document.querySelectorAll('.wb-lane .wb-record').length"),
+        expected.tasks.length + (expected.board?.items.length ?? 0));
+      await shot("live-board");
+      await evaluate("document.querySelector('#wb-tab-graph').click()");
+      assert.equal(await evaluate("document.querySelectorAll('.wb-graph-node').length"), expected.sessions.length);
+      await shot("live-graph");
       checks.push(
-        "Actual selected project matches real API task and session counts",
+        "Actual selected project matches the live API across overview, board and graph",
       );
     }
   }

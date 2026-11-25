@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { realpathSync,writeFileSync } from 'node:fs';
 import { homedir,hostname } from 'node:os';
-import { join,relative,isAbsolute } from 'node:path';
+import { join,isAbsolute } from 'node:path';
 import { z } from 'zod';
 import { openStore } from '../../core/database.js';
 import { BindingService,issueEnrollment } from '../../core/bindings.js';

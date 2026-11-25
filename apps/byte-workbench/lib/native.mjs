@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { join } from "node:path";
 import { existsSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
+import { pathToFileURL } from "node:url";
 import { text, iso } from "./files.mjs";
 function open(file) {
   if (!existsSync(file)) return null;
@@ -23,6 +24,7 @@ export class NativeCatalog {
     this.enabled = enabled;
     this.codex = join(home, ".codex/state_5.sqlite");
     this.zcode = join(home, ".zcode/cli/db/db.sqlite");
+    this.antigravity = join(home, ".gemini/antigravity/conversation_summaries.db");
   }
   projects() {
     if (!this.enabled) return [];
@@ -164,6 +166,42 @@ export class NativeCatalog {
       }
     } catch {
       warnings.push("Zcode 元数据暂不可读；不会据此推断会话状态。");
+    } finally {
+      db?.close();
+      db = null;
+    }
+    try {
+      db = open(this.antigravity);
+      if (db) {
+        const version = db.prepare("PRAGMA user_version").get().user_version;
+        if (version !== 3) throw Error("unsupported Antigravity summary schema");
+        const workspace = pathToFileURL(root).href.replace(/\/$/, "");
+        const rows = db.prepare(`
+          SELECT conversation_id, title, agent_name, parent_conversation_id, last_modified_time
+          FROM conversation_summaries AS c
+          WHERE c.killed = 0 AND EXISTS (
+            SELECT 1 FROM json_each(CASE WHEN json_valid(c.workspace_uris) THEN c.workspace_uris ELSE '[]' END)
+            WHERE type = 'text' AND value IN (?, ?)
+          )
+          ORDER BY last_modified_time DESC LIMIT 500
+        `).all(workspace, workspace + "/");
+        for (const row of rows) {
+          if (typeof row.conversation_id !== "string" || !row.conversation_id) continue;
+          result.push({
+            nativeId: row.conversation_id,
+            harness: "antigravity",
+            title: text(row.title || row.agent_name, 150) || "未命名对话",
+            updatedAt: iso(row.last_modified_time),
+            model: null,
+            modelSource: null,
+            parentNativeId: row.parent_conversation_id || null,
+            source: "antigravity-catalog",
+            root,
+          });
+        }
+      }
+    } catch {
+      warnings.push("Antigravity 元数据暂不可读；不会据此推断会话状态。");
     } finally {
       db?.close();
     }

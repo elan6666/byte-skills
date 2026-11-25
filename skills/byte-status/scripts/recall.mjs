@@ -95,7 +95,7 @@ export function collectRecall(projectRoot) {
       db = new DatabaseSync(safePath(root, bridge), {readOnly: true});
       db.exec('PRAGMA query_only=ON; PRAGMA busy_timeout=300; BEGIN');
       const version = Number(db.prepare('PRAGMA user_version').get().user_version);
-      if (version < 1 || version > 8) throw Error('Unsupported Bridge schema');
+      if (version < 1 || version > 9) throw Error('Unsupported Bridge schema');
       const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(x => x.name));
       const result = tables.has('task_results') ? db.prepare('SELECT result_json,reported_at FROM task_results WHERE task_id=?') : null;
       const event = tables.has('events') ? db.prepare('SELECT created_at FROM events WHERE seq=?') : null;
