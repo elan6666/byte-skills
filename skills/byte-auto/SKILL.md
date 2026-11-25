@@ -3,9 +3,13 @@ name: byte-auto
 description: "Use the Byte workflow for end-to-end completion of a multi-stage project request."
 ---
 
+Before each task, check [native harness capabilities](../byte-do/references/native-capabilities.md) for the requested work.
+Prefer available, authorized native tools before adding Byte fallbacks.
+
 For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
 once per turn. Use the current project and exact native session. If this skill
 was selected by Byte Do after activation, reuse its registration.
+
 
 # Byte Auto
 
@@ -33,12 +37,12 @@ material and unsafe to infer.
 ## Preserve the overall outcome
 
 For an explicitly authorized iterative task, retain the overall outcome across
-turns, questions, compaction, phase receipts, and supervisor handbacks. A status
-question or request to investigate another candidate normally steers that work;
-it does not revoke execution authority. Honor explicit pause, cancellation, or
-"discussion only" limits for their stated scope. Never infer a global pause from
-a request to park one candidate. Resolve scope from the user's instructions,
-not a stale state entry written by an earlier agent.
+turns, questions, short tasks, compaction, phase receipts, and supervisor
+handbacks. Apply the [follow-up scope rules](references/long-running-work.md#handle-short-requests-during-a-long-term-outcome)
+before changing the outcome or its monitor. Finish or answer the short request,
+re-read current ownership and evidence, then start the next ready, authorized
+action. If the host interrupts the turn, the existing authorized wake route
+resumes from the persisted action and outstanding run or handoff identity.
 
 Persist one `overall_outcome` record in existing state: stable ID/objective,
 authority and limits, acceptance criteria and evidence, current iteration,
@@ -51,6 +55,13 @@ hypotheses call for diagnosis/redesign within scope, not fabricated success or
 unbounded retries of the same approach.
 
 ## Adaptive Loop
+
+An explicit request to pursue a goal until acceptance selects the
+[goal loop](../byte-workflow/references/format.md#goal-loop). Use the native Goal
+lifecycle when available, otherwise resume the existing Byte outcome or use the
+single-session workflow template for a new outcome. If the host exposes a
+native stop hook, attach Byte's goal guard and verify it before relying on
+automatic continuation.
 
 If the outcome is managed by `byte-workflow/v1`, load its pinned project
 definition and use `$byte-workflow` revision-checked commands for transitions.
@@ -69,73 +80,52 @@ Repeat as useful:
    not execution. Within an authorized research loop, choose the next bounded
    experiment from evidence; do not require fresh permission merely because
    the hypothesis changed. Preserve data, budget, resource, and version limits.
-7. Record a reusable lesson when evidence confirms a meaningful mistake or the
-   user corrects a requirement misunderstanding.
+7. **Self-evolve on friction**: Whenever a stall, permission block, quota exhaustion, or fragmented handoff occurs, fix the underlying script/config/rule immediately (e.g., switch to `zero_token_loop.py`, `.byte-os/server-job-requests/`, or `inherit`/`flash` models) and record a reusable lesson in `.byte-os/LESSONS.md` or `.byte-os/coordination/workflow-retrospective.md`.
+
+**Iron Law (No Early Exit)**: Never end a turn by asking *"Should I proceed?"* while overall acceptance is unmet and an authorized action (or 0-token `Reactive Wakeup` / `wait-run` / `wait-signal`) exists. A written plan, diagnosis, or partial batch is a checkpoint, never a stopping point.
 
 Do not use a fixed iteration count. A small task may need one pass; a difficult
-task may need several. Do not stop merely because a stage or plan finished.
+task may need several. If a pass misses acceptance, inspect the first failure,
+identify a testable cause and choose a materially different next step. Run the
+validation command and read its exit status and output before claiming success.
+A completed stage or plan sends you back to overall acceptance.
 
 Research is optional unless current external facts affect the result. A written
 plan is optional unless it reduces coordination or execution risk. Product specs,
 OKRs, role analyses, harnesses, and review documents are optional tools, not gates.
 
-## Delegate waiting deliberately
+## Choose how to wait
 
-Choose the lightest authorized supervision path by expected duration, whether
-the main turn must end, and independence—not just by model price:
+Use the [native capability check](../byte-do/references/native-capabilities.md).
+Choose by what the job needs and whether the current turn can stay attached.
 
-- For a bounded check expected to finish within about one hour and this active
-  turn (for example, a test or short diagnostic), prefer a cheaper subagent
-  when delegation is authorized. It may inspect the run while the main agent
-  does independent work or waits for its result. Use subagents only when the
-  user or environment permits delegation and the requested model is available.
-  Do not repeatedly poll it from the expensive main model. A trivial quick
-  check can still be done directly without creating an agent.
-- For unattended training, ablations, or other jobs expected to take at least
-  about one hour or outlive this turn,
-  use an explicitly authorized independent supervisor task or scheduled
-  monitor only after verifying a return wake path to the main task as well as
-  the supervisor wake path. Record the run identity and evidence first, then
-  let the main task end its turn. A subagent waiting inside the main turn is
-  not a durable replacement for a later wakeup. If a short check unexpectedly
-  becomes long, persist the run and reassess the route; do not silently turn
-  the helper into a supervisor.
-- Prefer a process or scheduler completion/failure event when a supported
-  watcher can deliver it. Use a low-frequency heartbeat to detect a stale or
-  missing watcher; terminal text and agent-idle status alone never prove a
-  scientific run succeeded.
-- When the user explicitly requests a continuous scheduled two-chat loop,
-  retain one outcome-level heartbeat across analysis, literature review,
-  implementation and experiments. The cheaper supervisor checks main progress
-  while main owns active work; an idle main with ready work receives the same
-  heartbeat as its return fallback. Clear old run checks on handback, but do
-  not pause this authorized continuity monitor after the first ACK. Follow
-  the continuous-loop section of the [state contract](references/long-running-work.md).
-- Before scheduling a long check, validate the exact project directory, run
-  identity, target conversation, model/tool availability, and notification
-  route. Verify recurring registration and supervisor acknowledgement before
-  ending the main turn; if either is missing, report supervision as unarmed.
-  End per-run checks on handback. Pause a run-only monitor; retarget an explicitly
-  authorized outcome monitor to current progress instead of leaving it on the
-  completed run or disabling the whole research loop.
-  Verify that the main task actually begins the returned work; message delivery
-  or an empty task reply is not a continuation acknowledgement.
-  If a script can determine "still running" without model judgment,
-  let that script do the cheap check and wake an agent only for a meaningful
-  failure, completion, or required decision. Coalesce repeated unchanged
-  events instead of starting a fresh model turn for every tick.
+- Run bounded tests and diagnostics with the native command tool. Use an
+  authorized subagent for independent work that benefits from delegation.
+  Process waiting alone does not require a second agent.
+- For an ongoing job, attach the native handle or Byte's receipt watcher.
+  Record the exact run identity and finish independent work while it runs.
+  Model work resumes on a meaningful result or an actionable failure.
+- If the current turn must end, verify the route that returns results to it.
+  Reuse an authorized event route, existing-chat schedule, or exact
+  supervisor handoff. For a specific job, keep ownership in the current chat
+  when the host supports that watch. Create a schedule only for explicitly
+  requested scheduled work. Read back its actual target and stop condition.
+- For an explicitly requested continuous two-chat loop, retain one authorized
+  outcome monitor and retarget it when ownership returns. Clear stale run
+  checks and keep routine unchanged checks quiet. Follow the
+  [state contract](references/long-running-work.md).
 
-For cross-session or cross-harness cooperation, follow [$byte-bridge](../byte-bridge/SKILL.md).
-Keep activation, delivery, return and recovery in that one Bridge route. Use its
-preflight for a new pair or failure; never repair a blocked connection by CUA,
-typing into another app or a direct chat-message fallback. Preserve native
+For cross-session cooperation, preserve the project's required transport and
+any active handoff. Prefer authorized native delivery where it satisfies the
+task. For a Bridge task follow [$byte-bridge](../byte-bridge/SKILL.md) for
+activation, delivery, return and recovery. Preserve native
 permissions and the exact scope/lifetime of any already-authorized worker mode.
 Byte remains the sole work authority; SessionBridge handles delivery and
 supervision. A subagent doing a bounded read or check does not acquire its own relay baton. Never
 create a Goal, new task, automation, or paid job solely because this skill was
 invoked; the user or environment must authorize that operation.
-For main-launch / supervisor-check / main-resume work, use Bridge
-with verified event/periodic and return routes. `byte-design-supervise` remains
+For a Bridge main-launch / supervisor-check / main-resume workflow, verify
+the event or periodic check and the return route. `byte-design-supervise` remains
 a compatible training preset, not a separate transport.
 
 ## Completion

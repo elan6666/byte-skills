@@ -6,6 +6,97 @@ PyYAML dependency. `python3` also works for JSON inputs without dependencies.
 Project snapshots are JSON-compatible YAML; runtime state is JSON. No receipt
 or prompt is itself proof that a real client scheduler or model ran.
 
+## Goal loop
+
+Use this mode if the user explicitly asks to pursue a goal until it is done.
+Keep one owner and one acceptance contract for the outcome. State the
+observable completion conditions and preserve the user's scope and limits.
+At each entry or return, inspect the current state and evidence, choose and
+execute the next authorized action, and verify its result. Keep working while
+a useful authorized action remains. A failed attempt triggers diagnosis and a
+different testable approach. Record what the new evidence changed and preserve
+reusable lessons after verifying the improvement. Measure progress against the
+original acceptance criteria. Progress updates and handbacks continue the loop.
+**Hard Gate**: Never stop to ask permission for the next authorized step, never burn LLM tokens polling a running job when `Reactive Wakeup` or `zero_token_loop.py` (`0` tokens) is available, and always fix workflow/permission friction on the spot so the loop self-evolves.
+
+### Use a native Goal when available
+
+Inspect the current harness's controls. In Codex with native Goal tools, call
+`get_goal` first. Reuse the active Goal if it is the requested outcome. Preserve
+an unrelated or explicitly paused Goal. Call `create_goal` for the explicitly
+requested new outcome only when allowed by the current Goal state. Give it the
+user's objective and concrete acceptance. Use the current project's pinned
+workflow or existing Byte state when it already tracks evidence. The native
+Goal drives subsequent work. Do not start a concurrent model-driven timer for
+the same work.
+
+Once the real outcomes and checks pass, record evidence in the existing
+project state where applicable and complete the native Goal. A stage result,
+budget limit, or genuine external blocker does not fulfill the objective.
+Use the host's own pause, completion and blocking semantics.
+
+### Use a Byte loop in one chat
+
+If a native Goal is unavailable, continue an existing pinned workflow or
+outcome under its existing ownership. For a new outcome needing durable
+acceptance, initialize the bundled single-session template:
+
+```bash
+python3 -B <skill>/scripts/workflow.py init \
+  --project <absolute-project-root> --template goal-loop \
+  --objective "<user's outcome>" --authority-ref "<user request reference>" \
+  --main-session "<verified harness:native-id>" \
+  --param "acceptance=<observable acceptance checks>"
+```
+
+Read `status` for the owner, pinned acceptance instructions, iteration and
+revision. Execute work before recording it. Store each result's source-hashed
+`step_result` receipt with `facts.result_checked: true` after checking the
+actual output. Include what the result implies for the next action. Apply
+`advance` with the current revision. Pending acceptance loops back to the work
+step, with the evidence retained and the iteration incremented. Read prior
+result evidence on resumption and avoid rerunning completed work.
+
+Once all checks pass, attach the source-hashed `acceptance_verification`
+receipt with criterion `goal` and `facts.goal_verified: true` using `accept`.
+Then `advance` with checked step evidence and the new revision. Verify
+`status` is complete and `doctor` reports completion. Use the
+[receipt commands below](#revision-checked-commands-and-receipts). A new
+project outcome uses one pinned instance with an actual owner. This command
+preserves an already pinned instance.
+
+### Enforce stopping with a native hook
+
+If the current Codex surface lacks native Goal controls but supports command
+`Stop` hooks, have the agent configure Byte's project guard for the explicitly
+requested Byte goal loop. Read the current project hook configuration first;
+the installer merges one handler and is safe to repeat.
+
+```bash
+python3 -B <skill>/scripts/goal_stop.py --install --project <absolute-project-root>
+```
+
+Complete Codex's native trust review when required. Check that the host has
+loaded the hook and observe actual continuation in a controlled check before
+relying on it. The guard applies to the project and exact owning Codex
+conversation of a pinned `goal-loop`. Ready work or invalid completion evidence
+requests another native continuation. Verified completion, explicit pause,
+or a verified external dependency with no independent work lets the turn
+end. The hook has no authority to suppress user interrupts, bypass approvals,
+begin another experiment, or change the acceptance criteria.
+
+If the host lacks both native Goal and a compatible stop hook, call
+`workflow.py doctor` before answering. A `continue_work` result means execute
+the next action in this turn. For an unverified or failing stop hook, preserve
+the goal and use the attached command/runtime route while repairing it.
+
+Keep the active turn attached to a native long-job wait when possible.
+If work must outlive the turn, use an already authorized, verified same-chat
+wake route. Without one, leave the outcome active and state the resumption
+condition. The Byte template provides persistence and revision-checked
+iteration. The harness or an authorized delivery route starts future turns.
+
+
 ## Library and project snapshot
 
 ```bash
@@ -51,6 +142,75 @@ The exported JSON text is valid YAML. The target must not already exist.
 V1 pins one instance per project; changing an active definition or migrating
 another existing outcome is never implicit.
 
+## Reuse a team and its workflow
+
+A template can include a `team` mapping with `roles` and an optional `monitor`
+preference. `roles` includes `main` and `supervisor` and can name specialist
+chats. Each role declares `title`, `harness`, `creation`, `responsibilities`,
+and `handoff`. `model`, `reasoning`, and `steps` are optional. `steps` names
+workflow steps the specialist contributes to. The existing `owner` field still
+controls who can advance a step. Use `reuse-only` or `reuse-or-create` for
+`creation`. A monitor preference has `kind: heartbeat` and `interval_minutes`.
+The template contains no native session IDs, account details or automation IDs.
+
+```bash
+uv run <skill>/scripts/workflow.py team-plan --template <template-id>
+uv run <skill>/scripts/workflow.py team-plan --project <project>
+```
+
+The template plan returns role titles, settings and onboarding prompts. When
+the user requests a team, check the target project's existing bindings, reuse
+matching chats, and create missing allowed roles with the native client. Confirm
+the actual session identities and accepted model settings before dispatch. A
+model preference alone does not verify which model ran. Once the roles are
+ready, pass the primary IDs to `init` with `--main-session` and
+`--supervisor-session`. Repeat `--role-session <role>=<harness>:<native-id>` for
+each specialist. The pinned project plan shows these bindings. Unbound roles
+remain pending. Specialists collaborate through the project's handoff path and
+the primary owner records verified progress. Export keeps the role definitions
+and requested settings. The next project supplies its own IDs and authority.
+
+The monitor interval is a default when initializing a team template. Set
+`--continuous` only for user-authorized scheduled work. Register and verify the
+heartbeat in the native client before relying on unattended continuation.
+
+### Delegate deliverables within a step
+
+Use `delegations` when a step owner should coordinate or approve work that
+belongs to bound specialists. For example, a design step can require two
+separate deliverables:
+
+```yaml
+delegations:
+  design-draft: {role: methods, deliverable: Candidate protocol and falsification criteria}
+  design-audit: {role: evaluation, deliverable: Independent review of the protocol and evidence boundaries}
+```
+
+`status` and scheduled wake summaries show the current assignments and bound
+sessions. Split additional pieces when inputs, outputs, access, or acceptance
+can be checked independently. Dispatch parallel pieces only when their inputs
+are ready. For the example, the audit follows the draft. Use the existing
+Bridge task or workboard identity through interruption and recovery.
+
+An `advance` receipt for this step includes `delegated_results`, a mapping from
+each declared delegation ID to a `{path, sha256}` reference. Each referenced
+receipt has `kind: delegated_result`, `status: verified`, the same `outcome_id`,
+`step_id`, `iteration`, and `visit`, and these fields:
+
+- `delegation_id`, `role`, and the bound `session`.
+- `task_id` from the actual native assignment. Each delegation uses a distinct ID.
+- `native_return` referencing the native return evidence observed by the owner.
+- `sources` containing that same reference and at least one separate output or
+  failure artifact. Hashes are checked for both. The owner verifies the actual
+  sender and task status through the project's authorized transport before recording.
+
+The engine associates these receipts with the step event. A queued assignment,
+lead-authored substitute, or a receipt from another step or visit cannot serve as
+the specialist's return. For a failed run, include the specialist's observed
+failure evidence and use the declared repair branch. Steps without explicit
+delegations keep the existing receipt format. Apply the project collaboration
+rules to previously pinned workflows when coordinating a specialist team.
+
 ## Explicit adoption of an existing active outcome
 
 When the user explicitly requests migration, coordinate the exact main and
@@ -93,6 +253,29 @@ with current step/run identity, `main_session` and
 `independent_work_remaining: false`. Only the supervisor owner records this
 transition, after actually receiving/verifying main's readiness evidence.
 Do not infer readiness from silence or manually clear the flag during adoption.
+
+## Upgrade a pinned workflow
+
+Use `upgrade` for a user-authorized version change at a coordinated, ready
+main-owned checkpoint. The target definition preserves the current step,
+overall acceptance contract, and parameter keys. Bind any added specialists
+with `--role-session` and retain existing bindings. When the native cadence
+has changed, pass the observed interval with `--interval-minutes`.
+
+```bash
+uv run <skill>/scripts/workflow.py upgrade --project <project> \
+  --template <target-template> --session <current-main-session> \
+  --authority-ref <user-request> --expect-revision <current-revision> \
+  --expect-state-sha256 <fresh-state-sha256> --event-id <migration-event> \
+  --role-session <specialist>=<native-session> --check-only
+```
+
+Coordinate with the existing owner and scheduler before committing. Repeat the
+checked command without `--check-only`. The upgrade archives the previous
+definition and state, adds a revision, and retains the outcome, evidence,
+iteration, current visit, and run history. A running workflow handback must
+finish before this operation. Verify `status` and `doctor`, then refresh the
+existing native monitor from the new state and verify its configuration.
 
 ## Definition
 
@@ -274,6 +457,16 @@ State returns to main with continuation pending. Supervisor cannot advance an
 action step or complete scientific acceptance. Direct `relay_state.py handoff`
 is rejected for an engine-managed instance.
 
+Use the return format for the original transport. For a quick Bridge assignment
+without SessionBridge metadata, save a new immutable JSON handoff under
+`.byte-os/coordination/handoffs/` with the direction, original task and delivery,
+run/attempt, sender, receiver and verified terminal receipt. Call `return-run`
+with that file and the terminal receipt, then send the result once on the
+original quick route. The advanced draft helper lives in
+`byte-bridge/scripts/handoff.py`. Use it for the managed import path described
+by Byte Bridge. A terminal observation or an `arm-run` receipt still leaves
+the run with the supervisor until the return is committed.
+
 Main executes independent verification, then uses `ack-return` with a
 `main_continuation` receipt. It includes current step/run identity, source
 hashes and:
@@ -425,22 +618,165 @@ This operation changes evidence location only. It preserves run identity,
 ownership, `return_pending`, workflow facts and scientific acceptance. Main must
 independently verify the result and execute the action required by `ack-return`.
 
-## Native scheduler integration and recovery
+## Connect user instructions to execution
 
-`monitor-prompt --project <path>` emits a stable prompt and requested monitor
-identity/cadence; configure it using native client tools and verify readback.
-It does not create an automation. Preserve the prompt when retargeting, obtain
-caller identity from the actual chat and do not freeze a historical run into it.
+Update the affected project plan or role instructions when a user request
+changes how future work should proceed. The main owner also records the
+effective guidance in the workflow with a reference to the human instruction:
+
+```bash
+uv run <skill>/scripts/workflow.py record-guidance --project <project> \
+  --session codex:<main-id> --expect-revision <current-revision> \
+  --event-id <stable-id> --request-ref <user-message-reference> \
+  --scope outcome --summary "Use the updated project protocol for future rounds."
+```
+
+Use `iteration` for changes confined to the current round. Each record replaces
+the effective summary of its scope. Carry forward earlier instructions that
+still apply. Progress questions and one-off actions need no guidance record.
+The audit retains earlier changes. Read active guidance from `status` before
+acting. A fresh wake summary includes it. `advance` links the verified step
+receipt with the active guidance event IDs. The IDs document which guidance
+was in force. The receipt must supply the evidence of what actually happened.
+The main owner can also record guidance while the workflow is blocked on
+external evidence. The block, resume prerequisites and monitor registration
+stay in effect. When acting on an explicit user request on behalf of the
+bound owner, use `--recorded-by <actual-recorder-session>` to record provenance.
+This operation keeps the pinned workflow, acceptance and any in-flight run
+identity intact. A change to the actual steps or acceptance requires an
+explicitly authorized version change.
+
+## One current objective, milestones and task Goals
+
+`status` shows the single active objective, its version, final `acceptance`,
+intermediate `milestones` and registered `task_goals`. Existing projects start
+at objective version 1. `record-guidance` records local direction without
+rewriting the objective or its acceptance. Templates can define `milestones`
+using the same criterion schema as `acceptance`. Only final criteria count
+toward the `done` transition. A milestone's verified evidence survives loops.
+
+After the user explicitly changes the overall objective or final criteria,
+main uses `revise-objective --request-ref <user-message> --evidence <receipt>`
+with the current revision, main session, and a stable event ID. A verified
+`objective_revision` receipt contains the outcome ID, `previous_version`,
+new `objective`, new final `acceptance`, `milestone_ids` selecting previous
+criteria to retain as milestones, and hashed `sources` for the user's change.
+The verified receipt and old definition remain in history. The outcome ID,
+current step, iteration, pinned process, and monitor identity carry through.
+New final criteria start pending. A final `acceptance_verification` for a
+revised objective includes the current `objective_version`. Accept a milestone
+via the same `accept --criterion` command with its existing receipt checks.
+Exports use the effective final criteria and milestone definitions.
+
+When a bounded assignment needs a native Goal, the assigned worker manages it
+in its own chat. Main records the verified binding using `record-task-goal
+--evidence <receipt>` with the current revision and a stable event ID. A
+verified `task_goal` receipt contains the outcome ID, `objective_version`, the
+original `task_id`, `session`, native `goal_id`, `goal_status`, and two hashed
+references in `sources`:
+
+- `assignment` is the verified assignment record with matching `task_id`,
+  `session`, `outcome_id` and `objective_version`.
+- `native_goal` is the native observation with matching `goal_id`, `session`
+  and `status`.
+
+Record verified completion against the same assignment after accepting its
+return. A revision supersedes the prior version's open task Goal bindings.
+Reconcile native Goal status in the owning chat before reusing it. Status
+records are evidence-backed bookkeeping; the CLI does not control native
+Goals. A task's Goal cannot complete the overall outcome.
+
+Update the maintained project document before notifying another chat. Carry the
+task identity, one line on the result or action needed, and a readable reference
+to the relevant section. Keep detailed findings, evidence and decisions there.
+
+## Workflow continuation on Bridge returns
+
+Use this pattern when the project opts in. The Workflow outcome holds the
+overall objective, owner, current action, and acceptance. The coordinator uses
+ordinary turns for dispatch, evidence review, decisions and execution. After
+confirmed dispatch it saves the original task identity and prerequisite, does
+any other ready work, and ends its turn. Use the established Bridge return as
+the wake. An existing authorized supervisor checks the exact run and attempt
+and returns actionable terminal evidence. Normal waiting generates no new
+messages or coordinator turns.
+
+For a difficult assignment that needs several turns, include user
+authorization for a specialist Goal, a bounded objective, allowed scope,
+deliverables and completion criteria. The assigned specialist checks its
+existing Goal, creates its own Goal when available and authorized, and completes
+it only after satisfying that assignment. It saves artifacts and returns on
+the original channel; a Goal status alone is insufficient evidence. Simpler
+assignments and routine monitoring can use ordinary turns.
+
+On a return, main checks Workflow status and the original assignment before
+executing. Use the original task and attempt for `delegate`, or the original
+task name and dispatch `delivery` for a quick Bridge handoff. Match the
+bound sender and receiver, project, relevant iteration and visit, and artifact
+SHA-256. A new message ID for the same original result is a replay. If the
+same task identity reports conflicting evidence, reconcile it before acting.
+
+Before a side effect, use the same task-derived continuation identity to find
+an existing acceptance, plan, dispatch, run or action receipt. Save the
+concrete next action against the original receipt before starting it. On
+reentry, resume from the first missing artifact or receipt. An uncertain
+dispatch or launch is reconciled through its original identity before any
+retry. Use the Bridge continuation record for advanced tasks, or the existing
+project receipt directory for quick handoffs. Reuse the same event ID and
+immutable step evidence for `advance` retries. Advance once only when the
+step's actual acceptance requirements are met. A handoff, a plan or a repeat
+delivery is insufficient to advance.
+
+If the workflow is blocked, verify the matching external resolution and
+existing authorization before restoring runnable work. An explicit user pause
+is honored independently of task results. Save incoming evidence while paused
+without advancing. Leave timers as configured unless the user authorizes a
+change. Audit a pilot from the original dispatch through one actual wake,
+one applied action and a new artifact. Keep the pilot scoped until that
+evidence is available.
+
+## Scheduled goal mode
+
+Use this mode when the user authorizes periodic continuation of an overall
+outcome. Use the existing `init --continuous --monitor-id <id>` options shown
+above and bind the actual main and supervisor conversations. For an existing
+continuous workflow, reuse its pinned instance and monitor ID. Use the client's
+native tools to configure the heartbeat and observe actual scheduled turns.
+
+```bash
+# Base prompt for the designated supervisor
+uv run <skill>/scripts/workflow.py monitor-prompt --project <project>
+
+# Route and get the wake checkpoint after confirming that main is idle
+uv run <skill>/scripts/workflow.py route --project <project> \
+  --caller-session codex:<supervisor-id> --main-status idle --wake-only
+```
+
+On `resume_main`, the second command emits the main target and a compact
+`wake` checkpoint with the current outcome, revision, iteration, step and
+owner. Append it to the base prompt and update the same heartbeat with the
+returned target, retaining cadence and notification settings. Main reads the
+live next action and evidence from `status` before executing, restores
+the supervisor target and base prompt, and records actual work. Each handback
+replaces the prior summary. Both commands are read-only. When storing native
+readback as workflow evidence, save an immutable snapshot instead of hashing
+the mutable scheduler settings file.
 
 `route --project <path> --caller-session <ref> --main-status active|idle|unknown`
 uses the bundled deterministic router. `watch_main` stays quiet in supervisor,
 `resume_main` targets main, `continue_main` executes current owned work while
 retaining the supervisor watchdog, and `supervise_run` observes the current run.
+Check a run only when the current route returns `query_run: true`. A preserved
+run ID, a previous assignment or a historical handoff does not reopen it.
 An explicitly supervisor-owned active step routes to `continue_supervisor` or
 `dispatch_supervisor`, without authorizing scientific acceptance.
-Stale reminders, reports and initial main ACK never pause an authorized
-outcome-level monitor. Stop it on verified completion, explicit pause or a
-concrete external block. Follow native approval/input waits without bypassing them.
+On a long run, supervisor checks the current identity once per tick and reports
+only terminal results, actionable failures or required decisions. Once the
+handoff is verified, main can yield when no independent work is ready. Keep
+the outcome active across short requests and continue its next authorized step
+after handling them. Stop the heartbeat on verified completion or explicit
+user pause. `watch_blocked` keeps the existing heartbeat on supervisor with a
+quiet tick and no main wake. Follow native approval and input waits.
 
 `doctor --project <path>` checks snapshot/evidence consistency and the existing
 continuation disposition. It cannot prove timer activation or an idle-chat
@@ -453,3 +789,35 @@ killing running jobs. `block` needs an `external_block` receipt, supported
 an external blockage. `resume --request-ref <user-message>` resumes a pause;
 a blocked workflow also requires `--evidence` for `external_resolution`.
 Readback/activation of monitoring is still required before an unattended wait.
+
+### Wait for an assigned evidence return
+
+Keep the current step runnable while independent work remains. Once the main
+owner has no independent work and the acquisition task has been sent to a bound
+session, use `wait-evidence --evidence <declaration>` with the usual session,
+expected revision and stable event ID. The verified `external_evidence_wait`
+receipt uses the standard outcome, step, iteration, visit and hashed sources
+fields. Include `dependency`, `task_id`, `source_session`,
+`receipt_path` (a project-relative JSON path reserved for this task), and
+`independent_work_remaining: false`. Include the original dispatch evidence
+in the declaration's sources and give the acquisition session the wait ID and
+receipt path. The wait ID is the declaration command's event ID.
+
+The acquisition session publishes the `external_evidence_return` receipt
+atomically at the registered path and returns it along the original Bridge
+task. The receipt includes the same outcome, step, iteration, visit, task ID,
+source session, and `wait_id`, with `status: verified` and hashed sources
+for the returned evidence. `watch_evidence` leaves the heartbeat on supervisor
+until the receipt is present. Identity or hash mismatches require reconciliation
+and do not authorize a wake. On an exact match, an idle main can receive the
+existing heartbeat as fallback if Bridge did not already wake it. If the
+heartbeat was on main while waiting, return it to the supervisor immediately.
+
+Main independently verifies the original return, then calls
+`receive-evidence --evidence <registered-receipt>` under the current revision.
+This consumes that wait once, preserves the overall outcome and returns the
+current step to ready. The actual action and resulting step receipt are
+recorded separately. If a new independent branch opens before the receipt
+arrives, main can use `cancel-evidence-wait --evidence <receipt>` with a verified
+`external_evidence_wait_cancelled` receipt containing the `wait_id`, `reason`
+and evidence of the change. A user pause takes precedence over a waiting return.
