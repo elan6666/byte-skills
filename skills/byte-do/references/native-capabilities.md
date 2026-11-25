@@ -68,10 +68,10 @@ tool inventory and prefer native capabilities first:
 | Cross-harness wake (Antigravity) | Native `ag_say.py` (`agy acp`) + `ag-wake.json` (`wait-signal`) | Shared workspace `.byte-os/coordination/board.jsonl` |
 | Sandboxed remote job launch | Native authorized SSH / ControlMaster | `.byte-os/server-job-requests/` local watcher queue |
 
-### Deprecated / Replaced Patterns (Do NOT Use)
-- **LLM cron polling for running jobs**: Do NOT wake an LLM every 15m just to run `ps`/`tail`. Use attached Reactive Wakeup or `zero_token_loop.py` (`0` tokens while waiting).
-- **Asking "Should I continue?" mid-goal**: When inside an authorized Goal Loop, never stop to ask permission for the next bounded step.
-- **Accepting permission blocks as stop points**: If a sub-tool or sandbox blocks an action (e.g., `unsandboxed ssh`), immediately pivot to an authorized native route or the `.byte-os/server-job-requests/` queue and record the fix.
+### Key Rules (Lightweight)
+- **0-token wait**: Use attached `Reactive Wakeup` or `zero_token_loop.py` instead of 15m LLM polling crons.
+- **No mid-goal stops**: Never pause to ask *"Should I continue?"* when the goal is unmet and authorized steps remain.
+- **Solve blockers autonomously**: If a sandbox/permission blocks an action, switch to an authorized native route or `.byte-os/server-job-requests/`.
 
 [Codex developer commands](https://learn.chatgpt.com/docs/developer-commands) ·
 [Worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees) ·

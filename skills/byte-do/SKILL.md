@@ -60,32 +60,14 @@ does not install Byte as a project rule.
 - Learn from confirmed mistakes and corrected requirement misunderstandings.
 - Prefer authorized native subagents, `swarm`, or `run_workflow` whenever parallel or isolated work helps; reserve `byte-bridge` for cross-app/cross-chat coordination.
 
-## The Iron Law of Goal Pursuit (Superpowers-Style Hard Gate)
+## Core Loop Principles (Freedom with Discipline)
 
-```text
-NO STOPPING WHILE ACCEPTANCE IS UNMET AND AN AUTHORIZED ACTION EXISTS.
-CHECK NATIVE HARNESS CAPABILITIES FIRST; NEVER WAIT PASSIVELY OR ASK TO CONTINUE.
-```
+You have full freedom to choose the best reasoning path, tools, architecture, and experiments. Only keep these 4 non-negotiables:
 
-Before ending any turn in an authorized goal or continuous loop, run this gate:
-1. **Verify native route**: Did you check the current harness's native tools (`native-capabilities.md`) before adding custom scripts or external chats?
-2. **Check remaining actions**: Is acceptance met? If **NO**, is there an authorized next step (or a 0-token background wait `Reactive Wakeup` / `wait-run` / `wait-signal`)? If YES, **execute or arm it now — do not stop**.
-3. **Self-evolve on friction**: Did a tool fail, stall, or hit a permission/quota block? Fix the workflow/script/config immediately and record the rule in `.byte-os/LESSONS.md`.
-
-### Red Flags — STOP and Self-Correct
-- Ending a turn with *"Would you like me to continue?"* or *"Shall I start the next step?"* while the goal is still active.
-- Leaving a running job unwatched or burning LLM tokens on periodic `ps` polling instead of `Reactive Wakeup` / `zero_token_loop.py`.
-- Treating a sandbox/permission block or low-quota subagent as an excuse to stall instead of switching to an authorized alternative.
-- Claiming progress from a written plan or report without fresh verification output.
-
-### Rationalization Prevention
-
-| Excuse | Reality |
-| --- | --- |
-| "I finished one round, let me ask the user." | Goal is unmet and scope is authorized. Execute the next step. |
-| "This harness doesn't support X, so I'm stuck." | Check `native-capabilities.md`, use `ag_say.py` / `server-job-requests` / local watcher, and solve it. |
-| "I'll set a 15-min LLM cron to check training." | Wasteful. Use non-daemon background `run_command` (Reactive Wakeup) or `zero_token_loop.py` (0 tokens). |
-| "Let's keep iterating the same small tweak." | Two failures on a narrow clue = pivot strategy immediately. |
+1. **Native harness first**: Check your current tool inventory (`references/native-capabilities.md`) and prefer native features (subagents, `swarm`, `run_workflow`, `Reactive Wakeup`, native Goal/schedule) before adding Byte scripts.
+2. **Don't stop until the goal is met**: While acceptance is unmet and an authorized next step exists, keep going — never stop mid-goal to ask *"Should I continue?"* or treat a plan/report as completion.
+3. **Zero-token waiting**: Never burn LLM tokens polling a running job (`ps`/`tail` crons). Use attached `Reactive Wakeup` or `zero_token_loop.py` (`wait-run` / `wait-signal` / `tick`).
+4. **Self-evolve on friction**: If you hit a stall, permission block, or low-quota subagent, fix the workflow or pivot to an authorized route (e.g., `ag_say.py`, `.byte-os/server-job-requests/`) instead of stalling.
 
 ## Research assignments
 

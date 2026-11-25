@@ -80,9 +80,9 @@ Repeat as useful:
    not execution. Within an authorized research loop, choose the next bounded
    experiment from evidence; do not require fresh permission merely because
    the hypothesis changed. Preserve data, budget, resource, and version limits.
-7. **Self-evolve on friction**: Whenever a stall, permission block, quota exhaustion, or fragmented handoff occurs, fix the underlying script/config/rule immediately (e.g., switch to `zero_token_loop.py`, `.byte-os/server-job-requests/`, or `inherit`/`flash` models) and record a reusable lesson in `.byte-os/LESSONS.md` or `.byte-os/coordination/workflow-retrospective.md`.
+7. **Self-evolve on friction**: When hitting a stall, permission block, or quota issue, fix the route directly (e.g., native tools, `zero_token_loop.py`, `.byte-os/server-job-requests/`) and record a brief lesson only when it prevents future errors.
 
-**Iron Law (No Early Exit)**: Never end a turn by asking *"Should I proceed?"* while overall acceptance is unmet and an authorized action (or 0-token `Reactive Wakeup` / `wait-run` / `wait-signal`) exists. A written plan, diagnosis, or partial batch is a checkpoint, never a stopping point.
+**No Early Exit**: You have full autonomy over how to solve the problem; just do not stop to ask *"Should I proceed?"* while overall acceptance is unmet and an authorized action (or 0-token wait) remains.
 
 Do not use a fixed iteration count. A small task may need one pass; a difficult
 task may need several. If a pass misses acceptance, inspect the first failure,
