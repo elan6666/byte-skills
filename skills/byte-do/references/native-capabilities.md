@@ -7,6 +7,25 @@ executable, or another session's receipt does not establish availability or
 permission here. Check only what the next action needs and reuse the same
 observations across Byte skills.
 
+## Antigravity & Multi-Harness Native Routes
+
+Before writing custom scripts or spawning external chats, inspect your current
+tool inventory and prefer native capabilities first:
+
+| Need | Native route (Antigravity / Modern Harness) | Byte fallback only when missing |
+| --- | --- | --- |
+| Waiting on training / long command | Non-daemon background `run_command` + end turn (**0-token Reactive Wakeup** on exit) | `zero_token_loop.py wait-run` or host watcher |
+| Parallel research / sub-tasks | `invoke_subagent`, `run_workflow`, or `swarm` (when `/swarm` active) | `byte-bridge` only for cross-app/external chats |
+| Recurring / timed check | Native `schedule` (`CronExpression` / `DurationSeconds`) | `zero_token_loop.py tick` (0-token polling) |
+| Live progress checklist | Native `update_steps` & `update_focus` | `.byte-os/workboard.json` for cross-session persistence |
+| Cross-chat / cross-harness handoff | Native verified messaging when both sides support it | `byte-bridge` or project-configured coordination channel |
+| Remote / sandboxed job launch | Authorized native shell / SSH / MCP tool | Project-configured authorized job queue or explicit user handoff |
+
+### Key Rules (Lightweight)
+- **0-token wait**: Prefer attached `Reactive Wakeup` or `zero_token_loop.py` over periodic LLM polling.
+- **No mid-goal stops**: Never pause to ask *"Should I continue?"* while the requested goal is unmet and safe authorized steps remain.
+- **Adapt on friction**: If a sandbox, permission, or tool limit blocks one path, switch to another authorized native route or document the exact blocker.
+
 ## Codex routes
 
 | Need | Native route to check first | Byte's role |
@@ -53,25 +72,6 @@ requirements.
 Follow the [goal loop](../../byte-workflow/references/format.md#goal-loop) when
 the user explicitly requests persistent pursuit. Ordinary work can still
 iterate, verify, and finish in the current turn.
-
-## Antigravity & Multi-Harness Native Routes
-
-Before writing custom scripts or spawning external chats, inspect your current
-tool inventory and prefer native capabilities first:
-
-| Need | Native route (Antigravity / Modern Harness) | Byte fallback only when missing |
-| --- | --- | --- |
-| Waiting on training / long command | Non-daemon background `run_command` + end turn (**0-token Reactive Wakeup** on exit) | `zero_token_loop.py wait-run` or `launchd` watcher |
-| Parallel research / sub-tasks | `invoke_subagent`, `run_workflow`, or `swarm` (when `/swarm` active) | `byte-bridge` only for cross-app/external chats |
-| Recurring / timed check | Native `schedule` (`CronExpression` / `DurationSeconds`) | `zero_token_loop.py tick` (`launchd` 0-token polling) |
-| Live progress checklist | Native `update_steps` & `update_focus` | `.byte-os/workboard.json` for cross-session persistence |
-| Cross-harness wake (Antigravity) | Native `ag_say.py` (`agy acp`) + `ag-wake.json` (`wait-signal`) | Shared workspace `.byte-os/coordination/board.jsonl` |
-| Sandboxed remote job launch | Native authorized SSH / ControlMaster | `.byte-os/server-job-requests/` local watcher queue |
-
-### Key Rules (Lightweight)
-- **0-token wait**: Use attached `Reactive Wakeup` or `zero_token_loop.py` instead of 15m LLM polling crons.
-- **No mid-goal stops**: Never pause to ask *"Should I continue?"* when the goal is unmet and authorized steps remain.
-- **Solve blockers autonomously**: If a sandbox/permission blocks an action, switch to an authorized native route or `.byte-os/server-job-requests/`.
 
 [Codex developer commands](https://learn.chatgpt.com/docs/developer-commands) ·
 [Worktrees](https://learn.chatgpt.com/docs/environments/git-worktrees) ·

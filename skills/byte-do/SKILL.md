@@ -62,12 +62,12 @@ does not install Byte as a project rule.
 
 ## Core Loop Principles (Freedom with Discipline)
 
-You have full freedom to choose the best reasoning path, tools, architecture, and experiments. Only keep these 4 non-negotiables:
+You have full freedom to choose your reasoning path, tools, architecture, and experiments. Only keep these 4 non-negotiables:
 
-1. **Native harness first**: Check your current tool inventory (`references/native-capabilities.md`) and prefer native features (subagents, `swarm`, `run_workflow`, `Reactive Wakeup`, native Goal/schedule) before adding Byte scripts.
-2. **Don't stop until the goal is met**: While acceptance is unmet and an authorized next step exists, keep going — never stop mid-goal to ask *"Should I continue?"* or treat a plan/report as completion.
-3. **Zero-token waiting**: Never burn LLM tokens polling a running job (`ps`/`tail` crons). Use attached `Reactive Wakeup` or `zero_token_loop.py` (`wait-run` / `wait-signal` / `tick`).
-4. **Self-evolve on friction**: If you hit a stall, permission block, or low-quota subagent, fix the workflow or pivot to an authorized route (e.g., `ag_say.py`, `.byte-os/server-job-requests/`) instead of stalling.
+1. **Native harness first**: Check your current tool inventory ([native capability check](references/native-capabilities.md)) and prefer available, authorized native features (subagents, `swarm`, `run_workflow`, background command wakeup, native Goal/schedule) before adding Byte scripts.
+2. **Finish what you start**: Within the current turn and authorized scope, keep iterating until the requested goal is verified — never pause mid-task to ask *"Should I continue?"* or treat a plan/report as completion. (Only durable cross-session Goals or recurring schedules require explicit user request.)
+3. **Zero-token waiting**: Never burn LLM tokens polling a running job. Use native background wakeup or `zero_token_loop.py` (`wait-run` / `wait-signal` / `tick`).
+4. **Self-evolve on friction**: If you hit a stall, permission limit, or tool gap, adapt to another authorized route or fix the workflow directly instead of stalling, and record a concise lesson in `.byte-os/LESSONS.md` when it prevents recurrence.
 
 ## Research assignments
 
@@ -106,7 +106,7 @@ loop when native Goals are unavailable. Execute the next eligible action while
 acceptance is unmet, including after each progress report or handback.
 
 Use native chat and worktree views for Codex activity. Open the bundled
-[Byte Workbench](../../apps/byte-workbench/README.md) when the user needs the
+[Byte Workbench](https://github.com/elan6666/byte-skills/tree/main/apps/byte-workbench) when the user needs the
 opted-in project board, cross-harness handoffs, or external job evidence.
 
 ## State
@@ -165,24 +165,9 @@ help the user understand or continue the work. Do not emit a fixed status templa
 For material implementation, review, runtime, experiment, or handoff claims,
 apply the shared [evidence contract](references/evidence-contract.md).
 
-## Adaptive execution
+## Outcome continuity & long-running work
 
-For supervised or scheduled work, follow the [continuation guide](references/long-running-work.md).
-Use [Byte Bridge](../byte-bridge/SKILL.md) when selected for cross-chat delivery.
-Preserve authorized monitoring scope, accepted handoffs, and the user's stop
-condition. Create a Goal or schedule only on request.
-
-## Outcome continuity
-
-When a project has an authorized long-term outcome, recover its current owner,
-acceptance criteria and next action from the existing state before classifying
-a follow-up. A status request, correction or temporary priority normally applies
-to the current step or short task. A pause or change to the overall outcome
-requires user intent that applies to that outcome. Handle the follow-up, then
-start the next ready, authorized action for the same outcome in the same turn.
-Keep an already-authorized wake route active if the chat must yield. Follow the
-[shared continuation contract](references/long-running-work.md). Ordinary turns
-remain the default. Goals require explicit user request.
+For supervised, scheduled, or long-term outcomes, follow the [continuation guide](references/long-running-work.md) and preserve existing ownership, acceptance criteria, and authorized wake routes. Handle short follow-ups or status questions without dropping an active outcome, then resume the next ready authorized step in the same turn. Use [Byte Bridge](../byte-bridge/SKILL.md) when selected for cross-chat delivery. Durable Goals and recurring schedules require explicit user request.
 
 
 ## Durable agent roles and collaboration

@@ -6,9 +6,8 @@ description: "Use the Byte workflow for end-to-end completion of a multi-stage p
 Before each task, check [native harness capabilities](../byte-do/references/native-capabilities.md) for the requested work.
 Prefer available, authorized native tools before adding Byte fallbacks.
 
-For actionable work, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
-once per turn. Use the current project and exact native session. If this skill
-was selected by Byte Do after activation, reuse its registration.
+In a project opted into Byte Workbench, run [Byte entry activation](../byte-do/SKILL.md#activate-the-project-at-entry)
+once per turn for actionable work (skip for standalone/non-Workbench tasks or if Byte Do already activated it).
 
 
 # Byte Auto
@@ -80,9 +79,9 @@ Repeat as useful:
    not execution. Within an authorized research loop, choose the next bounded
    experiment from evidence; do not require fresh permission merely because
    the hypothesis changed. Preserve data, budget, resource, and version limits.
-7. **Self-evolve on friction**: When hitting a stall, permission block, or quota issue, fix the route directly (e.g., native tools, `zero_token_loop.py`, `.byte-os/server-job-requests/`) and record a brief lesson only when it prevents future errors.
+7. **Self-evolve on friction**: When hitting a stall, permission limit, or tool gap, adapt directly using available authorized native tools or Byte fallbacks (e.g., `zero_token_loop.py`, `byte-bridge`) and record a brief lesson in `.byte-os/LESSONS.md` only when it prevents future errors.
 
-**No Early Exit**: You have full autonomy over how to solve the problem; just do not stop to ask *"Should I proceed?"* while overall acceptance is unmet and an authorized action (or 0-token wait) remains.
+**No Early Exit**: You have full autonomy over how to solve the problem; do not stop to ask *"Should I proceed?"* while overall acceptance is unmet and a safe authorized action (or 0-token wait) remains.
 
 Do not use a fixed iteration count. A small task may need one pass; a difficult
 task may need several. If a pass misses acceptance, inspect the first failure,
@@ -130,8 +129,10 @@ a compatible training preset, not a separate transport.
 
 ## Completion
 
-Before yielding an unfinished iterative task, run the
-[continuation check](scripts/continuation_check.py) against the existing state.
+Before yielding an unfinished multi-session task that tracks persistent `.byte-os`
+state, run the [continuation check](scripts/continuation_check.py) against that
+state. (Skip this check for single-session turns simply yielding for a native
+background `Reactive Wakeup` with no persistent `.byte-os` state.)
 Its exit code 2 means continue substantive work; exit 1 means reconcile invalid
 or insufficient evidence. Exit 0 permits only the stated disposition: verified
 completion, authorized waiting, explicit user pause, or a concrete external
@@ -175,16 +176,8 @@ or routine trial-and-error noise.
 
 Lead with the delivered result. Summarize meaningful changes, verification, and
 remaining limits. Do not end with a workflow command when safe in-scope work is
-still unfinished.
-
-## Adaptive execution
-
-Define one overall outcome and acceptance criteria first. For the requested
-adaptive long-running workflow, follow
-[adaptive execution](references/long-running-work.md): ordinary task turns are
-the default; use Goals only when explicitly requested. Scheduled checks can
-supervise authorized long jobs. Keep remaining work and monitor identity in
-one concise state document.
+still unfinished. For long-running supervision or explicitly requested Goals/schedules,
+follow [adaptive execution](references/long-running-work.md).
 
 
 ## Durable agent roles and collaboration
